@@ -56,6 +56,8 @@ NineKgTools/
 cp Config/config.example.yaml Config/config.yaml
 ```
 
+> **可省略**：如果你跳过这步，启动时 `Config.InitConfig` 会自动从 `config.example.yaml` 复制一份 `config.yaml`。但建议手动 cp + 编辑，因为 example 里 `api_key` 是空的，跑起来 AI 识别会立刻报缺 key。CI / fresh clone 场景靠这个自动 fallback 跑过 `dotnet test`。
+
 最少需要填的字段：
 
 ```yaml

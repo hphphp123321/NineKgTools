@@ -47,7 +47,15 @@ public class Config
         var yamlFilePath = FindConfigFile();
         if (string.IsNullOrEmpty(yamlFilePath))
         {
-            throw new FileNotFoundException("无法找到配置文件 config.yaml");
+            // 找不到 config.yaml 时尝试从 config.example.yaml 自动复制——
+            // 覆盖 CI（仓库不带 config.yaml）、fresh clone、首次启动等场景。
+            // Docker 容器有自己的 entrypoint cp，正常路径下走不到这里。
+            yamlFilePath = TryBootstrapFromExample();
+            if (string.IsNullOrEmpty(yamlFilePath))
+            {
+                throw new FileNotFoundException(
+                    "无法找到配置文件 config.yaml，且未找到 config.example.yaml 可复制");
+            }
         }
         
         var deserializer = new DeserializerBuilder()
@@ -74,6 +82,32 @@ public class Config
     }
     
     
+    /// <summary>
+    /// config.yaml 不存在时，从同目录下的 config.example.yaml 复制一份。
+    /// 返回新创建的 config.yaml 绝对路径；example 也找不到时返回 null。
+    /// </summary>
+    private static string? TryBootstrapFromExample()
+    {
+        var examplePath = FindConfigFile("config.example.yaml");
+        if (string.IsNullOrEmpty(examplePath))
+        {
+            return null;
+        }
+
+        var dir = Path.GetDirectoryName(examplePath);
+        if (string.IsNullOrEmpty(dir))
+        {
+            return null;
+        }
+
+        var targetPath = Path.Combine(dir, "config.yaml");
+        if (!File.Exists(targetPath))
+        {
+            File.Copy(examplePath, targetPath);
+        }
+        return targetPath;
+    }
+
     /// <summary>
     /// 智能查找配置文件
     /// </summary>
