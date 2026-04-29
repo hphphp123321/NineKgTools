@@ -24,7 +24,8 @@ COPY ["NineKgTools.Core/NineKgTools.Core.csproj", "NineKgTools.Core/"]
 COPY ["NineKgTools.Web/NineKgTools.Web.csproj",   "NineKgTools.Web/"]
 
 RUN dotnet restore "NineKgTools.Web/NineKgTools.Web.csproj" \
-    --runtime linux-x64
+    --runtime linux-x64 \
+    /p:PublishReadyToRun=true
 
 # 复制源码
 COPY NineKgTools.Core/ NineKgTools.Core/
