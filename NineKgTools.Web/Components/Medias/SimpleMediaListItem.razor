@@ -1,0 +1,75 @@
+@using MudBlazor
+@using NineKgTools.Core.Models.Media
+@using NineKgTools.Core.Models.Categories
+@using NineKgTools.Utils
+
+@* 简化媒体列表项组件 *@
+
+@if (_media != null)
+{
+    <MudListItem T="string" Class="media-list-item" OnClick="@(() => NavigateToMedia())">
+        <div class="d-flex align-center gap-3">
+            <!-- 缩略图 -->
+            <div class="media-list-thumbnail">
+                <MudImage Src="@(_media.Poster?.GetImageUrl() ?? StaticStrings.ImageNotFound)"
+                          ObjectFit="ObjectFit.Cover"
+                          Height="60"
+                          Width="60"
+                          Class="rounded" />
+            </div>
+
+            <!-- 媒体信息 -->
+            <div class="flex-grow-1 media-list-content">
+                <!-- 标题和类型徽章 -->
+                <div class="d-flex align-center gap-2 mb-1">
+                    <!-- 类型徽章 -->
+                    <MudChip T="string"
+                            Size="Size.Small"
+                            Color="@GetMediaColor(_media.Category.TopCategory)"
+                            Variant="Variant.Filled"
+                            Class="ma-0 pa-1"
+                            Style="height: 20px; font-size: 0.7rem;">
+                        @_media.Category.Name
+                    </MudChip>
+                    <!-- 标题 -->
+                    <MudText Typo="Typo.subtitle1" Class="media-list-title">
+                        @_media.Title
+                    </MudText>
+                </div>
+                <!-- 日期 -->
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="media-list-date">
+                    @(_media.ReleaseDate.HasValue ? _media.ReleaseDate.Value.ToString("yyyy-MM-dd") : "未知日期")
+                </MudText>
+            </div>
+
+            <!-- 操作图标 -->
+            <div class="media-list-action">
+                <MudIcon Icon="@Icons.Material.Filled.ChevronRight"
+                         Color="Color.Secondary"
+                         Size="Size.Small" />
+            </div>
+        </div>
+    </MudListItem>
+}
+else if (_isLoading)
+{
+    <MudListItem T="string" Class="media-list-item">
+        <div class="d-flex align-center gap-3">
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="60px" Width="60px" Class="rounded"/>
+            <div class="flex-grow-1">
+                <MudSkeleton SkeletonType="SkeletonType.Text" Width="70%" Height="20px" Class="mb-1"/>
+                <MudSkeleton SkeletonType="SkeletonType.Text" Width="40%" Height="16px"/>
+            </div>
+        </div>
+    </MudListItem>
+}
+else
+{
+    <MudListItem T="string" Class="media-list-item">
+        <div class="d-flex align-center gap-3">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" Size="Size.Large"/>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">加载失败</MudText>
+        </div>
+    </MudListItem>
+}
+

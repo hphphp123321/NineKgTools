@@ -1,0 +1,53 @@
+@using NineKgTools.Core.Models.Media
+
+@* 媒体卡片网格组件 - 统一的媒体卡片网格布局 *@
+
+@if (MediaIds != null && MediaIds.Any())
+{
+    <div class="media-card-grid @Class">
+        @foreach (var mediaId in MediaIds)
+        {
+            @if (Simple)
+            {
+                <SimpleMediaCard MediaId="@mediaId" />
+            }
+            else
+            {
+                <MediaCard MediaId="@mediaId" HideFavoriteButton="@HideFavoriteButton" />
+            }
+        }
+    </div>
+}
+else if (Medias != null && Medias.Any())
+{
+    <div class="media-card-grid @Class">
+        @foreach (var media in Medias)
+        {
+            @if (Simple)
+            {
+                <SimpleMediaCard MediaId="@media.Id" />
+            }
+            else
+            {
+                <MediaCard MediaId="@media.Id" HideFavoriteButton="@HideFavoriteButton" />
+            }
+        }
+    </div>
+}
+else
+{
+    @* 空状态 *@
+    @if (ShowEmptyState)
+    {
+        <div class="media-card-grid-empty">
+            <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported"
+                     Color="Color.Default"
+                     Size="Size.Large"
+                     Class="mb-3" />
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center">
+                @EmptyStateText
+            </MudText>
+        </div>
+    }
+}
+

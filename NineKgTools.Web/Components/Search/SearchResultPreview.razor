@@ -1,0 +1,304 @@
+@using MudBlazor
+@using NineKgTools.Core.Models.Search
+@using NineKgTools.Core.Models.Media
+@using NineKgTools.Core.Models.Tags
+
+<MudPaper Class="modern-search-preview" Elevation="8" Square="false">
+    @if (SearchResult != null && SearchResult.TotalCount > 0)
+    {
+        <MudContainer Class="modern-search-header pa-4">
+            <div class="d-flex justify-space-between align-center mb-2">
+                <MudText Typo="Typo.h5" Color="Color.Inherit" Class="font-weight-bold">
+                    ✨ 找到 @SearchResult.TotalCount 个结果
+                </MudText>
+            </div>
+            <div class="d-flex align-center gap-2 flex-wrap">
+                <MudChip T="string" Size="Size.Small" Color="Color.Success" 
+                        Icon="@Icons.Material.Filled.Speed" Variant="Variant.Filled">
+                    @SearchResult.ElapsedMilliseconds ms
+                </MudChip>
+                @if (SearchResult.UsedVectorSearch)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" 
+                            Icon="@Icons.Material.Filled.Psychology" Variant="Variant.Filled">
+                        AI语义搜索
+                    </MudChip>
+                }
+            </div>
+        </MudContainer>
+        
+        <MudContainer Class="ultra-modern-search-content pa-4">
+            @if (SearchResult.MediaResults.Any())
+            {
+                <MudPaper Class="result-type-section media-section mb-4" Elevation="2" Square="false">
+                    <MudContainer Class="section-header pa-3">
+                        <div class="d-flex align-center gap-3">
+                            <MudAvatar Color="Color.Primary" Size="Size.Medium">
+                                <MudIcon Icon="@Icons.Material.Filled.VideoLibrary" />
+                            </MudAvatar>
+                            <div class="flex-grow-1">
+                                <MudText Typo="Typo.h6" Class="font-weight-bold">媒体内容</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">找到 @SearchResult.MediaResults.Count 个结果</MudText>
+                            </div>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" 
+                                    Icon="@Icons.Material.Filled.Movie" Variant="Variant.Filled">
+                                媒体
+                            </MudChip>
+                        </div>
+                    </MudContainer>
+                    <MudContainer Class="section-content pa-3">
+                        @foreach (var item in SearchResult.MediaResults.Take(MaxItemsPerSection))
+                        {
+                            <MudCard Class="ultra-modern-result-card media-result-card mb-2" Elevation="1" Square="false" 
+                                     Style="cursor: pointer;" >
+                                <MudCardContent Class="pa-3">
+                                    <div class="d-flex align-center gap-3">
+                                        <div class="position-relative">
+                                            <MudAvatar Size="Size.Large" Square="true" Class="rounded">
+                                                <MudImage Src="@GetMediaPosterUrl(item.Entity)" Alt="@item.Entity.Title" />
+                                            </MudAvatar>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <MudLink Typo="Typo.subtitle1" Class="font-weight-bold mb-1" Href="@item.Entity.GetMediaLink()">
+                                                @((MarkupString)GetHighlightedText(item.Entity.Title, item.Highlights))
+                                            </MudLink>
+                                            <div class="d-flex align-center gap-2 mb-2">
+                                                <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" Color="Color.Secondary" />
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                    @(item.Entity.Category?.Name ?? "未分类")
+                                                </MudText>
+                                            </div>
+                                            <div class="d-flex align-center gap-2">
+                                                <MudChip T="string" Size="Size.Small" Color="@GetMatchTypeColor(item.MatchType)" Variant="Variant.Outlined">
+                                                    @GetMatchTypeText(item.MatchType)
+                                                </MudChip>
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
+                                                    @item.RelevanceScore.ToString("P0")
+                                                </MudChip>
+                                            </div>
+                                        </div>
+                                        <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" 
+                                                     Size="Size.Small" 
+                                                     Color="Color.Primary"
+                                                     OnClick="@(() => NavigateToMedia(item.Entity.Id))" />
+                                    </div>
+                                </MudCardContent>
+                            </MudCard>
+                        }
+                    </MudContainer>
+                </MudPaper>
+            }
+            
+            @if (SearchResult.TagResults.Any())
+            {
+                <MudPaper Class="result-type-section tag-section mb-4" Elevation="2" Square="false">
+                    <MudContainer Class="section-header pa-3">
+                        <div class="d-flex align-center gap-3">
+                            <MudAvatar Color="Color.Secondary" Size="Size.Medium">
+                                <MudIcon Icon="@Icons.Material.Filled.LocalOffer" />
+                            </MudAvatar>
+                            <div class="flex-grow-1">
+                                <MudText Typo="Typo.h6" Class="font-weight-bold">标签</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">找到 @SearchResult.TagResults.Count 个结果</MudText>
+                            </div>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Secondary" 
+                                    Icon="@Icons.Material.Filled.Tag" Variant="Variant.Filled">
+                                标签
+                            </MudChip>
+                        </div>
+                    </MudContainer>
+                    <MudContainer Class="section-content pa-3">
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var item in SearchResult.TagResults.Take(MaxItemsPerSection))
+                            {
+                                <MudCard Class="tag-result-card" Elevation="1" Square="false" 
+                                         Style="cursor: pointer;">
+                                    <MudCardContent Class="pa-2">
+                                        <div class="d-flex align-center gap-2">
+                                            <MudIcon Icon="@Icons.Material.Filled.LocalOffer" 
+                                                   Size="Size.Small" 
+                                                   Color="Color.Secondary" />
+                                            <MudLink Typo="Typo.body2" Class="font-weight-medium" Href="@item.Entity.GetTagLink()">
+                                                @((MarkupString)GetHighlightedText(item.Entity.Name, item.Highlights))
+                                            </MudLink>
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
+                                                @item.RelevanceScore.ToString("P0")
+                                            </MudChip>
+                                        </div>
+                                        <MudChip T="string" Size="Size.Small" Color="@GetMatchTypeColor(item.MatchType)" 
+                                               Variant="Variant.Outlined" Class="mt-1">
+                                            @GetMatchTypeText(item.MatchType)
+                                        </MudChip>
+                                    </MudCardContent>
+                                </MudCard>
+                            }
+                        </div>
+                    </MudContainer>
+                </MudPaper>
+            }
+            
+            @if (SearchResult.CircleResults.Any())
+            {
+                <MudPaper Class="result-type-section circle-section mb-4" Elevation="2" Square="false">
+                    <MudContainer Class="section-header pa-3">
+                        <div class="d-flex align-center gap-3">
+                            <MudAvatar Color="Color.Tertiary" Size="Size.Medium">
+                                <MudIcon Icon="@Icons.Material.Filled.Groups" />
+                            </MudAvatar>
+                            <div class="flex-grow-1">
+                                <MudText Typo="Typo.h6" Class="font-weight-bold">社团</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">找到 @SearchResult.CircleResults.Count 个结果</MudText>
+                            </div>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Tertiary" 
+                                    Icon="@Icons.Material.Filled.Group" Variant="Variant.Filled">
+                                社团
+                            </MudChip>
+                        </div>
+                    </MudContainer>
+                    <MudContainer Class="section-content pa-3">
+                        @foreach (var item in SearchResult.CircleResults.Take(MaxItemsPerSection))
+                        {
+                            <MudCard Class="circle-result-card mb-2" Elevation="1" Square="false" 
+                                     Style="cursor: pointer;" OnClick="@(() => NavigateToCircle(item.Entity.Id))">
+                                <MudCardContent Class="pa-3">
+                                    <div class="d-flex align-center gap-3">
+                                        <MudAvatar Color="Color.Tertiary" Size="Size.Medium">
+                                            <MudIcon Icon="@Icons.Material.Filled.Groups" />
+                                        </MudAvatar>
+                                        <div class="flex-grow-1">
+                                            <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1">
+                                                @((MarkupString)GetHighlightedText(item.Entity.Name, item.Highlights))
+                                            </MudText>
+                                            <div class="d-flex align-center gap-2">
+                                                <MudChip T="string" Size="Size.Small" Color="@GetMatchTypeColor(item.MatchType)" Variant="Variant.Outlined">
+                                                    @GetMatchTypeText(item.MatchType)
+                                                </MudChip>
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
+                                                    @item.RelevanceScore.ToString("P0")
+                                                </MudChip>
+                                            </div>
+                                        </div>
+                                        <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" 
+                                                     Size="Size.Small" 
+                                                     Color="Color.Tertiary"
+                                                     OnClick="@(() => NavigateToCircle(item.Entity.Id))" />
+                                    </div>
+                                </MudCardContent>
+                            </MudCard>
+                        }
+                    </MudContainer>
+                </MudPaper>
+            }
+            
+            @if (SearchResult.CreatorResults.Any())
+            {
+                <MudPaper Class="result-type-section creator-section mb-4" Elevation="2" Square="false">
+                    <MudContainer Class="section-header pa-3">
+                        <div class="d-flex align-center gap-3">
+                            <MudAvatar Color="Color.Info" Size="Size.Medium">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" />
+                            </MudAvatar>
+                            <div class="flex-grow-1">
+                                <MudText Typo="Typo.h6" Class="font-weight-bold">创作者</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">找到 @SearchResult.CreatorResults.Count 个结果</MudText>
+                            </div>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" 
+                                    Icon="@Icons.Material.Filled.Person" Variant="Variant.Filled">
+                                创作者
+                            </MudChip>
+                        </div>
+                    </MudContainer>
+                    <MudContainer Class="section-content pa-3">
+                        @foreach (var item in SearchResult.CreatorResults.Take(MaxItemsPerSection))
+                        {
+                            <MudCard Class="creator-result-card mb-2" Elevation="1" Square="false" 
+                                     Style="cursor: pointer;" OnClick="@(() => NavigateToCreator(item.Entity.Id))">
+                                <MudCardContent Class="pa-3">
+                                    <div class="d-flex align-center gap-3">
+                                        <MudAvatar Color="Color.Info" Size="Size.Medium">
+                                            <MudIcon Icon="@Icons.Material.Filled.Person" />
+                                        </MudAvatar>
+                                        <div class="flex-grow-1">
+                                            <MudText Typo="Typo.subtitle1" Class="font-weight-bold mb-1">
+                                                @((MarkupString)GetHighlightedText(item.Entity.Name, item.Highlights))
+                                            </MudText>
+                                            <div class="d-flex align-center gap-2">
+                                                <MudChip T="string" Size="Size.Small" Color="@GetMatchTypeColor(item.MatchType)" Variant="Variant.Outlined">
+                                                    @GetMatchTypeText(item.MatchType)
+                                                </MudChip>
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">
+                                                    @item.RelevanceScore.ToString("P0")
+                                                </MudChip>
+                                            </div>
+                                        </div>
+                                        <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" 
+                                                     Size="Size.Small" 
+                                                     Color="Color.Info"
+                                                     OnClick="@(() => NavigateToCreator(item.Entity.Id))" />
+                                    </div>
+                                </MudCardContent>
+                            </MudCard>
+                        }
+                    </MudContainer>
+                </MudPaper>
+            }
+        </MudContainer>
+        
+        <MudContainer Class="modern-search-footer pa-4 text-center">
+            <MudButton Variant="Variant.Filled" 
+                      Color="Color.Primary" 
+                      StartIcon="@Icons.Material.Filled.OpenInNew"
+                      OnClick="@(() => OnViewAllResults.InvokeAsync())"
+                      Size="Size.Large"
+                      Class="view-all-button">
+                查看全部结果
+            </MudButton>
+        </MudContainer>
+    }
+    else if (SearchResult != null && !string.IsNullOrEmpty(SearchResult.ErrorMessage))
+    {
+        <MudContainer Class="search-empty-state error-state pa-6 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" 
+                    Size="Size.Large" 
+                    Color="Color.Error" 
+                    Class="mb-3" />
+            <MudText Typo="Typo.h5" Color="Color.Error" Class="font-weight-bold mb-2">
+                ❌ 搜索失败
+            </MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">
+                @SearchResult.ErrorMessage
+            </MudText>
+        </MudContainer>
+    }
+    else if (SearchResult != null && SearchResult.TotalCount == 0)
+    {
+        <MudContainer Class="search-empty-state no-results-state pa-6 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.SearchOff" 
+                    Size="Size.Large" 
+                    Color="Color.Warning" 
+                    Class="mb-3" />
+            <MudText Typo="Typo.h5" Color="Color.Secondary" Class="font-weight-bold mb-2">
+                🔍 没有找到相关结果
+            </MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">
+                尝试调整搜索关键词或使用高级筛选
+            </MudText>
+        </MudContainer>
+    }
+    else
+    {
+        <MudContainer Class="search-empty-state initial-state pa-6 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.TravelExplore" 
+                    Size="Size.Large" 
+                    Color="Color.Info" 
+                    Class="mb-3" />
+            <MudText Typo="Typo.h5" Color="Color.Secondary" Class="font-weight-bold mb-2">
+                🚀 开始探索
+            </MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary">
+                输入关键词开始智能搜索媒体、标签等内容
+            </MudText>
+        </MudContainer>
+    }
+</MudPaper>
+

@@ -1,0 +1,50 @@
+﻿@using NineKgTools.Core.Models.Tags
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6" Color="Color.Primary">
+            <MudIcon Icon="@Icons.Material.Filled.NewLabel" Class="mr-3 mb-n1"></MudIcon>
+            添加顶层标签分类
+        </MudText>
+    </TitleContent>
+    
+    <DialogContent>
+        <MudTextField @bind-Value="@_topTagName" Label="顶层标签名字"
+                      Required="true" Variant="Variant.Filled">
+            
+        </MudTextField>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel">取消</MudButton>
+        <MudButton Color="Color.Info" OnClick="ReturnTopTag">添加</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    string _topTagName;
+    private void Cancel() => MudDialog.Cancel();
+    
+    private void ReturnTopTag()
+    {
+        if (string.IsNullOrWhiteSpace(_topTagName))
+        {
+            Snackbar.Add("标签名字不能为空", Severity.Warning);
+            return;
+        }
+
+        if (TopTagNameList.Contains(_topTagName))
+        {
+            Snackbar.Add("标签名字已存在", Severity.Warning);
+            return;
+        }
+        
+        var newTopTag = new TopTag
+        {
+            Name = _topTagName,
+        };
+        
+        MudDialog.Close(DialogResult.Ok(newTopTag, typeof(TopTag)));
+    }
+}

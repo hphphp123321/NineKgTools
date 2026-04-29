@@ -1,0 +1,1142 @@
+@page "/settings"
+<PageTitle>系统设置</PageTitle>
+
+@using NineKgTools.Components.Common
+@using NineKgTools.Core.Services.AI
+@using NineKgTools.Core.Services.Configs
+@using NineKgTools.Core.Models.Tasks
+@using NineKgTools.Core.Models.Identification
+@using Serilog
+@using Serilog.Events
+
+@inject ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <MudGrid>
+        <!-- 页面标题 -->
+        <MudItem xs="12">
+            <PageHeader Icon="@Icons.Material.Filled.Settings"
+                        IconColor="Color.Primary"
+                        Title="系统设置"
+                        Subtitle="配置应用程序的各项参数和功能">
+                <Actions>
+                    <MudButton OnClick="_resetAllConfig"
+                               StartIcon="@Icons.Material.Filled.RestartAlt"
+                               Color="Color.Warning"
+                               Variant="Variant.Outlined"
+                               Size="Size.Medium">
+                        重置全部
+                    </MudButton>
+                    <MudButton Disabled="@_saveProcessing" OnClick="_saveAllConfig"
+                               StartIcon="@(!_saveProcessing ? Icons.Material.Filled.Save : null)"
+                               Color="Color.Primary"
+                               Variant="Variant.Filled"
+                               Size="Size.Medium">
+                        @if (_saveProcessing)
+                        {
+                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                            <MudText Class="ms-2">保存中</MudText>
+                        }
+                        else
+                        {
+                            <MudText>保存全部</MudText>
+                        }
+                    </MudButton>
+                </Actions>
+            </PageHeader>
+        </MudItem>
+
+        <!-- 设置标签页 -->
+        <MudItem xs="12">
+            <MudCard Elevation="0" Class="@($"modern-tabs-container{(_isTabTransitioning ? " is-tab-transitioning" : "")}")">
+                <MudTabs Elevation="0" Rounded="true" PanelClass="settings-tab-content pa-6"
+                         ActivePanelIndex="_activeTabIndex" ActivePanelIndexChanged="_onTabChanged"
+                         Color="Color.Primary" SliderColor="Color.Primary" Position="Position.Top"
+                         TabHeaderClass="modern-tabs-header"
+                         KeepPanelsAlive="false" ApplyEffectsToContainer="true"
+                         ActiveTabClass="modern-tab-active"
+                         Ripple="false" SliderAnimation="true"
+                         Centered="false" Border="false"
+                         AlwaysShowScrollButtons="true"
+                         NextIcon="@Icons.Material.Filled.ChevronRight"
+                         PrevIcon="@Icons.Material.Filled.ChevronLeft"
+                         ScrollIconColor="Color.Primary"
+                         MinimumTabWidth="120px">
+                    
+                    <!-- 应用设置标签页 -->
+                    <MudTabPanel Text="应用设置" Icon="@Icons.Material.Filled.SettingsApplications">
+                        <MudCard Elevation="0" Class="card-bordered-primary mb-4">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <div class="d-flex align-center gap-3">
+                                        <MudIcon Icon="@Icons.Material.Filled.SettingsApplications" Color="Color.Primary" Size="Size.Medium" />
+                                        <MudText Typo="Typo.h6" Class="font-weight-semibold">基础配置</MudText>
+                                    </div>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent Class="pa-6">
+                                <div class="settings-section-header">
+                                    <MudIcon Icon="@Icons.Material.Filled.VpnLock" Color="Color.Primary" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">代理设置</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12">
+                                        <MudTextField T="string" @bind-Value="_appConfig.Proxy.ProxyAddr"
+                                                      Label="代理服务器地址" Variant="Variant.Outlined"
+                                                      InputType="@InputType.Url" 
+                                                      Adornment="Adornment.End"
+                                                      AdornmentIcon="@Icons.Material.Filled.VpnLock"
+                                                      AdornmentColor="Color.Primary"
+                                                      HelperText="代理地址，如：http://127.0.0.1:7890"
+                                                      Margin="Margin.Normal" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField T="string" @bind-Value="_appConfig.Proxy.ProxyUser"
+                                                      Label="代理用户名" Variant="Variant.Outlined"
+                                                      Adornment="Adornment.End"
+                                                      AdornmentIcon="@Icons.Material.Filled.Person"
+                                                      AdornmentColor="Color.Primary"
+                                                      HelperText="代理认证用户名（可选）"
+                                                      Margin="Margin.Normal" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudInputPassword
+                                            Value="@_appConfig.Proxy.ProxyPassword"
+                                            ValueChanged="@((string value) => _appConfig.Proxy.ProxyPassword = value)"
+                                            Label="代理密码"
+                                            HelperText="代理认证密码（可选）"
+                                            Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+                                
+                                <MudDivider Class="my-4" />
+                                <div class="settings-section-header">
+                                    <MudIcon Icon="@Icons.Custom.Brands.Chrome" Color="Color.Primary" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">浏览器设置</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12">
+                                        <MudTextField T="string" @bind-Value="_appConfig.UserAgent"
+                                                      Label="User-Agent" Variant="Variant.Outlined"
+                                                      Adornment="Adornment.End"
+                                                      OnAdornmentClick="_getUserAgent"
+                                                      AdornmentIcon="@Icons.Custom.Brands.Chrome" 
+                                                      AdornmentColor="Color.Primary"
+                                                      HelperText="用于爬虫，点击右侧图标自动获取当前浏览器的User-Agent"
+                                                      Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+                                <MudDivider Class="my-4" />
+                                <div class="settings-section-header">
+                                    <MudIcon Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Primary" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">账号管理</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.body1" Class="mb-2">
+                                            当前用户名: <strong>@_currentUsername</strong>
+                                        </MudText>
+                                        @if (_lastLoginAt.HasValue)
+                                        {
+                                            <MudText Typo="Typo.body2" Class="text-secondary">
+                                                最后登录时间: @_lastLoginAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
+                                            </MudText>
+                                        }
+                                    </MudItem>
+                                    <MudItem xs="12" Class="d-flex gap-3">
+                                        <MudButton OnClick="@(() => _showChangeUsernameDialog = true)"
+                                                   Color="Color.Primary" Variant="Variant.Outlined"
+                                                   StartIcon="@Icons.Material.Filled.Person"
+                                                   Size="Size.Medium">
+                                            修改用户名
+                                        </MudButton>
+                                        <MudButton OnClick="@(() => _showChangePasswordDialog = true)"
+                                                   Color="Color.Primary" Variant="Variant.Outlined"
+                                                   StartIcon="@Icons.Material.Filled.VpnKey"
+                                                   Size="Size.Medium">
+                                            修改密码
+                                        </MudButton>
+                                    </MudItem>
+                                </MudGrid>
+                            </MudCardContent>
+                            <MudCardActions Class="d-flex justify-end gap-3 px-6 py-4">
+                                <MudButton Disabled="@_testProxyProcessing" OnClick="_testProxy"
+                                           StartIcon="@Icons.Material.Filled.NetworkCheck"
+                                           Color="Color.Info" Variant="Variant.Outlined"
+                                           Size="Size.Medium">
+                                    @if (_testProxyProcessing)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" />
+                                        <MudText Class="ml-2">测试代理</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudText>测试代理连接</MudText>
+                                    }
+                                </MudButton>
+                                <MudButton OnClick="@(() => _saveTabConfig("app"))"
+                                           Color="Color.Primary" Variant="Variant.Filled"
+                                           StartIcon="@Icons.Material.Filled.Save"
+                                           Size="Size.Medium">
+                                    保存应用设置
+                                </MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudTabPanel>
+
+                    <!-- 日志配置标签页 -->
+                    <MudTabPanel Text="日志配置" Icon="@Icons.Material.Filled.Assignment">
+                        <MudCard Elevation="0" Class="card-bordered-info mb-4">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <div class="d-flex align-center gap-3">
+                                        <MudIcon Icon="@Icons.Material.Filled.Assignment" Color="Color.Info" Size="Size.Medium" />
+                                        <MudText Typo="Typo.h6" Class="font-weight-semibold">日志输出配置</MudText>
+                                    </div>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent Class="pa-6">
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudSelect T="LogEventLevel" @bind-Value="_logConfig.LogLevel" Label="日志级别" 
+                                                   Variant="Variant.Outlined" MultiSelection="false"
+                                                   HelperText="设置日志输出的最低级别"
+                                                   Margin="Margin.Normal">
+                                            <MudSelectItem Value="LogEventLevel.Verbose">Verbose - 详细</MudSelectItem>
+                                            <MudSelectItem Value="LogEventLevel.Debug">Debug - 调试</MudSelectItem>
+                                            <MudSelectItem Value="LogEventLevel.Information">Information - 信息</MudSelectItem>
+                                            <MudSelectItem Value="LogEventLevel.Warning">Warning - 警告</MudSelectItem>
+                                            <MudSelectItem Value="LogEventLevel.Error">Error - 错误</MudSelectItem>
+                                            <MudSelectItem Value="LogEventLevel.Fatal">Fatal - 致命</MudSelectItem>
+                                        </MudSelect>
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudSelect T="LogType" @bind-SelectedValues="_selectedLogTypes" Label="输出类型" 
+                                                   Variant="Variant.Outlined" MultiSelection="true"
+                                                   HelperText="选择日志的输出方式（可多选）"
+                                                   Margin="Margin.Normal">
+                                            <MudSelectItem Value="LogType.Console">控制台</MudSelectItem>
+                                            <MudSelectItem Value="LogType.File">文件</MudSelectItem>
+                                            <MudSelectItem Value="LogType.Server">远程服务器</MudSelectItem>
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudGrid>
+                                
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField T="string" @bind-Value="_logConfig.LogPath"
+                                                      Label="日志文件路径" Variant="Variant.Outlined"
+                                                      Adornment="Adornment.End"
+                                                      AdornmentIcon="@Icons.Material.Filled.Folder"
+                                                      AdornmentColor="Color.Info"
+                                                      HelperText="日志文件存储目录"
+                                                      Margin="Margin.Normal" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField T="string" @bind-Value="_logConfig.LogServer"
+                                                      Label="日志服务器地址" Variant="Variant.Outlined"
+                                                      Adornment="Adornment.End"
+                                                      AdornmentIcon="@Icons.Material.Filled.Cloud"
+                                                      AdornmentColor="Color.Info"
+                                                      HelperText="远程日志服务器地址（如：192.168.1.100:514）"
+                                                      Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+                                
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12">
+                                        <MudTextField T="string" @bind-Value="_logConfig.LogTemplate"
+                                                      Label="日志模板" Variant="Variant.Outlined"
+                                                      Lines="3" 
+                                                      HelperText="自定义日志格式模板"
+                                                      Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+                            </MudCardContent>
+                            <MudCardActions Class="d-flex justify-end gap-3 px-6 py-4">
+                                <MudButton OnClick="@(() => _saveTabConfig("log"))" 
+                                           Color="Color.Info" Variant="Variant.Filled"
+                                           StartIcon="@Icons.Material.Filled.Save"
+                                           Size="Size.Medium">
+                                    保存日志配置
+                                </MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudTabPanel>
+
+                    <!-- AI配置标签页 -->
+                    <MudTabPanel Text="AI配置" Icon="@Icons.Material.Filled.Psychology">
+                        <MudCard Elevation="0" Class="card-bordered-tertiary mb-4">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <div class="d-flex align-center justify-space-between w-100">
+                                        <div class="d-flex align-center gap-3">
+                                            <MudIcon Icon="@Icons.Material.Filled.Psychology" Color="Color.Tertiary" Size="Size.Medium" />
+                                            <MudText Typo="Typo.h6" Class="font-weight-semibold">人工智能配置</MudText>
+                                        </div>
+                                        <MudSwitch T="bool" @bind-Value="_aiConfig.UseAi"
+                                                   Label="启用AI功能" Color="Color.Tertiary" 
+                                                   LabelPosition="LabelPosition.Start" />
+                                    </div>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent Class="pa-6">
+                                <div class="settings-section-header settings-section-header-tertiary">
+                                    <MudIcon Icon="@Icons.Material.Filled.Key" Color="Color.Tertiary" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">OpenAI配置</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudInputPassword
+                                            Value="@_aiConfig.OpenAi.ApiKey"
+                                            ValueChanged="@((string value) => _aiConfig.OpenAi.ApiKey = value)"
+                                            Label="API密钥"
+                                            Disabled="@(!_aiConfig.UseAi)"
+                                            AdornmentColor="Color.Tertiary"
+                                            HelperText="OpenAI API Key，留空则从环境变量获取"
+                                            Margin="Margin.Normal" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField T="string" @bind-Value="_aiConfig.OpenAi.BaseDomain"
+                                                      Label="API端点" Variant="Variant.Outlined"
+                                                      InputType="@InputType.Url"
+                                                      Disabled="@(!_aiConfig.UseAi)"
+                                                      Adornment="Adornment.End"
+                                                      AdornmentIcon="@Icons.Material.Filled.Language"
+                                                      AdornmentColor="Color.Tertiary"
+                                                      HelperText="API服务端点地址"
+                                                      Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+                                
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudAutocomplete T="string" @bind-Value="_aiConfig.OpenAi.DefaultModel"
+                                                        Label="默认模型" Variant="Variant.Outlined"
+                                                        SearchFunc="@_listAIModels" 
+                                                        Disabled="@(!_aiConfig.UseAi)"
+                                                        ShowProgressIndicator="true"
+                                                        HelperText="AI使用的默认模型"
+                                                        Margin="Margin.Normal" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField T="string" @bind-Value="_aiConfig.OpenAi.ApiVersion"
+                                                      Label="API版本" Variant="Variant.Outlined"
+                                                      Disabled="@(!_aiConfig.UseAi)"
+                                                      HelperText="API版本号"
+                                                      Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+                                
+                                <MudDivider Class="my-4" />
+                                <div class="settings-section-header settings-section-header-tertiary">
+                                    <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Tertiary" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">向量功能配置</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudSwitch T="bool" @bind-Value="_aiConfig.Vector.Enable"
+                                                   Color="Color.Tertiary" Disabled="@(!_aiConfig.UseAi)"
+                                                   LabelPosition="LabelPosition.End">
+                                            <span class="switch-label-with-tip">
+                                                启用向量存储
+                                                <Tip Text="启用后系统会使用向量数据库存储AI生成的向量数据，这是使用语义搜索、向量匹配等高级AI功能的前提条件。需要先启用AI功能。"
+                                                     Placement="Placement.Right"
+                                                     IconColor="Color.Info" />
+                                            </span>
+                                        </MudSwitch>
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudSwitch T="bool" @bind-Value="_aiConfig.UseAiForKeywordSplitting"
+                                                   Color="Color.Tertiary" Disabled="@(!_aiConfig.UseAi)"
+                                                   LabelPosition="LabelPosition.End">
+                                            <span class="switch-label-with-tip">
+                                                AI关键词分割
+                                                <Tip Text="启用后系统会使用AI技术对媒体标题和描述进行智能关键词分割和提取，提高标签识别的准确性。需要先启用AI功能。"
+                                                     Placement="Placement.Right"
+                                                     IconColor="Color.Info" />
+                                            </span>
+                                        </MudSwitch>
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudSwitch T="bool" @bind-Value="_aiConfig.Vector.Media.Enable"
+                                                   Color="Color.Tertiary"
+                                                   LabelPosition="LabelPosition.End"
+                                                   Disabled="@(!_aiConfig.UseAi || !_aiConfig.Vector.Enable)">
+                                            <span class="switch-label-with-tip">
+                                                启用媒体向量
+                                                <Tip Text="@GetMediaVectorIndexingTipText()"
+                                                     Placement="Placement.Right"
+                                                     IconColor="@(_aiConfig.UseAi && _aiConfig.Vector.Enable ? Color.Info : Color.Warning)" />
+                                            </span>
+                                        </MudSwitch>
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudSwitch T="bool" @bind-Value="_aiConfig.Vector.Tag.Enable"
+                                                   Color="Color.Tertiary"
+                                                   LabelPosition="LabelPosition.End"
+                                                   Disabled="@(!_aiConfig.UseAi || !_aiConfig.Vector.Enable)">
+                                            <span class="switch-label-with-tip">
+                                                启用标签向量
+                                                <Tip Text="@GetTagVectorMatchingTipText()"
+                                                     Placement="Placement.Right"
+                                                     IconColor="@(_aiConfig.UseAi && _aiConfig.Vector.Enable ? Color.Info : Color.Warning)" />
+                                            </span>
+                                        </MudSwitch>
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudDivider Class="my-4" />
+                                <div class="settings-section-header settings-section-header-tertiary">
+                                    <MudIcon Icon="@Icons.Material.Filled.Tune" Color="Color.Tertiary" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">向量参数设置</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="double" @bind-Value="_aiConfig.Vector.Media.MinSimilarity"
+                                                       Label="媒体搜索最小相似度" Variant="Variant.Outlined"
+                                                       Min="0.01" Max="1.0" Step="0.05"
+                                                       Disabled="@(!_aiConfig.UseAi || !_aiConfig.Vector.Enable || !_aiConfig.Vector.Media.Enable)"
+                                                       HelperText="媒体向量搜索的最小相似度阈值（0-1）"
+                                                       Margin="Margin.Normal" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="double" @bind-Value="_aiConfig.Vector.Tag.SimilarityThreshold"
+                                                       Label="标签匹配相似度阈值" Variant="Variant.Outlined"
+                                                       Min="0.01" Max="1.0" Step="0.01"
+                                                       Disabled="@(!_aiConfig.UseAi || !_aiConfig.Vector.Enable || !_aiConfig.Vector.Tag.Enable)"
+                                                       HelperText="标签向量匹配的相似度阈值（0-1）"
+                                                       Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="int" @bind-Value="_aiConfig.Vector.Tag.SearchTopK"
+                                                       Label="标签搜索TopK" Variant="Variant.Outlined"
+                                                       Min="1" Max="10" Step="1"
+                                                       Disabled="@(!_aiConfig.UseAi || !_aiConfig.Vector.Enable || !_aiConfig.Vector.Tag.Enable)"
+                                                       HelperText="标签向量搜索返回的最大结果数"
+                                                       Margin="Margin.Normal" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="double" @bind-Value="_aiConfig.Vector.Search.Weight"
+                                                       Label="向量搜索权重" Variant="Variant.Outlined"
+                                                       Min="0.1" Max="1.0" Step="0.1"
+                                                       Disabled="@(!_aiConfig.UseAi || !_aiConfig.Vector.Enable)"
+                                                       HelperText="向量搜索在综合结果中的权重（0-1）"
+                                                       Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudDivider Class="my-4" />
+                                <div class="settings-section-header settings-section-header-tertiary">
+                                    <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Tertiary" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">向量数据库配置</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="int" @bind-Value="_aiConfig.Vector.Db.BatchSize"
+                                                       Label="批处理大小" Variant="Variant.Outlined"
+                                                       Min="10" Max="1000" Step="10"
+                                                       Disabled="@(!_aiConfig.UseAi || !_aiConfig.Vector.Enable)"
+                                                       HelperText="批量处理的数据条目数"
+                                                       Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+                            </MudCardContent>
+                            <MudCardActions Class="d-flex justify-end gap-3 px-6 py-4">
+                                <MudButton Disabled="@(_testAIProcessing || !_aiConfig.UseAi)" 
+                                           OnClick="_testAI" Color="Color.Tertiary" Variant="Variant.Outlined"
+                                           StartIcon="@Icons.Material.Filled.SmartToy" Size="Size.Medium">
+                                    @if (_testAIProcessing)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" />
+                                        <MudText Class="ml-2">测试中</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudText>测试AI连接</MudText>
+                                    }
+                                </MudButton>
+                                <MudButton Disabled="@(!_aiConfig.UseAi || _listModelsProcessing)" 
+                                           OnClick="RefreshAIModels" Color="Color.Tertiary" Variant="Variant.Outlined"
+                                           StartIcon="@Icons.Material.Filled.Refresh" Size="Size.Medium">
+                                    @if (_listModelsProcessing)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" />
+                                        <MudText Class="ml-2">刷新中</MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudText>刷新模型</MudText>
+                                    }
+                                </MudButton>
+                                <MudButton OnClick="@(() => _saveTabConfig("ai"))" 
+                                           Color="Color.Tertiary" Variant="Variant.Filled"
+                                           StartIcon="@Icons.Material.Filled.Save"
+                                           Size="Size.Medium">
+                                    保存AI配置
+                                </MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudTabPanel>
+
+
+
+                    <!-- 文件配置标签页 -->
+                    <MudTabPanel Text="文件配置" Icon="@Icons.Material.Filled.Folder">
+                        <MudCard Elevation="0" Class="card-bordered-error mb-4">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <div class="d-flex align-center gap-3">
+                                        <MudIcon Icon="@Icons.Material.Filled.Folder" Color="Color.Error" Size="Size.Medium" />
+                                        <MudText Typo="Typo.h6" Class="font-weight-semibold">文件处理配置</MudText>
+                                    </div>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent Class="pa-6">
+                                <div class="settings-section-header settings-section-header-error">
+                                    <MudIcon Icon="@Icons.Material.Filled.Settings" Color="Color.Error" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">文件处理设置</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="long" @bind-Value="_filesConfig.MinimumFileSize"
+                                                       Label="最小文件大小（字节）" Variant="Variant.Outlined"
+                                                       Min="0" Step="1024"
+                                                       HelperText="小于此大小的文件将被忽略"
+                                                       Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudSwitch T="bool" @bind-Value="_filesConfig.SkipHiddenFiles"
+                                                   Color="Color.Error"
+                                                   LabelPosition="LabelPosition.End">
+                                            <span class="switch-label-with-tip">
+                                                跳过隐藏文件
+                                                <Tip Text="启用后系统会自动忽略所有隐藏文件（Hidden属性）"
+                                                     Placement="Placement.Right"
+                                                     IconColor="Color.Info" />
+                                            </span>
+                                        </MudSwitch>
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudSwitch T="bool" @bind-Value="_filesConfig.SkipSystemFiles"
+                                                   Color="Color.Error"
+                                                   LabelPosition="LabelPosition.End">
+                                            <span class="switch-label-with-tip">
+                                                跳过系统文件
+                                                <Tip Text="启用后系统会自动忽略所有系统文件（System属性）"
+                                                     Placement="Placement.Right"
+                                                     IconColor="Color.Info" />
+                                            </span>
+                                        </MudSwitch>
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudDivider Class="my-4" />
+                                <div class="settings-section-header settings-section-header-error">
+                                    <MudIcon Icon="@Icons.Material.Filled.FilterList" Color="Color.Error" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">忽略规则设置</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12">
+                                        <MudSelect T="string" @bind-SelectedValues="_selectedIgnoredFiles" 
+                                                   Label="忽略的文件名" Variant="Variant.Outlined"
+                                                   MultiSelection="true" Clearable="true"
+                                                   HelperText="精确匹配的文件名（不区分大小写）"
+                                                   Margin="Margin.Normal">
+                                            @foreach (var file in _defaultIgnoredFiles)
+                                            {
+                                                <MudSelectItem Value="@file">@file</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudGrid>
+                                
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12">
+                                        <MudSelect T="string" @bind-SelectedValues="_selectedIgnoredPatterns" 
+                                                   Label="忽略的文件模式" Variant="Variant.Outlined"
+                                                   MultiSelection="true" Clearable="true"
+                                                   HelperText="支持通配符的文件名模式（* 匹配任意字符）"
+                                                   Margin="Margin.Normal">
+                                            @foreach (var pattern in _defaultIgnoredPatterns)
+                                            {
+                                                <MudSelectItem Value="@pattern">@pattern</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudGrid>
+                                
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField T="string" @bind-Value="_newIgnoredFile"
+                                                      Label="添加忽略文件" Variant="Variant.Outlined"
+                                                      Adornment="Adornment.End"
+                                                      AdornmentIcon="@Icons.Material.Filled.Add"
+                                                      OnAdornmentClick="_addIgnoredFile"
+                                                      AdornmentColor="Color.Error"
+                                                      HelperText="输入要忽略的文件名"
+                                                      Margin="Margin.Normal" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField T="string" @bind-Value="_newIgnoredPattern"
+                                                      Label="添加忽略模式" Variant="Variant.Outlined"
+                                                      Adornment="Adornment.End"
+                                                      AdornmentIcon="@Icons.Material.Filled.Add"
+                                                      OnAdornmentClick="_addIgnoredPattern"
+                                                      AdornmentColor="Color.Error"
+                                                      HelperText="输入要忽略的文件模式"
+                                                      Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudDivider Class="my-4" />
+                                <div class="settings-section-header settings-section-header-error">
+                                    <MudIcon Icon="@Icons.Material.Filled.Extension" Color="Color.Error" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">允许的扩展名设置</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12">
+                                        <MudSelect T="string" @bind-SelectedValues="_selectedAllowedExtensions"
+                                                   Label="允许的文件扩展名" Variant="Variant.Outlined"
+                                                   MultiSelection="true" Clearable="true"
+                                                   HelperText="指定允许处理的文件扩展名（留空表示允许所有扩展名）"
+                                                   Margin="Margin.Normal">
+                                            @foreach (var extension in _defaultAllowedExtensions)
+                                            {
+                                                <MudSelectItem Value="@extension">@extension</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField T="string" @bind-Value="_newAllowedExtension"
+                                                      Label="添加允许的扩展名" Variant="Variant.Outlined"
+                                                      Adornment="Adornment.End"
+                                                      AdornmentIcon="@Icons.Material.Filled.Add"
+                                                      OnAdornmentClick="_addAllowedExtension"
+                                                      AdornmentColor="Color.Error"
+                                                      HelperText="输入要允许的扩展名（如：.mp4）"
+                                                      Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+                            </MudCardContent>
+                            <MudCardActions Class="d-flex justify-end gap-3 px-6 py-4">
+                                <MudButton OnClick="@(() => _saveTabConfig("files"))" 
+                                           Color="Color.Error" Variant="Variant.Filled"
+                                           StartIcon="@Icons.Material.Filled.Save"
+                                           Size="Size.Medium">
+                                    保存文件配置
+                                </MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudTabPanel>
+
+                    <!-- 任务配置标签页 -->
+                    <MudTabPanel Text="任务配置" Icon="@Icons.Material.Filled.Schedule">
+                        <MudCard Elevation="0" Class="card-bordered-success mb-4">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <div class="d-flex align-center gap-3">
+                                        <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Success" Size="Size.Medium" />
+                                        <MudText Typo="Typo.h6" Class="font-weight-semibold">任务调度配置</MudText>
+                                    </div>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent Class="pa-6">
+                                <div class="settings-section-header settings-section-header-success">
+                                    <MudIcon Icon="@Icons.Material.Filled.Settings" Color="Color.Success" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">任务基础设置</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="int" @bind-Value="_tasksConfig.RetryCount"
+                                                       Label="失败重试次数" Variant="Variant.Outlined"
+                                                       Min="0" Max="10" Step="1"
+                                                       HelperText="任务失败后的重试次数"
+                                                       Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudDivider Class="my-4" />
+                                <div class="settings-section-header settings-section-header-success">
+                                    <MudIcon Icon="@Icons.Material.Filled.CleaningServices" Color="Color.Success" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">缓存清理配置</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="int" @bind-Value="_tasksConfig.CacheCleanup.MaxAgeDays"
+                                                       Label="缓存文件最大保留天数" Variant="Variant.Outlined"
+                                                       Min="0" Max="365" Step="1"
+                                                       HelperText="超过此天数的缓存文件将被清理，0表示不按时间清理"
+                                                       Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudSwitch T="bool" @bind-Value="_tasksConfig.CacheCleanup.CleanupImageCache"
+                                                   Color="Color.Success"
+                                                   LabelPosition="LabelPosition.End">
+                                            <span class="switch-label-with-tip">
+                                                清理过期图片缓存
+                                                <Tip Text="启用后会清理超过保留天数的图片缓存文件"
+                                                     Placement="Placement.Right"
+                                                     IconColor="Color.Info" />
+                                            </span>
+                                        </MudSwitch>
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudSwitch T="bool" @bind-Value="_tasksConfig.CacheCleanup.CleanupTempFiles"
+                                                   Color="Color.Success"
+                                                   LabelPosition="LabelPosition.End">
+                                            <span class="switch-label-with-tip">
+                                                清理临时文件
+                                                <Tip Text="启用后会清理临时文件（.tmp, .temp, .cache等）"
+                                                     Placement="Placement.Right"
+                                                     IconColor="Color.Info" />
+                                            </span>
+                                        </MudSwitch>
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudDivider Class="my-4" />
+                                <div class="d-flex align-center gap-2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Info" Size="Size.Small" />
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                        定时任务配置已移至
+                                        <MudLink Href="/tasks/scheduled" Color="Color.Primary">定时任务页面</MudLink>
+                                    </MudText>
+                                </div>
+                            </MudCardContent>
+                            <MudCardActions Class="d-flex justify-end gap-3 px-6 py-4">
+                                <MudButton OnClick="@(() => _saveTabConfig("tasks"))" 
+                                           Color="Color.Success" Variant="Variant.Filled"
+                                           StartIcon="@Icons.Material.Filled.Save"
+                                           Size="Size.Medium">
+                                    保存任务配置
+                                </MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudTabPanel>
+
+                    <!-- 标签匹配标签页 -->
+                    <MudTabPanel Text="标签匹配" Icon="@Icons.Material.Filled.Label">
+                        <MudCard Elevation="0" Class="card-bordered-primary mb-4">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <div class="d-flex align-center gap-3">
+                                        <MudIcon Icon="@Icons.Material.Filled.Label" Color="Color.Primary" Size="Size.Medium" />
+                                        <MudText Typo="Typo.h6" Class="font-weight-semibold">标签匹配策略</MudText>
+                                    </div>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent Class="pa-6">
+                                <div class="settings-section-header">
+                                    <MudIcon Icon="@Icons.Material.Filled.ToggleOn" Color="Color.Primary" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">匹配策略开关</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudSwitch T="bool" @bind-Value="_tagMatchingConfig.EnableFuzzyMatching"
+                                                   Color="Color.Primary"
+                                                   Label="启用模糊匹配"
+                                                   LabelPosition="LabelPosition.End" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudSwitch T="bool" @bind-Value="_tagMatchingConfig.EnableNormalizedMatching"
+                                                   Color="Color.Primary"
+                                                   Label="启用规范化匹配"
+                                                   LabelPosition="LabelPosition.End" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudSwitch T="bool" @bind-Value="_tagMatchingConfig.EnableContainsMatching"
+                                                   Color="Color.Primary"
+                                                   Label="启用包含匹配"
+                                                   LabelPosition="LabelPosition.End" />
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudDivider Class="my-4" />
+                                <div class="settings-section-header">
+                                    <MudIcon Icon="@Icons.Material.Filled.Tune" Color="Color.Primary" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">匹配阈值设置</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="double" @bind-Value="_tagMatchingConfig.SimilarityThreshold"
+                                                       Label="相似度匹配阈值" Variant="Variant.Outlined"
+                                                       Min="0.1" Max="1.0" Step="0.1"
+                                                       HelperText="模糊匹配的相似度阈值（0-1）"
+                                                       Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+
+                            </MudCardContent>
+                            <MudCardActions Class="d-flex justify-end gap-3 px-6 py-4">
+                                <MudButton OnClick="@(() => _saveTabConfig("tag_matching"))" 
+                                           Color="Color.Primary" Variant="Variant.Filled"
+                                           StartIcon="@Icons.Material.Filled.Save"
+                                           Size="Size.Medium">
+                                    保存标签匹配配置
+                                </MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudTabPanel>
+
+                    <!-- 搜索配置标签页 -->
+                    <MudTabPanel Text="搜索配置" Icon="@Icons.Material.Filled.Search">
+                        <MudCard Elevation="0" Class="card-bordered-info mb-4">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <div class="d-flex align-center gap-3">
+                                        <MudIcon Icon="@Icons.Material.Filled.Search" Color="Color.Info" Size="Size.Medium" />
+                                        <MudText Typo="Typo.h6" Class="font-weight-semibold">搜索功能配置</MudText>
+                                    </div>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent Class="pa-6">
+                                <div class="settings-section-header settings-section-header-info">
+                                    <MudIcon Icon="@Icons.Material.Filled.Settings" Color="Color.Info" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">基础搜索设置</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudSwitch T="bool" @bind-Value="_searchConfig.EnableGlobalSearch"
+                                                   Color="Color.Info"
+                                                   LabelPosition="LabelPosition.End">
+                                            <span class="switch-label-with-tip">
+                                                启用全局搜索功能
+                                                <Tip Text="启用后可以在系统中进行全局搜索，包括媒体、标签、创建者等内容的统一搜索功能。"
+                                                     Placement="Placement.Right"
+                                                     IconColor="Color.Info" />
+                                            </span>
+                                        </MudSwitch>
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudSwitch T="bool" @bind-Value="_searchConfig.EnableSearchCache"
+                                                   Color="Color.Info"
+                                                   LabelPosition="LabelPosition.End">
+                                            <span class="switch-label-with-tip">
+                                                启用搜索缓存
+                                                <Tip Text="启用后会缓存搜索结果以提高性能，减少重复搜索的响应时间。"
+                                                     Placement="Placement.Right"
+                                                     IconColor="Color.Info" />
+                                            </span>
+                                        </MudSwitch>
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="int" @bind-Value="_searchConfig.CacheExpirationMinutes"
+                                                       Label="缓存过期时间（分钟）" Variant="Variant.Outlined"
+                                                       Min="1" Max="1440" Step="1"
+                                                       Disabled="@(!_searchConfig.EnableSearchCache)"
+                                                       HelperText="搜索缓存的过期时间"
+                                                       Margin="Margin.Normal" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="int" @bind-Value="_searchConfig.MaxConcurrentSearches"
+                                                       Label="最大并发搜索数" Variant="Variant.Outlined"
+                                                       Min="1" Max="50" Step="1"
+                                                       HelperText="同时进行的最大搜索数量限制"
+                                                       Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="int" @bind-Value="_searchConfig.SearchTimeoutSeconds"
+                                                       Label="搜索超时时间（秒）" Variant="Variant.Outlined"
+                                                       Min="5" Max="300" Step="5"
+                                                       HelperText="单次搜索操作的超时时间"
+                                                       Margin="Margin.Normal" />
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="int" @bind-Value="_searchConfig.DefaultMaxResultsPerType"
+                                                       Label="每种类型默认最大结果数" Variant="Variant.Outlined"
+                                                       Min="5" Max="100" Step="5"
+                                                       HelperText="每种搜索类型返回的最大结果数量"
+                                                       Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="double" @bind-Value="_searchConfig.DefaultMinRelevanceScore"
+                                                       Label="默认最小相关性分数" Variant="Variant.Outlined"
+                                                       Min="0.1" Max="1.0" Step="0.1"
+                                                       HelperText="低于此分数的搜索结果将被过滤"
+                                                       Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudDivider Class="my-4" />
+                                <div class="settings-section-header settings-section-header-info">
+                                    <MudIcon Icon="@Icons.Material.Filled.TextFields" Color="Color.Info" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">文本搜索配置</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudSwitch T="bool" @bind-Value="_searchConfig.TextSearch.EnableHighlighting"
+                                                   Color="Color.Info"
+                                                   LabelPosition="LabelPosition.End">
+                                            <span class="switch-label-with-tip">
+                                                启用搜索结果高亮
+                                                <Tip Text="启用后搜索结果中匹配的关键词会被高亮显示，便于快速定位。"
+                                                     Placement="Placement.Right"
+                                                     IconColor="Color.Info" />
+                                            </span>
+                                        </MudSwitch>
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudTextField T="string" @bind-Value="_searchConfig.TextSearch.HighlightTag"
+                                                      Label="高亮显示标签" Variant="Variant.Outlined"
+                                                      Disabled="@(!_searchConfig.TextSearch.EnableHighlighting)"
+                                                      HelperText="用于高亮显示的HTML标签"
+                                                      Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+                            </MudCardContent>
+                            <MudCardActions Class="d-flex justify-end gap-3 px-6 py-4">
+                                <MudButton Disabled="@(!_searchConfig.EnableGlobalSearch)"
+                                           OnClick="_testSearch" Color="Color.Info" Variant="Variant.Outlined"
+                                           StartIcon="@Icons.Material.Filled.Search" Size="Size.Medium">
+                                    测试搜索功能
+                                </MudButton>
+                                <MudButton OnClick="@(() => _saveTabConfig("search"))" 
+                                           Color="Color.Info" Variant="Variant.Filled"
+                                           StartIcon="@Icons.Material.Filled.Save"
+                                           Size="Size.Medium">
+                                    保存搜索配置
+                                </MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudTabPanel>
+
+                    <!-- 识别配置标签页 -->
+                    <MudTabPanel Text="识别配置" Icon="@Icons.Material.Filled.ManageSearch">
+                        <MudCard Elevation="0" Class="card-bordered-warning mb-4">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <div class="d-flex align-center gap-3">
+                                        <MudIcon Icon="@Icons.Material.Filled.ManageSearch" Color="Color.Warning" Size="Size.Medium" />
+                                        <MudText Typo="Typo.h6" Class="font-weight-semibold">媒体识别默认配置</MudText>
+                                    </div>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent Class="pa-6">
+                                <div class="settings-section-header settings-section-header-warning">
+                                    <MudIcon Icon="@Icons.Material.Filled.Settings" Color="Color.Warning" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">高级选项</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudSwitch T="bool" @bind-Value="_identificationConfig.SkipCache"
+                                                   Color="Color.Warning"
+                                                   LabelPosition="LabelPosition.End">
+                                            <span class="switch-label-with-tip">
+                                                跳过缓存
+                                                <Tip Text="启用后系统会跳过本地缓存，强制从网络重新识别媒体信息。适用于需要获取最新数据的场景，但会增加识别时间和网络流量。"
+                                                     Placement="Placement.Right"
+                                                     IconColor="Color.Info" />
+                                            </span>
+                                        </MudSwitch>
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="int" @bind-Value="_identificationConfig.TimeoutSeconds"
+                                                       Label="超时时间（秒）" Variant="Variant.Outlined"
+                                                       Min="5" Max="300" Step="5"
+                                                       HelperText="单个网站的识别超时时间"
+                                                       Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudDivider Class="my-4" />
+                                <div class="settings-section-header settings-section-header-warning">
+                                    <MudIcon Icon="@Icons.Material.Filled.TipsAndUpdates" Color="Color.Warning" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">匹配配置</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="double" @bind-Value="_identificationConfig.MinSimilarity"
+                                                       Label="最小相似度阈值" Variant="Variant.Outlined"
+                                                       Min="0" Max="1" Step="0.1"
+                                                       HelperText="低于此值的匹配结果将被忽略"
+                                                       Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+
+                                <MudDivider Class="my-4" />
+                                <div class="settings-section-header settings-section-header-warning">
+                                    <MudIcon Icon="@Icons.Material.Filled.Assignment" Color="Color.Warning" Size="Size.Small" />
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium">策略控制</MudText>
+                                </div>
+                                <MudGrid Spacing="4">
+                                    <MudItem xs="12" md="6">
+                                        <MudSelect T="IdentificationStrategy" @bind-Value="_identificationConfig.Strategy"
+                                                   Label="识别策略" Variant="Variant.Outlined"
+                                                   HelperText="选择媒体识别策略"
+                                                   Margin="Margin.Normal">
+                                            @foreach(var strategy in Enum.GetValues<IdentificationStrategy>())
+                                            {
+                                                <MudSelectItem T="IdentificationStrategy" Value="@strategy">@strategy</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudSwitch T="bool" @bind-Value="_identificationConfig.AutoAddToDatabase"
+                                                   Color="Color.Warning"
+                                                   LabelPosition="LabelPosition.End">
+                                            <span class="switch-label-with-tip">
+                                                自动添加到数据库
+                                                <Tip Text="仅影响后台批量/队列识别任务。关闭后，后台识别结果会进入'待处理'页面的'待入库'列表等待人工确认；手动识别始终要求在 媒体源管理/待处理 页面上人工确认入库。"
+                                                     Placement="Placement.Right"
+                                                     IconColor="Color.Info" />
+                                            </span>
+                                        </MudSwitch>
+                                    </MudItem>
+                                    <MudItem xs="12" md="6">
+                                        <MudNumericField T="int" @bind-Value="_identificationConfig.PendingRetentionDays"
+                                                         Label="待入库结果保留天数" Variant="Variant.Outlined"
+                                                         Min="0" Max="365" Step="1"
+                                                         HelperText="超过指定天数未入库的待处理识别结果会被后台自动清理；0 表示永不清理"
+                                                         Margin="Margin.Normal" />
+                                    </MudItem>
+                                </MudGrid>
+                            </MudCardContent>
+                            <MudCardActions Class="d-flex justify-end gap-3 px-6 py-4">
+                                <MudButton OnClick="@(() => _saveTabConfig("identification"))"
+                                           Color="Color.Warning" Variant="Variant.Filled"
+                                           StartIcon="@Icons.Material.Filled.Save"
+                                           Size="Size.Medium">
+                                    保存识别配置
+                                </MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudTabPanel>
+
+
+                </MudTabs>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+<!-- 修改用户名对话框 -->
+<MudDialog @bind-Visible="_showChangeUsernameDialog" Options="new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true }">
+    <TitleContent>
+        <MudText Typo="Typo.h6"><MudIcon Icon="@Icons.Material.Filled.Person" Class="mr-2" /> 修改用户名</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="3">
+            <MudItem xs="12">
+                <MudInputPassword
+                    Value="@_changeUsernameCurrentPassword"
+                    ValueChanged="@((string value) => _changeUsernameCurrentPassword = value)"
+                    Label="当前密码"
+                    HelperText="请输入当前密码以验证身份" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField T="string" @bind-Value="_newUsername"
+                              Label="新用户名" Variant="Variant.Outlined"
+                              Required="true"
+                              Counter="50" MaxLength="50"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@Icons.Material.Filled.Person"
+                              AdornmentColor="Color.Primary"
+                              HelperText="输入新的用户名（2-50个字符）"
+                              Margin="Margin.Normal" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => { _showChangeUsernameDialog = false; _changeUsernameCurrentPassword = string.Empty; _newUsername = string.Empty; })"
+                   Color="Color.Default" Variant="Variant.Text">取消</MudButton>
+        <MudButton OnClick="_changeUsername"
+                   Color="Color.Primary" Variant="Variant.Filled"
+                   Disabled="@(_changeUsernameProcessing || string.IsNullOrWhiteSpace(_changeUsernameCurrentPassword) || (_newUsername?.Trim().Length ?? 0) < 2)">
+            @if (_changeUsernameProcessing)
+            {
+                <MudProgressCircular Size="Size.Small" Class="mr-2" />
+                <MudText>修改中</MudText>
+            }
+            else
+            {
+                <MudText>确认修改</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- 修改密码对话框 -->
+<MudDialog @bind-Visible="_showChangePasswordDialog" Options="new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true }">
+    <TitleContent>
+        <MudText Typo="Typo.h6"><MudIcon Icon="@Icons.Material.Filled.VpnKey" Class="mr-2" /> 修改密码</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="3">
+            <MudItem xs="12">
+                <MudInputPassword
+                    Value="@_changePasswordCurrentPassword"
+                    ValueChanged="@((string value) => _changePasswordCurrentPassword = value)"
+                    Label="当前密码"
+                    HelperText="请输入当前密码" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudInputPassword
+                    Value="@_newPassword"
+                    ValueChanged="@((string value) => _newPassword = value)"
+                    Label="新密码"
+                    HelperText="输入新密码（至少4个字符）" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudInputPassword
+                    Value="@_confirmNewPassword"
+                    ValueChanged="@((string value) => _confirmNewPassword = value)"
+                    Label="确认新密码"
+                    HelperText="再次输入新密码" />
+            </MudItem>
+        </MudGrid>
+        @if (!string.IsNullOrEmpty(_newPassword) && !string.IsNullOrEmpty(_confirmNewPassword) && _newPassword != _confirmNewPassword)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mt-3">两次输入的新密码不一致</MudAlert>
+        }
+        @if (!string.IsNullOrEmpty(_newPassword) && _newPassword.Length < 4)
+        {
+            <MudAlert Severity="Severity.Warning" Class="mt-3">新密码长度至少为4个字符</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => { _showChangePasswordDialog = false; _changePasswordCurrentPassword = string.Empty; _newPassword = string.Empty; _confirmNewPassword = string.Empty; })"
+                   Color="Color.Default" Variant="Variant.Text">取消</MudButton>
+        <MudButton OnClick="_changePassword"
+                   Color="Color.Primary" Variant="Variant.Filled"
+                   Disabled="@(_changePasswordProcessing || !_isPasswordFormValid)">
+            @if (_changePasswordProcessing)
+            {
+                <MudProgressCircular Size="Size.Small" Class="mr-2" />
+                <MudText>修改中</MudText>
+            }
+            else
+            {
+                <MudText>确认修改</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>

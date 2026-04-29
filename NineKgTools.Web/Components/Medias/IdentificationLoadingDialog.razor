@@ -1,0 +1,56 @@
+@using MudBlazor
+
+<MudDialog DisableSidePadding="true">
+    <DialogContent>
+        <MudContainer Class="d-flex flex-column pa-6" Style="min-width: 400px;">
+            <!-- 标题 -->
+            <div class="d-flex align-center gap-2 mb-4">
+                <MudIcon Icon="@Icons.Material.Filled.FindInPage" Color="Color.Info" />
+                <MudText Typo="Typo.h6">正在识别媒体</MudText>
+            </div>
+
+            <!-- 进度条 -->
+            <MudProgressLinear Value="@Progress"
+                               Color="Color.Primary"
+                               Size="Size.Medium"
+                               Rounded="true"
+                               Class="mb-2" />
+
+            <!-- 进度百分比 -->
+            <MudText Typo="Typo.body2" Align="Align.Center" Class="mb-3">
+                @Progress.ToString("F1")%
+            </MudText>
+
+            <!-- 当前消息 -->
+            @if (!string.IsNullOrEmpty(Message))
+            {
+                <div class="d-flex align-center gap-2 mb-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        @Message
+                    </MudText>
+                </div>
+            }
+
+            <!-- 当前处理项 -->
+            @if (!string.IsNullOrEmpty(CurrentItem))
+            {
+                <div class="d-flex align-center gap-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Color="Color.Tertiary" />
+                    <MudText Typo="Typo.caption" Color="Color.Tertiary" Style="word-break: break-all;">
+                        @CurrentItem
+                    </MudText>
+                </div>
+            }
+
+            <!-- 取消按钮 -->
+            <MudButton OnClick="HandleCancel"
+                       Variant="Variant.Outlined"
+                       Color="Color.Error"
+                       Class="mt-4 align-self-center"
+                       StartIcon="@Icons.Material.Filled.Cancel">
+                取消
+            </MudButton>
+        </MudContainer>
+    </DialogContent>
+</MudDialog>

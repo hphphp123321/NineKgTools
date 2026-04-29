@@ -1,0 +1,55 @@
+/* ============================================
+   Favorites页面专用样式
+   ============================================ */
+
+/* 收藏夹列表项 */
+.mud-selected-item {
+    background-color: rgba(var(--mud-palette-tertiary-rgb), 0.1);
+    border-left: 3px solid var(--mud-palette-tertiary);
+    transition: background-color var(--transition-normal), border-color var(--transition-normal);
+}
+
+/* 收藏夹列表滚动区域 */
+.fav-list-scroll {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* 收藏夹名称截断 */
+.fav-name-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+/* 收藏夹列表计数 Chip */
+.fav-count-chip {
+    min-width: 30px;
+    text-align: center;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Popover 遮罩层 */
+.fav-popover-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal-backdrop);
+}
+
+/* 空占位卡片最小高度 */
+.fav-empty-placeholder {
+    min-height: 300px;
+}
+
+/* 平板及以下：收藏夹列表高度限制 + 空占位缩小 */
+@media (max-width: 960px) {
+    .fav-list-scroll {
+        max-height: 40vh;
+    }
+    .fav-empty-placeholder {
+        min-height: 200px;
+    }
+}
+

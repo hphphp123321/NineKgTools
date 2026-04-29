@@ -1,0 +1,416 @@
+﻿@page "/circle/{id:int}"
+<PageTitle>社团：@_name</PageTitle>
+
+@using NineKgTools.Components.Common
+@using NineKgTools.Components.Medias
+@using NineKgTools.Utils
+@using NineKgTools.Core.Services.AI
+@using NineKgTools.Core.Services.Configs
+
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject OpenaiService OpenaiService
+@inject Config AppConfig
+
+@if (_isLoading)
+{
+    <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+        <MudPaper Elevation="3" Class="pa-6 rounded-lg">
+            <MudGrid>
+                <!-- 左侧图片 -->
+                <MudItem xs="12" md="3">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="400px" Class="rounded-lg"/>
+                </MudItem>
+
+                <!-- 右侧详情 -->
+                <MudItem xs="12" md="9">
+                    <MudSkeleton Width="60%" Height="40px"/>
+                    <MudSkeleton Width="40%" Class="mt-2"/>
+                    <MudSkeleton Width="30%" Class="mt-4"/>
+                    <MudSkeleton Width="100%" Height="100px" Class="mt-4"/>
+                    <MudSkeleton Width="100%" Height="80px" Class="mt-4"/>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </MudContainer>
+}
+else if (string.IsNullOrEmpty(_name))
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="d-flex flex-column justify-center align-center" Style="height: 70vh">
+        <MudIcon Icon="@Icons.Material.Filled.GroupOff" Color="Color.Error" Size="Size.Large" Class="mb-4"/>
+        <MudText Typo="Typo.h5" Color="Color.Error">未找到社团信息</MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-2">请检查ID是否正确或创建新社团</MudText>
+        <MudButton Href="/" Color="Color.Primary" Variant="Variant.Outlined" Class="mt-4">返回首页</MudButton>
+    </MudContainer>
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4 fade-in">
+        <!-- 页面标题 -->
+        <MudGrid>
+            <MudItem xs="12">
+                <PageHeader Icon="@Icons.Material.Filled.Groups"
+                            IconColor="Color.Warning"
+                            Title="社团详情"
+                            Subtitle="@_name">
+                    <Actions>
+                        <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
+                                   Color="Color.Secondary"
+                                   Variant="Variant.Outlined"
+                                   Size="Size.Medium"
+                                   Href="/circles">
+                            返回社团
+                        </MudButton>
+                        <MudButton Disabled="@_saveProcessing" OnClick="_saveCircle"
+                                   StartIcon="@(!_saveProcessing ? Icons.Material.Filled.Save : null)"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Filled"
+                                   Size="Size.Medium">
+                            @if (_saveProcessing)
+                            {
+                                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                                <MudText Class="ms-2">保存中</MudText>
+                            }
+                            else
+                            {
+                                <MudText>保存修改</MudText>
+                            }
+                        </MudButton>
+                    </Actions>
+                </PageHeader>
+            </MudItem>
+        </MudGrid>
+
+        <!-- 社团详情 -->
+        <MudGrid Class="mt-4">
+            <!-- 左侧社团头像 -->
+            <MudItem xs="12" md="3" Class="circle-sidebar">
+                <MudCard Elevation="3" Class="rounded-lg left-sidebar">
+                    <!-- 社团头像 -->
+                    <div class="avatar-container position-relative" style="height: 400px; background-color: transparent;">
+                        <MudImage Src="@GetAvatarUrl()"
+                                  ObjectFit="ObjectFit.Contain"
+                                  Class="avatar-image"
+                                  Height="400"
+                                  Style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%"/>
+
+                        <!-- 悬停时显示的更新头像按钮 -->
+                        <div class="avatar-overlay">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.CloudUpload"
+                                       OnClick="OpenUploadDialog"
+                                       Class="upload-avatar-button">
+                                更新头像
+                            </MudButton>
+                        </div>
+                    </div>
+
+                    <MudDivider/>
+                </MudCard>
+            </MudItem>
+
+            <!-- 右侧社团详情 -->
+            <MudItem xs="12" md="9">
+                <!-- 社团标题和基本信息 -->
+                <MudPaper Elevation="3" Class="pa-4 rounded-lg circle-main-card">
+                    <MudText Typo="Typo.h4" Class="mb-2 mud-primary-text circle-title">@_name</MudText>
+
+                    <div class="mb-3 alias-section">
+                        <div class="d-flex align-center mb-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Tag" Size="Size.Small" Class="mr-2" Color="Color.Secondary"/>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">别名</MudText>
+                            @if (AppConfig.Ai.UseAi)
+                            {
+                                <MudSpacer/>
+                                <MudTooltip Text="使用AI翻译名称并添加为别名">
+                                    <MudIconButton Icon="@Icons.Material.Filled.AutoAwesome"
+                                                   Color="Color.Info" Size="Size.Small"
+                                                   Disabled="@_translatingName"
+                                                   OnClick="TranslateName">
+                                    </MudIconButton>
+                                </MudTooltip>
+                                @if (_translatingName)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+                                }
+                            }
+                        </div>
+                        <EditableAliasList Aliases="_aliasNames" AliasesChanged="OnAliasNamesChanged" />
+                    </div>
+                </MudPaper>
+
+                <!-- 描述信息 -->
+                <MudPaper Elevation="3" Class="pa-4 rounded-lg mt-4 circle-description-card">
+                    <div class="d-flex align-center mb-4">
+                        <MudIcon Icon="@Icons.Material.Filled.Description" Class="mr-2" Color="Color.Success"/>
+                        <MudText Typo="Typo.h6" Color="Color.Success">社团描述</MudText>
+
+                        @if (string.IsNullOrEmpty(_descriptionTranslated))
+                        {
+                            <MudSpacer/>
+                            <MudTooltip Duration="0" Text="翻译描述">
+                                <MudIconButton Icon="@Icons.Material.Filled.Translate"
+                                               Size="Size.Small"
+                                               Color="Color.Success"
+                                               OnClick="TranslateDescription"
+                                               Class="ml-auto"
+                                               Disabled="@_translating"/>
+                            </MudTooltip>
+                            @if (_translating)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+                            }
+                        }
+                    </div>
+
+                    @if (string.IsNullOrEmpty(_description))
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined">
+                            <MudText Typo="Typo.body2">暂无社团描述</MudText>
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <div class="description-container rounded-lg">
+                            @if (!string.IsNullOrEmpty(_description) && !string.IsNullOrEmpty(_descriptionTranslated))
+                            {
+                                <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3">
+                                    <MudTabPanel Text="原文" Icon="@Icons.Material.Filled.Language">
+                                        <MudTextField @bind-Value="_description"
+                                                      Class="py-2"
+                                                      AutoGrow="true"
+                                                      Typo="Typo.body1"
+                                                      Variant="Variant.Text"
+                                                      Margin="Margin.Dense"
+                                                      Immediate="true"
+                                                      FullWidth="true"/>
+                                    </MudTabPanel>
+                                    <MudTabPanel Text="翻译" Icon="@Icons.Material.Filled.Translate">
+                                        <MudTextField @bind-Value="_descriptionTranslated"
+                                                      Class="py-2"
+                                                      AutoGrow="true"
+                                                      Typo="Typo.body1"
+                                                      Variant="Variant.Text"
+                                                      Margin="Margin.Dense"
+                                                      Immediate="true"
+                                                      FullWidth="true"/>
+                                    </MudTabPanel>
+                                </MudTabs>
+                            }
+                            else
+                            {
+                                <MudTextField @bind-Value="_description"
+                                              Class="py-2"
+                                              AutoGrow="true"
+                                              Typo="Typo.body1"
+                                              Variant="Variant.Text"
+                                              Margin="Margin.Dense"
+                                              Immediate="true"
+                                              FullWidth="true"/>
+                            }
+                        </div>
+                    }
+                </MudPaper>
+
+                <!-- 关联作品 -->
+                <MediaShownView @ref="_mediaShownView"
+                                InitialQueryParameters="@_initialParams"
+                                Title="关联作品"
+                                TitleIcon="@Icons.Material.Filled.Collections"
+                                TitleColor="Color.Warning"
+                                EmptyTitle="暂无关联作品"
+                                EmptyDescription="该社团还没有关联任何作品"
+                                EmptyIcon="@Icons.Material.Filled.SentimentDissatisfied"
+                                EmptyStateText="暂无关联作品"
+                                DefaultGridView="true"
+                                Simple="false"
+                                ShowCategoryFilter="true"
+                                ShowTagFilter="true"
+                                ShowFavoriteFilter="true"
+                                ShowRatingFilter="true"
+                                ShowDateFilter="true"
+                                PageSize="20"
+                                Class="mt-4 mb-4">
+                    <TitleActions>
+                        <MudTooltip Text="管理关联作品" Duration="0">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Color="Color.Warning"
+                                           Size="Size.Small"
+                                           OnClick="OpenMediaSelectorDialog"/>
+                        </MudTooltip>
+                    </TitleActions>
+                </MediaShownView>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
+}
+
+<style>
+    /* 页面淡入效果 */
+    .fade-in {
+        animation: fadeIn 0.6s ease-in-out;
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* 移除旧的header-card样式，现在使用统一的card-header样式 */
+
+    /* 左侧边栏样式 */
+    .left-sidebar {
+        position: sticky;
+        top: 16px;
+        transition: all 0.3s ease;
+    }
+
+    /* 在小屏幕时不应用sticky定位 */
+    @@media (max-width: 960px) {
+        .left-sidebar {
+            position: relative;
+            top: 0;
+        }
+    }
+
+    /* 头像容器样式 */
+    .avatar-container {
+        position: relative;
+        overflow: hidden;
+        border-radius: 8px;
+    }
+
+    .avatar-image {
+        transition: transform 0.5s ease;
+    }
+
+    .avatar-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.6) 100%);
+        opacity: 0;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .avatar-container:hover .avatar-overlay {
+        opacity: 1;
+    }
+
+    .avatar-container:hover .avatar-image {
+        transform: scale(1.05);
+    }
+
+    .upload-avatar-button {
+        transform: translateY(20px);
+        transition: all 0.3s ease;
+    }
+
+    .avatar-container:hover .upload-avatar-button {
+        transform: translateY(0);
+    }
+
+    /* 社团标题动画 */
+    .circle-title {
+        position: relative;
+        display: inline-block;
+    }
+
+    .circle-title:after {
+        content: '';
+        position: absolute;
+        width: 0;
+        height: 2px;
+        bottom: 0;
+        left: 0;
+        background-color: var(--mud-palette-primary);
+        transition: width 0.5s ease;
+    }
+
+    .circle-main-card:hover .circle-title:after {
+        width: 100%;
+    }
+
+    .circle-subtitle {
+        opacity: 0.8;
+        transition: opacity 0.3s ease;
+    }
+
+    .circle-main-card:hover .circle-subtitle {
+        opacity: 1;
+    }
+
+    /* 卡片样式 */
+    .circle-main-card {
+        background-color: var(--mud-palette-surface);
+        border-left: 4px solid var(--mud-palette-primary);
+        transition: all 0.3s ease;
+    }
+
+    .circle-description-card {
+        background-color: var(--mud-palette-surface);
+        border-left: 4px solid var(--mud-palette-success);
+        transition: all 0.3s ease;
+    }
+
+    .related-works-card {
+        background-color: var(--mud-palette-surface);
+        border-left: 4px solid var(--mud-palette-warning);
+        transition: all 0.3s ease;
+    }
+
+    /* 描述容器样式 */
+    .description-container {
+        border: 1px solid var(--mud-palette-lines-default);
+        transition: all 0.3s ease;
+    }
+
+    .description-container:hover {
+        border-color: var(--mud-palette-success);
+        box-shadow: 0 0 0 1px var(--mud-palette-success-lighten);
+    }
+
+    /* 相关作品样式 */
+    .related-works-container {
+        transition: transform 0.3s ease;
+    }
+
+
+
+    /* 卡片hover效果 */
+    .left-sidebar:hover,
+    .circle-main-card:hover,
+    .circle-description-card:hover,
+    .related-works-card:hover {
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1) !important;
+        transform: translateY(-2px);
+    }
+
+    /* 别名部分样式 */
+    .alias-section {
+        background-color: rgba(var(--mud-palette-surface-rgb), 0.5);
+        border-radius: 8px;
+        padding: 12px;
+        border: 1px solid var(--mud-palette-lines-default);
+        transition: all 0.3s ease;
+    }
+    
+    .alias-section:hover {
+        border-color: var(--mud-palette-warning);
+        box-shadow: 0 0 0 1px var(--mud-palette-warning-lighten);
+        background-color: rgba(var(--mud-palette-warning-rgb), 0.02);
+    }
+</style>

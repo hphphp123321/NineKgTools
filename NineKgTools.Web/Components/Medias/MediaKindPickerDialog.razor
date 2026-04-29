@@ -1,0 +1,56 @@
+@using Microsoft.AspNetCore.Components.Web
+
+<MudDialog>
+    <DialogContent>
+        <div class="nk-dialog-frame nk-dialog-frame--primary">
+            <div class="nk-dialog-hero nk-dialog-hero--primary">
+                <div class="nk-dialog-hero__body">
+                    <div class="nk-dialog-hero__icon" aria-hidden="true">
+                        <MudIcon Icon="@Icons.Material.Filled.AddCircle" />
+                    </div>
+                    <div class="nk-dialog-hero__text">
+                        <h2 class="nk-dialog-hero__title">新建媒体</h2>
+                        <div class="nk-dialog-hero__subtitle">要添加的媒体是一个文件夹还是单个文件？</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="nk-dialog-content">
+                <div class="media-kind-picker-grid">
+                    <button type="button"
+                            class="media-kind-picker-card media-kind-picker-card--folder"
+                            aria-label="选择：添加文件夹作为媒体"
+                            @onclick="SelectFolder"
+                            @onkeydown="@((KeyboardEventArgs e) => OnCardKeyDown(e, MediaKind.Folder))">
+                        <MudIcon Icon="@Icons.Material.Filled.FolderOpen"
+                                 Class="media-kind-picker-card__icon"
+                                 aria-hidden="true" />
+                        <div class="media-kind-picker-card__title">文件夹</div>
+                        <div class="media-kind-picker-card__desc">多个文件组成的完整作品</div>
+                        <div class="media-kind-picker-card__hint">如漫画、相册、游戏目录</div>
+                    </button>
+
+                    <button type="button"
+                            class="media-kind-picker-card media-kind-picker-card--file"
+                            aria-label="选择：添加单个文件作为媒体"
+                            @onclick="SelectFile"
+                            @onkeydown="@((KeyboardEventArgs e) => OnCardKeyDown(e, MediaKind.File))">
+                        <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile"
+                                 Class="media-kind-picker-card__icon"
+                                 aria-hidden="true" />
+                        <div class="media-kind-picker-card__title">单个文件</div>
+                        <div class="media-kind-picker-card__desc">独立完整的媒体</div>
+                        <div class="media-kind-picker-card__hint">如一部电影、一首曲子</div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel"
+                   Variant="Variant.Text"
+                   Color="Color.Default">
+            取消
+        </MudButton>
+    </DialogActions>
+</MudDialog>

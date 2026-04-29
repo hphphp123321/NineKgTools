@@ -1,0 +1,158 @@
+/*
+ * creators.css — Components/Creators 下共享组件的样式
+ * 对应 CreatorSelectorDialog 与 EditableCreatorList
+ */
+
+/* ========= CreatorSelectorDialog ========= */
+
+/* 搜索行：桌面横排，移动端（≤600px）堆叠成两行 */
+.creator-search-row {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+@media (max-width: 600px) {
+    .creator-search-row {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    /* 堆叠后 select 不再需要 min-width 撑宽度，让它自然占满父容器 */
+    .creator-search-row .creator-type-select {
+        min-width: 0;
+        width: 100%;
+    }
+}
+
+/* 新增创作者折叠面板的背景 */
+.creator-add-panel {
+    background-color: var(--mud-palette-background-grey);
+}
+
+/* 类型筛选下拉框最小宽度，避免中文标签被裁切 */
+.creator-type-select {
+    min-width: 150px;
+}
+
+/*
+ * 创作者列表可滚动容器：
+ * 桌面下 400px 给够垂直空间；
+ * 短屏（手机横屏、小笔电窗口高度 ≤ 700px）改用视口比例，避免列表把 Dialog 顶到看不到底部按钮
+ */
+.creator-list-wrap {
+    max-height: min(400px, 60vh);
+    overflow-y: auto;
+    padding: var(--spacing-xs);
+}
+
+/* 单张创作者卡片 */
+.creator-card {
+    cursor: pointer;
+    min-width: 140px;
+    border: var(--border-width-thin, 1px) solid var(--mud-palette-lines-default);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-sm);
+    background-color: var(--mud-palette-surface);
+    /* 只动画具体属性，避免 transition: all 把 layout 属性也带上造成抖动 */
+    transition: transform var(--transition-fast, 0.15s) ease-out,
+                box-shadow var(--transition-fast, 0.15s) ease-out,
+                background-color var(--transition-fast, 0.15s) ease-out,
+                border-color var(--transition-fast, 0.15s) ease-out;
+}
+
+.creator-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.creator-card:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(var(--mud-palette-primary-rgb), 0.5);
+}
+
+.creator-card--selected {
+    border-color: var(--mud-palette-primary);
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.08);
+    box-shadow: var(--shadow-sm);
+}
+
+/* 窄屏：卡片最小宽度收紧，保证 320px 宽度下仍能两列 */
+@media (max-width: 480px) {
+    .creator-card {
+        min-width: 120px;
+        flex: 1 1 calc(50% - var(--spacing-sm));
+    }
+}
+
+/* 触屏：禁用 hover 的位移和 box-shadow，保留 active 反馈即可 */
+@media (hover: none) {
+    .creator-card:hover {
+        transform: translateZ(0);
+        box-shadow: none;
+    }
+}
+
+/* 新增创作者时可点击的类型 chip */
+.creator-type-chip {
+    cursor: pointer;
+}
+
+/*
+ * 创作者卡片内部展示的类型徽章：
+ * 替代原来硬编码的 `height: 18px; font-size: 10px;` —— 10px 低于移动端可读下限，
+ * 固定 18px 高度让字体缩放直接崩溃。改用 token 化字号 + auto 高度。
+ */
+.creator-type-badge {
+    font-size: var(--font-size-xs, 0.75rem);
+    height: auto;
+    padding: 2px var(--spacing-xs);
+    line-height: 1.4;
+}
+
+/* ========= EditableCreatorList ========= */
+
+.editable-creator-item {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.editable-creator-item .creator-delete-btn {
+    opacity: 0;
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: var(--mud-palette-surface);
+    border-radius: 50%;
+    transition: opacity var(--transition-fast, 0.15s) ease;
+}
+
+.editable-creator-item:hover .creator-delete-btn,
+.editable-creator-item:focus-within .creator-delete-btn {
+    opacity: 1;
+}
+
+.creator-link {
+    background-color: rgba(var(--mud-palette-surface-rgb), 0.6);
+    border: var(--border-width-thin, 1px) solid transparent;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    transition: background-color var(--transition-fast, 0.15s) ease,
+                border-color var(--transition-fast, 0.15s) ease,
+                box-shadow var(--transition-fast, 0.15s) ease,
+                transform var(--transition-fast, 0.15s) ease;
+}
+
+.creator-link:hover,
+.creator-link:focus-visible {
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.08);
+    transform: translateY(-2px);
+    border-color: var(--mud-palette-primary-lighten);
+    box-shadow: var(--shadow-sm);
+    outline: none;
+}
+
+.creator-title-chip {
+    font-weight: var(--font-weight-medium, 500);
+}

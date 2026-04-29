@@ -1,0 +1,330 @@
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            @if (SelectFolderMode == FileSelectMode.File)
+            {
+                <MudIcon Icon="@Icons.Material.Filled.FileOpen" Color="Color.Primary"/>
+                <MudText Typo="Typo.h6">选择文件</MudText>
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Filled.FolderOpen" Color="Color.Tertiary"/>
+                <MudText Typo="Typo.h6">选择文件夹</MudText>
+            }
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        <!-- 工具栏 -->
+        <MudPaper Class="pa-2 mb-3" Elevation="0" Outlined="true">
+            <MudToolBar Dense="true" DisableGutters="true" Class="pa-0">
+                <!-- 导航按钮组：加载中时全部禁用，避免并发 Task.Run 抢夺 hub 线程 -->
+                <MudButtonGroup Variant="Variant.Text" Size="Size.Small">
+                    <MudTooltip Text="返回" Arrow="true" Placement="Placement.Bottom">
+                        <MudIconButton Icon="@Icons.Material.Outlined.ArrowBack"
+                                       aria-label="返回上一个目录"
+                                       OnClick="Back"
+                                       Disabled="@(_isLoading || _historyIndex <= 0)"/>
+                    </MudTooltip>
+                    <MudTooltip Text="前进" Arrow="true" Placement="Placement.Bottom">
+                        <MudIconButton Icon="@Icons.Material.Outlined.ArrowForward"
+                                       aria-label="前进到下一个目录"
+                                       OnClick="Forward"
+                                       Disabled="@(_isLoading || _historyIndex >= _history.Count - 1)"/>
+                    </MudTooltip>
+                    <MudTooltip Text="上一级" Arrow="true" Placement="Placement.Bottom">
+                        <MudIconButton Icon="@Icons.Material.Outlined.ArrowUpward"
+                                       aria-label="跳到父级目录"
+                                       OnClick="Parent"
+                                       Disabled="@(_isLoading || _isAtRoot)"/>
+                    </MudTooltip>
+                    <MudTooltip Text="刷新" Arrow="true" Placement="Placement.Bottom">
+                        <MudIconButton Icon="@(_isLoading ? Icons.Material.Outlined.HourglassEmpty : Icons.Material.Outlined.Refresh)"
+                                       aria-label="刷新当前目录"
+                                       OnClick="Refresh"
+                                       Disabled="@_isLoading"/>
+                    </MudTooltip>
+                </MudButtonGroup>
+
+                <!-- 路径输入框：回车或点右侧按钮跳转 -->
+                <div class="file-explorer-path-field">
+                    <MudTextField T="string"
+                                  @bind-Value="_currentDirectory"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Placeholder="输入路径后按回车跳转"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@Icons.Material.Filled.KeyboardReturn"
+                                  AdornmentColor="Color.Primary"
+                                  AdornmentAriaLabel="跳转到此路径"
+                                  AutoFocus="true"
+                                  aria-label="当前路径"
+                                  OnAdornmentClick="() => SetDirectoryAsync(_currentDirectory)"
+                                  OnKeyDown="OnPathKeyDown"/>
+                </div>
+
+                <!-- 搜索框：DebounceInterval 避免每字符触发一次列表重排 -->
+                <div class="file-explorer-search-field">
+                    <MudTextField T="string"
+                                  @bind-Value="_nameFilter"
+                                  Placeholder="搜索当前目录"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  AdornmentColor="Color.Default"
+                                  Clearable="true"
+                                  Immediate="true"
+                                  DebounceInterval="250"
+                                  aria-label="按文件名筛选"/>
+                </div>
+            </MudToolBar>
+
+            <!-- 排序工具栏 -->
+            <MudToolBar Dense="true" DisableGutters="true" Class="pa-0 mt-2 file-explorer-sort-toolbar">
+                <MudText Typo="Typo.caption" Class="mr-2 file-explorer-sort-label">排序</MudText>
+                <MudButtonGroup Variant="Variant.Text" Size="Size.Small" OverrideStyles="false">
+                    <MudButton StartIcon="@GetSortIcon(FileExplorerSortField.Name)"
+                               Color="@(_sortField == FileExplorerSortField.Name ? Color.Primary : Color.Default)"
+                               Size="Size.Small"
+                               OnClick="@(() => SetSortField(FileExplorerSortField.Name))">
+                        名称
+                    </MudButton>
+                    <MudButton StartIcon="@GetSortIcon(FileExplorerSortField.Date)"
+                               Color="@(_sortField == FileExplorerSortField.Date ? Color.Primary : Color.Default)"
+                               Size="Size.Small"
+                               OnClick="@(() => SetSortField(FileExplorerSortField.Date))">
+                        修改日期
+                    </MudButton>
+                    <MudTooltip Text="按扩展名排序（文件夹保持按名称）" Arrow="true" Placement="Placement.Bottom">
+                        <MudButton StartIcon="@GetSortIcon(FileExplorerSortField.Type)"
+                                   Color="@(_sortField == FileExplorerSortField.Type ? Color.Primary : Color.Default)"
+                                   Size="Size.Small"
+                                   OnClick="@(() => SetSortField(FileExplorerSortField.Type))">
+                            类型
+                        </MudButton>
+                    </MudTooltip>
+                </MudButtonGroup>
+                <MudSpacer />
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="file-explorer-stats-chip">
+                    @_subDirs.Count 文件夹，@_files.Count 文件
+                </MudChip>
+            </MudToolBar>
+        </MudPaper>
+
+        <!-- 主内容区 -->
+        <MudGrid Spacing="2">
+            <!-- 左侧边栏 -->
+            <MudItem xs="12" sm="3">
+                <MudPaper Class="pa-0 file-explorer-panel file-explorer-panel--sidebar" Elevation="0" Outlined="true">
+                    <!-- 系统文件夹 -->
+                    <MudList T="string" Dense="true" Class="py-0">
+                        <MudListSubheader Class="d-flex align-center gap-2 py-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Computer" Size="Size.Small" Color="Color.Primary"/>
+                            <MudText Typo="Typo.subtitle2">系统文件夹</MudText>
+                        </MudListSubheader>
+                        @foreach (var directory in _systemFolders)
+                        {
+                            <MudListItem T="string"
+                                         Icon="@Icons.Material.Filled.Folder"
+                                         IconColor="Color.Tertiary"
+                                         OnClick="@(() => SetDirectoryAsync(directory.Value))"
+                                         Dense="true">
+                                <MudText Typo="Typo.body2" Class="text-truncate file-explorer-sidebar-text">
+                                    @directory.Key
+                                </MudText>
+                            </MudListItem>
+                        }
+                    </MudList>
+
+                    <MudDivider Class="my-1"/>
+
+                    <!-- 最近访问 -->
+                    <MudList T="string" Dense="true" Class="py-0">
+                        <MudListSubheader Class="d-flex align-center gap-2 py-2">
+                            <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Info"/>
+                            <MudText Typo="Typo.subtitle2">最近访问</MudText>
+                        </MudListSubheader>
+                        @if (_recent.Count == 0)
+                        {
+                            <MudListItem T="string" Dense="true" Disabled="true">
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">选过的目录会出现在这里</MudText>
+                            </MudListItem>
+                        }
+                        else
+                        {
+                            @foreach (var path in _recent)
+                            {
+                                <MudListItem T="string"
+                                             Icon="@Icons.Material.Filled.FolderOpen"
+                                             IconColor="Color.Default"
+                                             OnClick="@(() => SetDirectoryAsync(path))"
+                                             Dense="true">
+                                    <MudTooltip Text="@path" Placement="Placement.Right">
+                                        <MudText Typo="Typo.body2" Class="text-truncate file-explorer-sidebar-text">
+                                            @(Path.GetFileName(path) == "" ? path : Path.GetFileName(path))
+                                        </MudText>
+                                    </MudTooltip>
+                                </MudListItem>
+                            }
+                        }
+                    </MudList>
+                </MudPaper>
+            </MudItem>
+
+            <!-- 右侧文件列表 -->
+            <MudItem xs="12" sm="9">
+                <MudPaper Class="pa-0 file-explorer-panel file-explorer-panel--main" Elevation="0" Outlined="true">
+                    @if (_isLoading)
+                    {
+                        <div class="d-flex flex-column align-center justify-center pa-4" style="height: 100%;" role="status" aria-live="polite">
+                            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Medium" aria-hidden="true"/>
+                            <MudText Typo="Typo.body2" Class="mt-3 mud-text-secondary">正在读取目录…</MudText>
+                        </div>
+                    }
+                    else if (!string.IsNullOrEmpty(_directoryAccessError))
+                    {
+                        <div class="d-flex flex-column align-center justify-center pa-4" style="height: 100%;">
+                            <MudIcon Icon="@Icons.Material.Filled.Block" Size="Size.Large" Color="Color.Warning" Class="mb-2" aria-hidden="true"/>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@_directoryAccessError</MudText>
+                        </div>
+                    }
+                    else if (_subDirs.Count == 0 && _files.Count == 0)
+                    {
+                        <div class="d-flex flex-column align-center justify-center" style="height: 100%;">
+                            <MudIcon Icon="@Icons.Material.Filled.FolderOff" Size="Size.Large" Color="Color.Default" Class="mb-2" aria-hidden="true"/>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">此文件夹为空</MudText>
+                        </div>
+                    }
+                    else
+                    {
+                        <MudList T="string" Dense="true" Class="py-0" SelectedValueChanged="OnListItemSelected">
+                            @switch (SelectFolderMode)
+                            {
+                                case FileSelectMode.Folder:
+                                    @foreach (var dir in _subDirs)
+                                    {
+                                        var fname = Path.GetFileName(dir);
+                                        if (MatchesNameFilter(fname))
+                                        {
+                                            <MudListItem T="string"
+                                                         Value="@dir"
+                                                         Icon="@Icons.Material.Filled.Folder"
+                                                         IconColor="Color.Tertiary"
+                                                         OnClick="@(() => SelectFolder(dir))"
+                                                         @ondblclick="@(() => SetDirectoryAsync(dir))">
+                                                @fname
+                                            </MudListItem>
+                                        }
+                                    }
+                                    break;
+
+                                case FileSelectMode.File:
+                                    @foreach (var dir in _subDirs)
+                                    {
+                                        var fname = Path.GetFileName(dir);
+                                        if (MatchesNameFilter(fname))
+                                        {
+                                            <MudListItem T="string"
+                                                         Value="@dir"
+                                                         Icon="@Icons.Material.Filled.Folder"
+                                                         IconColor="Color.Tertiary"
+                                                         OnClick="@(() => SetDirectoryAsync(dir))">
+                                                @fname
+                                            </MudListItem>
+                                        }
+                                    }
+
+                                    @foreach (var name in _files)
+                                    {
+                                        if (name != null && MatchesNameFilter(name))
+                                        {
+                                            <MudListItem T="string"
+                                                         Value="@name"
+                                                         Icon="@FileIconHelper.GetIconFromFileName(name)"
+                                                         IconColor="@FileIconHelper.GetColorFromFileName(name)"
+                                                         OnClick="@(() => SelectFile(name))">
+                                                @name
+                                            </MudListItem>
+                                        }
+                                    }
+                                    break;
+                            }
+                        </MudList>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <!-- 底部选择区域 -->
+        <MudPaper Class="pa-3 mt-3" Elevation="0" Outlined="true">
+            <MudGrid Spacing="2">
+                @switch (SelectFolderMode)
+                {
+                    case FileSelectMode.Folder:
+                        <MudItem xs="12">
+                            <MudTextField T="string"
+                                          @bind-Value="@_currentSelectedName"
+                                          Label="已选择文件夹"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          ReadOnly="@(!AllowEdit)"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Folder"
+                                          AdornmentColor="Color.Tertiary"/>
+                        </MudItem>
+                        break;
+
+                    case FileSelectMode.File:
+                        <MudItem xs="12" sm="8">
+                            <MudTextField T="string"
+                                          @bind-Value="@_currentSelectedName"
+                                          Label="已选择文件"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          ReadOnly="@(!AllowEdit)"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.InsertDriveFile"
+                                          AdornmentColor="Color.Primary"/>
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudSelect T="string"
+                                       Value="@_selectedFilterName"
+                                       ValueChanged="OnFilterChanged"
+                                       Label="文件类型"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       AnchorOrigin="Origin.BottomCenter">
+                                @if (Filters != null)
+                                {
+                                    foreach (var filter in Filters)
+                                    {
+                                        <MudSelectItem Value="@filter.Name">
+                                            @filter.Name (@filter.Hint)
+                                        </MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        break;
+                }
+            </MudGrid>
+        </MudPaper>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel"
+                   Variant="Variant.Text"
+                   Color="Color.Default">
+            取消
+        </MudButton>
+        <MudButton OnClick="Confirm"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Check"
+                   Disabled="@string.IsNullOrEmpty(_currentSelectedName)">
+            @(SelectFolderMode == FileSelectMode.File ? "选择此文件" : "选择此文件夹")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+

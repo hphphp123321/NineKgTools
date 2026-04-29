@@ -1,0 +1,89 @@
+/* ============================================
+   AppBar 菜单弹窗美化
+   ============================================ */
+
+/* 菜单头部：当前主题状态展示 */
+.appbar-menu-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px 10px;
+    min-width: 176px;
+}
+
+.appbar-menu-header-icon-wrap {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: rgba(var(--mud-palette-primary-rgb), 0.12);
+    flex-shrink: 0;
+}
+
+.appbar-menu-header-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mud-palette-text-secondary);
+    line-height: 1.2;
+}
+
+.appbar-menu-header-current {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--mud-palette-primary);
+    line-height: 1.4;
+}
+
+/* 主题选项：左侧 accent 条 + 背景高亮 */
+.appbar-menu-theme-item {
+    position: relative;
+}
+
+.appbar-menu-theme-item--active {
+    position: relative;
+}
+
+/* 左侧 accent 竖条 */
+.appbar-menu-theme-item--active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 3px;
+    background: var(--mud-palette-primary);
+    border-radius: 0 3px 3px 0;
+    z-index: 1;
+}
+
+/* 高亮背景 */
+.appbar-menu-theme-item--active .mud-list-item-button {
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.1) !important;
+}
+
+/* 紫色主题激活时用 secondary 颜色 */
+.appbar-menu-theme-item--purple.appbar-menu-theme-item--active::before {
+    background: var(--mud-palette-secondary);
+}
+
+.appbar-menu-theme-item--purple.appbar-menu-theme-item--active .mud-list-item-button {
+    background-color: rgba(var(--mud-palette-secondary-rgb), 0.1) !important;
+}
+
+/* 浅色主题激活时用 warning 颜色 */
+.appbar-menu-theme-item--light.appbar-menu-theme-item--active::before {
+    background: var(--mud-palette-warning);
+}
+
+.appbar-menu-theme-item--light.appbar-menu-theme-item--active .mud-list-item-button {
+    background-color: rgba(var(--mud-palette-warning-rgb), 0.1) !important;
+}
+
+/* 登出项：hover 时红色背景 */
+.appbar-menu-logout-item .mud-list-item-button:hover {
+    background-color: rgba(var(--mud-palette-error-rgb), 0.1) !important;
+}

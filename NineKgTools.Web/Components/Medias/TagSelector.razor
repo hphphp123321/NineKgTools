@@ -1,0 +1,157 @@
+@using NineKgTools.Core.Models.Tags
+@using NineKgTools.Core.Services.Tags
+@using NineKgTools.Core.Services.Media
+
+<div class="tag-selector-container">
+    <!-- 当前标签显示 -->
+    @if (SelectedTags.Count > 0)
+    {
+        <div class="d-flex flex-wrap gap-2 mt-4 mb-4 tags-container">
+            @foreach (var tag in SelectedTags)
+            {
+                @if (IsEditable)
+                {
+                    <MudChip T="string"
+                             Size="Size.Medium"
+                             Color="@GetTagColor(tag.Name)"
+                             Variant="Variant.Filled"
+                             Label="true"
+                             OnClick="() => NavigateToTagPage(tag.Id)"
+                             OnClose="() => RemoveTag(tag)"
+                             CloseIcon="@Icons.Material.Filled.Close"
+                             Class="tag-chip editable-tag">
+                        @tag.Name
+                    </MudChip>
+                }
+                else
+                {
+                    <MudChip T="string"
+                             Size="Size.Medium"
+                             Color="@GetTagColor(tag.Name)"
+                             Variant="Variant.Filled"
+                             Label="true"
+                             OnClick="() => NavigateToTagPage(tag.Id)"
+                             Class="tag-chip">
+                        @tag.Name
+                    </MudChip>
+                }
+            }
+            @if (IsEditable)
+            {
+                <MudIconButton OnClick="OpenTagSelector"
+                           Icon="@Icons.Material.Filled.Add"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           aria-label="添加标签">
+                    添加标签
+                </MudIconButton>
+            }
+        </div>
+    }
+    else
+    {
+        @if (IsEditable)
+        {
+            <MudAlert Severity="Severity.Info" Class="mt-4 mb-4" Dense="true" Variant="Variant.Outlined">
+                <MudText Typo="Typo.body2">还没有标签，点击 + 添加</MudText>
+            </MudAlert>
+        }
+        else
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-4 mb-4 font-italic">暂无标签</MudText>
+        }
+    }
+</div>
+
+<!-- 标签选择对话框 -->
+<MudDialog @bind-Visible="_isTagSelectorVisible" Options="new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Medium }">
+    <TitleContent>
+        <div class="d-flex align-center">
+            <MudIcon Icon="@Icons.Material.Filled.LocalOffer" Class="mr-2" />
+            <MudText Typo="Typo.h6">选择标签</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <!-- 搜索框 -->
+        <MudTextField T="string"
+                      Value="@_searchTerm"
+                      ValueChanged="@(async (string value) => await HandleSearchTermChanged(value))"
+                      Label="搜索标签"
+                      Variant="Variant.Outlined"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      AdornmentColor="Color.Primary"
+                      Placeholder="输入标签名称"
+                      Clearable="true"
+                      Immediate="true"
+                      AutoFocus="true"
+                      Class="mb-3" />
+
+        <!-- 加载状态 -->
+        @if (_isLoading)
+        {
+            <div class="d-flex justify-center py-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            </div>
+        }
+        else
+        {
+            <!-- 标签列表按顶层分组 -->
+            @if (_availableTags.Count > 0)
+            {
+                <MudExpansionPanels Elevation="0" Class="tag-groups">
+                    @foreach (var group in _availableTags.Where(t => t.TopTag != null).GroupBy(t => t.TopTag))
+                    {
+                        <MudExpansionPanel
+                            Expanded="@(!string.IsNullOrWhiteSpace(_searchTerm))">
+                            <TitleContent>
+                                <div class="d-flex align-center">
+                                    <MudIcon Icon="@Icons.Material.Filled.Category" Color="Color.Secondary" Class="mr-2" />
+                                    <MudText Typo="Typo.subtitle1">@group.Key.Name</MudText>
+                                    <MudSpacer />
+                                    <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Outlined">
+                                        @group.Count() 个标签
+                                    </MudChip>
+                                </div>
+                            </TitleContent>
+                            <ChildContent>
+                                <div class="d-flex flex-wrap gap-2 pa-3">
+                                    @foreach (var tag in group)
+                                    {
+                                        var isSelected = IsTagSelected(tag);
+                                        <MudChip T="string"
+                                                 Size="Size.Medium"
+                                                 Color="@(isSelected ? Color.Primary : Color.Default)"
+                                                 Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                                                 OnClick="() => ToggleTag(tag)"
+                                                 Class="selectable-tag">
+                                            @if (isSelected)
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Class="mr-1" />
+                                            }
+                                            @tag.Name
+                                        </MudChip>
+                                    }
+                                </div>
+                            </ChildContent>
+                        </MudExpansionPanel>
+                    }
+                </MudExpansionPanels>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    <MudText Typo="Typo.body2">没有找到匹配的标签</MudText>
+                </MudAlert>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Default" OnClick="CloseTagSelector">取消</MudButton>
+        <MudButton Color="Color.Primary" OnClick="ConfirmTagSelection" Variant="Variant.Filled">
+            @GetConfirmLabel()
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+ 

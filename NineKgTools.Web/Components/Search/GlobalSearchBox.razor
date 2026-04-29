@@ -1,0 +1,100 @@
+@using MudBlazor
+@using NineKgTools.Core.Models.Search
+@using NineKgTools.Core.Services.Search
+@using Microsoft.JSInterop
+
+<div class="global-search-wrapper position-relative"
+     @oncompositionstart="OnCompositionStart"
+     @oncompositionend="OnCompositionEnd">
+    <div class="ultra-modern-search-container">
+        <div class="search-input-wrapper @(_isSearching ? "searching" : "")">
+            <!-- 闪动动画层 -->
+            <div class="search-shimmer-overlay"></div>
+
+            <!-- 筛选按钮（绝对定位容器，不影响文档流） -->
+            <div class="search-filter-btn-absolute">
+                <MudTooltip Text="高级筛选器" Placement="Placement.Bottom">
+                    <div class="search-inner-filter-btn" @onclick="@(() => OpenFilterDialog())">
+                        <MudIcon Icon="@Icons.Material.Filled.FilterList" Size="Size.Small" Color="Color.Primary" />
+                    </div>
+                </MudTooltip>
+            </div>
+
+            <MudAutocomplete T="string" @bind-Value="_searchQuery" SearchFunc="@SearchSuggestions"
+                             OnAdornmentClick="@(() => OnSearchClicked())" AdornmentIcon="@Icons.Material.Filled.Search"
+                             Adornment="Adornment.End" Variant="Variant.Filled" Typo="Typo.body2"
+                             Class="ultra-modern-search-input rounded-pill search-has-left-icon" PopoverClass="search-results-popover" Clearable="true"
+                             ResetValueOnEmptyText="false" ShowProgressIndicator="@_isSearching" CoerceText="false"
+                             CoerceValue="false" SelectValueOnTab="false"
+                             DebounceInterval="300"
+                             Placeholder="搜索媒体、标签、人物、社团..."
+                             OnKeyDown="OnKeyDown" MaxItems="null" Underline="false" Dense="true"
+                             TextChanged="OnTextChanged">
+                <ItemTemplate Context="item">
+                    @if (!string.IsNullOrEmpty(item) && _currentSearchResult != null)
+                    {
+                        <div class="search-results-container">
+                            <SearchResultPreview SearchResult="@_currentSearchResult"
+                                                 OnViewAllResults="@HandleViewAllResults"
+                                                 OnItemClick="@HandleItemClick"/>
+                        </div>
+                    }
+                </ItemTemplate>
+                <ProgressIndicatorInPopoverTemplate>
+                    <MudCard Class="search-loading-card" Elevation="0">
+                        <MudCardContent Class="pa-4 text-center">
+                            <div class="d-flex justify-center align-center mb-3">
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary"/>
+                                <div class="loading-dots ml-3">
+                                    <span></span><span></span><span></span>
+                                </div>
+                            </div>
+                            <MudText Typo="Typo.body2" Color="Color.Primary" Class="font-weight-medium">
+                                🔍 智能搜索中...
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                正在搜索媒体、标签、人物、社团等内容
+                            </MudText>
+                        </MudCardContent>
+                    </MudCard>
+                </ProgressIndicatorInPopoverTemplate>
+                <NoItemsTemplate>
+                    <MudCard Class="search-no-items-card" Elevation="0">
+                        <MudCardContent Class="pa-4 text-center">
+                            @if (string.IsNullOrWhiteSpace(_lastSearchQuery))
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.TravelExplore" Size="Size.Large"
+                                         Color="Color.Secondary" Class="mb-2"/>
+                                <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-2">
+                                    <text>🚀 开始探索</text>
+                                </MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    <text>输入关键词开始智能搜索</text>
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large"
+                                         Color="Color.Secondary"
+                                         Class="mb-2"/>
+                                <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-2">
+                                    <text>🔍 未找到结果</text>
+                                </MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    <text>尝试其他关键词或使用高级筛选</text>
+                                </MudText>
+                            }
+                        </MudCardContent>
+                    </MudCard>
+                </NoItemsTemplate>
+            </MudAutocomplete>
+
+            <!-- 搜索状态指示器 -->
+            <div class="search-status-indicator @(_isSearching ? "active" : "")">
+                <div class="status-pulse"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 搜索结果现在显示在MudAutocomplete的ItemTemplate中 -->
+</div>

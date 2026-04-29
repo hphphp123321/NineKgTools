@@ -1,0 +1,605 @@
+/* ==============================================
+   媒体页面样式
+   专门用于媒体详情页面的样式
+   ============================================== */
+
+/* --------------------------------------------------
+   媒体库总览页 - 分类切换过渡动画
+   -------------------------------------------------- */
+.media-overview-content-area {
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.media-overview-content-area.is-transitioning {
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+}
+
+/* 页面标题卡片吸顶效果 */
+.media-header-sticky {
+    position: sticky;
+    top: 45px; /* MudAppBar Dense=false 高度 */
+    z-index: var(--z-sticky);
+    /* 防止滚动内容透过包装层显露 */
+    background-color: var(--mud-palette-background);
+}
+
+/* 媒体标题 - hero typography + 溢出保护
+   - 字号 clamp 26-36px 自动响应：宽屏更 hero、窄屏自然收缩
+   - 与原 .card-title (18px) 解耦，避免 hero header 被通用卡片字号压扁
+   - line-height 1.15 紧凑，letter-spacing 微紧让大字号读起来更扎实 */
+.media-header-title {
+    font-size: clamp(1.625rem, 2.5vw, 2.25rem);
+    font-weight: var(--font-weight-bold);
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--mud-palette-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+/* 分类徽章 chip - 与 hero 标题视觉对齐
+   MudChip 自带分类色背景，这里只补字重和字距让它更像"标签" */
+.media-header-category-chip {
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.02em;
+}
+
+/* 操作按钮组 - 永不被压缩
+   修复长标题挤压按钮被强制竖排的视觉故障：
+   左侧标题区已 flex-grow:1 + min-w:0，承担所有收缩；
+   右侧按钮组 flex-shrink:0 后永远完整显示。
+   ≤960px 的 flex-wrap 规则不冲突 —— wrap 优先级高于 shrink，
+   窄屏依然正常换行到第二行。 */
+.media-header-actions {
+    flex-shrink: 0;
+}
+
+/* 媒体标题动画 */
+.media-title {
+    position: relative;
+    display: inline-block;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.media-title::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: var(--border-width-medium);
+    bottom: 0;
+    left: 0;
+    background-color: var(--mud-palette-primary);
+    transition: width var(--transition-slower);
+}
+
+.media-main-card:hover .media-title::after {
+    width: 100%;
+}
+
+.media-subtitle {
+    opacity: var(--opacity-hover);
+    transition: opacity var(--transition-slow);
+}
+
+.media-main-card:hover .media-subtitle {
+    opacity: 1;
+}
+
+/* 标签容器效果 */
+.tags-container {
+    transition: transform var(--transition-slow);
+    transform-origin: left center;
+}
+
+.media-main-card:hover .tags-container {
+    transform: scale(1.01);
+}
+
+.tag-chip {
+    transition: all var(--transition-slow);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.3px;
+}
+
+.tag-chip:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+/* 链接悬停效果 */
+.link-hover {
+    transition: all var(--transition-normal);
+    position: relative;
+    display: inline-block;
+}
+
+.link-hover::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: var(--border-width-thin);
+    bottom: 0;
+    left: 0;
+    background-color: var(--mud-palette-info);
+    transition: width var(--transition-slow);
+}
+
+.link-hover:hover::after {
+    width: 100%;
+}
+
+/* 海报容器 */
+.media-poster-container {
+    height: 400px;
+    background-color: transparent;
+    position: relative;
+}
+
+.media-poster-image-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    /* img 是 replaced element：缺 height 时浏览器会忽略 bottom:0，
+       只按 width:100% + 内在比例算高度，导致下方留大块空白。
+       显式 height:100% + object-fit:contain 让图片撑满容器并居中保持比例。 */
+    height: 100%;
+    object-fit: contain;
+}
+
+.media-poster-delete-btn {
+    position: absolute;
+    right: var(--spacing-md);
+    bottom: var(--spacing-xs);
+    z-index: 2;
+}
+
+/* 图片轮播容器 */
+.media-carousel {
+    height: 450px;
+}
+
+.media-carousel-image {
+    max-height: 100%;
+    max-width: 100%;
+    cursor: pointer;
+}
+
+/* 图片预览对话框 */
+.media-preview-container {
+    height: 70vh;
+}
+
+.media-preview-image {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+/* 错误/空状态容器 */
+.media-empty-state {
+    height: 70vh;
+}
+
+/* 图片区空状态 */
+.media-images-empty {
+    height: 200px;
+}
+
+/* 海报图片效果 */
+.poster-image {
+    transition: transform var(--transition-slower);
+}
+
+.poster-image:hover {
+    transform: scale(1.03);
+}
+
+.media-delete-button {
+    opacity: var(--opacity-hover);
+    transition: opacity var(--transition-normal);
+}
+
+.media-delete-button:hover {
+    opacity: 1;
+}
+
+/* 轮播图片效果 */
+.image-carousel {
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+}
+
+.carousel-image {
+    transition: transform var(--transition-slower);
+}
+
+.carousel-image:hover {
+    transform: scale(1.02);
+}
+
+/* 相关媒体卡片效果 */
+.related-media-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg) !important;
+    z-index: 2;
+}
+
+.related-media-container {
+    transition: transform var(--transition-slow);
+}
+
+/* 媒体特定内容样式 */
+.media-specific-content {
+    transition: all var(--transition-slow);
+}
+
+.media-details-card:hover .media-specific-content {
+    transform: translateY(-2px);
+}
+
+/* 注意：左侧边栏样式统一由 cards.css 的 .card-sidebar 管理 */
+
+/* 平台图标样式 */
+.platform-icon {
+    font-size: var(--font-size-xl);
+    margin-right: var(--spacing-xs);
+}
+
+.platform-chip {
+    margin: var(--spacing-xs);
+    transition: all var(--transition-normal);
+}
+
+.platform-chip:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+/* 详情内容样式 */
+.description-content {
+    line-height: var(--line-height-relaxed);
+}
+
+.description-content img {
+    max-width: 100%;
+    border-radius: var(--radius-sm);
+    margin: var(--spacing-sm) 0;
+    transition: transform var(--transition-slow);
+}
+
+.description-content img:hover {
+    transform: scale(1.01);
+}
+
+.description-content p {
+    margin-bottom: var(--spacing-md);
+}
+
+.description-content h1,
+.description-content h2,
+.description-content h3,
+.description-content h4 {
+    margin-top: var(--spacing-xl);
+    margin-bottom: var(--spacing-md);
+    font-weight: var(--font-weight-medium);
+}
+
+.description-content ul,
+.description-content ol {
+    margin-bottom: var(--spacing-lg);
+    padding-left: var(--spacing-2xl);
+}
+
+.description-content li {
+    margin-bottom: var(--spacing-sm);
+}
+
+/* 创建者链接样式 */
+.creator-link {
+    transition: all var(--transition-slow);
+    border-left: var(--border-width-medium) solid var(--mud-palette-primary);
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.04);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm);
+}
+
+.creator-link:hover {
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.08);
+    transform: translateY(-2px);
+    border-color: var(--mud-palette-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.circle-link {
+    transition: all var(--transition-slow);
+    border-left: var(--border-width-medium) solid var(--mud-palette-secondary);
+    background-color: rgba(var(--mud-palette-secondary-rgb), 0.04);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm);
+}
+
+.circle-link:hover {
+    background-color: rgba(var(--mud-palette-secondary-rgb), 0.08);
+    transform: translateY(-2px);
+    border-color: var(--mud-palette-secondary);
+    box-shadow: var(--shadow-sm);
+}
+
+.creator-title-chip {
+    font-weight: var(--font-weight-medium);
+}
+
+/* 链接项样式 */
+.link-item {
+    transition: all var(--transition-slow);
+    border-left: var(--border-width-medium) solid var(--mud-palette-info);
+    background-color: rgba(var(--mud-palette-info-rgb), 0.04);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
+}
+
+.link-item:hover {
+    transform: translateY(-2px);
+    background-color: rgba(var(--mud-palette-info-rgb), 0.08);
+    box-shadow: var(--shadow-sm);
+}
+
+.link-text {
+    transition: all var(--transition-normal);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.delete-link-button {
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+}
+
+.link-item:hover .delete-link-button {
+    opacity: 1;
+}
+
+.links-container {
+    max-height: 180px;
+    overflow-y: auto;
+    padding-right: var(--spacing-xs);
+    position: relative;
+}
+
+/* 链接容器底部滚动渐变提示 */
+.links-container-wrapper {
+    position: relative;
+}
+
+.links-container-wrapper::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--spacing-2xl);
+    background: linear-gradient(transparent, var(--mud-palette-surface));
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--transition-normal);
+}
+
+.links-container-wrapper.has-overflow::after {
+    opacity: 1;
+}
+
+/* 侧边栏文本溢出保护 */
+.media-sidebar-text {
+    word-break: break-all;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    min-width: 0;
+}
+
+/* 卡片悬停效果 - 详情页仅增强阴影，不做位移以避免交互时的视觉抖动 */
+.media-sidebar .card-sidebar:hover,
+.media-main-card:hover,
+.media-images-card:hover,
+.media-details-card:hover,
+.media-description-card:hover,
+.media-extended-info-card:hover {
+    box-shadow: var(--shadow-lg);
+}
+
+/* ==============================================
+   响应式适配
+   ============================================== */
+
+/* --- 平板（≤960px）：侧边栏变为流式，海报和轮播缩小 --- */
+@media (max-width: 960px) {
+    .media-poster-container {
+        height: 350px;
+    }
+
+    .media-carousel {
+        height: 350px;
+    }
+
+    /* 吸顶标题 - 竖向堆叠标题和按钮 */
+    .media-header-row {
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+    }
+
+    .media-header-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+/* --- 小屏幕（≤768px）：压缩间距和字号 --- */
+@media (max-width: 768px) {
+    /* 移动端隐藏头部海报氛围带：avatar/标题/按钮在窄屏已经挤满整行，
+       多一层背景反而干扰阅读，退回 card-header 自带的纯色渐变即可。 */
+    .media-header-poster-bg {
+        display: none;
+    }
+
+    .platform-icon {
+        font-size: var(--font-size-lg);
+        margin-right: var(--spacing-xs);
+    }
+
+    .platform-chip {
+        margin: var(--spacing-xs);
+    }
+
+    .description-content {
+        font-size: var(--font-size-sm);
+    }
+
+    .description-content h1,
+    .description-content h2,
+    .description-content h3,
+    .description-content h4 {
+        margin-top: var(--spacing-lg);
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .creator-link,
+    .circle-link,
+    .link-item {
+        padding: var(--spacing-xs);
+    }
+
+    .links-container {
+        max-height: 120px;
+    }
+
+    /* 图片预览 - 横屏手机友好 */
+    .media-preview-container {
+        height: 50vh;
+    }
+
+    /* 相关媒体 - 水平滚动，防止换行挤压 */
+    .media-related-scroll {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: var(--spacing-sm);
+        scrollbar-width: thin;
+    }
+
+    /* 触屏设备 - 编辑模式下始终显示删除按钮（无hover） */
+    .delete-link-button {
+        opacity: 1;
+    }
+}
+
+/* --- 手机（≤480px）：全面移动端优化 --- */
+@media (max-width: 480px) {
+    .media-poster-container {
+        height: 280px;
+    }
+
+    .media-carousel {
+        height: 250px;
+    }
+
+    /* 吸顶标题 - 隐藏头像，缩小标题 */
+    .media-header-avatar {
+        display: none;
+    }
+
+    .media-header-title {
+        /* 字号已由全局 clamp 自动收缩到 26px（min 值），不需要再覆盖；
+           只切换换行模式：从 nowrap 单行省略号 → 多行 line-clamp 2 行 */
+        white-space: normal;
+        -webkit-line-clamp: 2;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* 编辑按钮全宽 */
+    .media-header-actions {
+        width: 100%;
+    }
+
+    .media-header-actions .mud-button-root {
+        flex: 1;
+        justify-content: center;
+    }
+
+    /* 侧边栏海报 - 移动端横向布局 */
+    .media-sidebar-mobile-layout {
+        display: flex;
+        flex-direction: row;
+        gap: var(--spacing-md);
+    }
+
+    .media-sidebar-mobile-layout .media-poster-container {
+        width: 120px;
+        height: 180px;
+        flex-shrink: 0;
+    }
+
+    .media-sidebar-mobile-layout .media-sidebar-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* 折叠面板标题 - 增大触控区域 */
+    .media-collapse-header {
+        min-height: 48px;
+    }
+
+    /* 错误/空状态 - 不需要70vh */
+    .media-empty-state {
+        height: auto;
+        min-height: 50vh;
+        padding: var(--spacing-3xl) var(--spacing-lg);
+    }
+
+    /* 相关媒体卡片缩小间距 */
+    .media-related-scroll {
+        gap: var(--spacing-sm) !important;
+    }
+}
+
+/* 减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+    .media-title::after,
+    .link-hover::after {
+        transition: none;
+    }
+
+    .poster-image,
+    .carousel-image,
+    .tag-chip,
+    .link-item,
+    .creator-link,
+    .circle-link,
+    .platform-chip,
+    .media-specific-content,
+    .related-media-container,
+    .media-overview-content-area {
+        transition: none;
+    }
+
+    .poster-image:hover,
+    .carousel-image:hover,
+    .tag-chip:hover,
+    .link-item:hover,
+    .creator-link:hover,
+    .circle-link:hover,
+    .platform-chip:hover,
+    .related-media-card:hover,
+    .media-details-card:hover .media-specific-content {
+        transform: none;
+    }
+} 

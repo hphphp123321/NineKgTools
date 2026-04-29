@@ -1,0 +1,80 @@
+@using NineKgTools.Core.Models.Media
+
+<div class="d-flex align-start mb-4">
+    <MudIcon Icon="@Icon" Color="@Color" Class="mr-2 mt-1" />
+
+    <div class="flex-grow-1">
+        <!-- 标题栏 -->
+        <div class="d-flex align-center gap-2 mb-2">
+            <MudChip Color="@Color" Size="Size.Small" Variant="Variant.Filled" Class="creator-title-chip" T="string">
+                @Title
+            </MudChip>
+
+            @if (Editable)
+            {
+                <MudTooltip Text="添加创作者" Duration="0">
+                    <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                   Size="Size.Small"
+                                   Color="@Color"
+                                   aria-label="@($"为 {Title} 添加创作者")"
+                                   OnClick="OpenCreatorSelector" />
+                </MudTooltip>
+            }
+        </div>
+
+        <!-- Creator列表 -->
+        @if (Creators != null && Creators.Count > 0)
+        {
+            <div class="d-flex flex-wrap gap-2 mt-2">
+                @foreach (var creator in Creators)
+                {
+                    <div class="editable-creator-item">
+                        <MudLink Href="@creator.GetCreatorLink()"
+                                 Typo="Typo.body1"
+                                 Class="d-inline-flex align-center creator-link pa-2">
+                            @if (creator.Avatar != null)
+                            {
+                                <MudAvatar Size="Size.Small" Class="mr-2">
+                                    <MudImage Src="@creator.Avatar.GetImageUrl()" />
+                                </MudAvatar>
+                            }
+                            else
+                            {
+                                <MudAvatar Color="@Color" Size="Size.Small" Class="mr-2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                                </MudAvatar>
+                            }
+                            @creator.Name
+                        </MudLink>
+
+                        @if (Editable)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                           Size="Size.Small"
+                                           Color="Color.Error"
+                                           Class="creator-delete-btn"
+                                           aria-label="@($"从 {Title} 移除 {creator.Name}")"
+                                           OnClick="() => RemoveCreator(creator)"
+                                           OnClick:stopPropagation="true" />
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="font-italic mt-2">
+                @if (Editable)
+                {
+                    <span>还没有@Title，点击 + 添加</span>
+                }
+                else
+                {
+                    <span>暂无</span>
+                }
+            </MudText>
+        }
+    </div>
+</div>
+
+@* 所有样式已迁移到 /css/components/creators.css *@

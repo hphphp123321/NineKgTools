@@ -1,0 +1,718 @@
+@page "/source/pending"
+@page "/source/unknown"
+<PageTitle>待处理媒体源</PageTitle>
+@using NineKgTools.Components.Common
+@using NineKgTools.Components.Medias
+@using NineKgTools.Core.Models.Categories
+@using NineKgTools.Core.Models.Media
+@using NineKgTools.Core.Models.Media.Source
+@using NineKgTools.Utils
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <MudGrid>
+        <MudItem xs="12">
+            <PageHeader Icon="@Icons.Material.Filled.HourglassBottom"
+                        IconColor="Color.Warning"
+                        Title="待处理媒体源"
+                        Subtitle="包含尚未识别的媒体源和已识别但未入库的识别结果">
+                <Actions>
+                    <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
+                               Color="Color.Secondary"
+                               Variant="Variant.Outlined"
+                               Size="Size.Medium"
+                               Href="/sources">
+                        返回媒体源
+                    </MudButton>
+                    <MudButton StartIcon="@(_isLoading ? null : Icons.Material.Filled.Refresh)"
+                               Color="Color.Primary"
+                               Variant="Variant.Filled"
+                               Size="Size.Medium"
+                               aria-label="@(_isLoading ? "正在刷新" : "刷新列表")"
+                               OnClick="@LoadAllAsync"
+                               Disabled="@(_isLoading || _isBatchProcessing)">
+                        @if (_isLoading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2"/>
+                            <span>加载中</span>
+                        }
+                        else
+                        {
+                            <span>刷新</span>
+                        }
+                    </MudButton>
+                </Actions>
+            </PageHeader>
+        </MudItem>
+
+        <!-- 主 Tab 切换器 —— 定义整个页面的上下文，驱动下面的统计/筛选/数据 -->
+        <MudItem xs="12">
+            <div class="pending-tab-switcher" role="tablist" aria-label="待处理状态切换">
+                <button type="button"
+                        class="@($"pending-tab-btn {(IsUnidentifiedTab ? "pending-tab-btn--active" : "")}")"
+                        role="tab"
+                        id="tab-unidentified"
+                        aria-selected="@IsUnidentifiedTab"
+                        aria-controls="pending-tabpanel"
+                        disabled="@_isBatchProcessing"
+                        @onclick="@(() => OnActiveTabChanged(0))">
+                    <MudIcon Icon="@Icons.Material.Filled.NoSim" Class="pending-tab-btn__icon"/>
+                    <div class="pending-tab-btn__body">
+                        <div class="pending-tab-btn__label">待识别</div>
+                        <div class="pending-tab-btn__count">
+                            @if (_isLoading)
+                            {
+                                <MudSkeleton Width="48px" Height="36px"/>
+                            }
+                            else
+                            {
+                                @FormatCount(_totalCount)
+                            }
+                        </div>
+                    </div>
+                </button>
+                <button type="button"
+                        class="@($"pending-tab-btn {(IsUnidentifiedTab ? "" : "pending-tab-btn--active")}")"
+                        role="tab"
+                        id="tab-pending"
+                        aria-selected="@(!IsUnidentifiedTab)"
+                        aria-controls="pending-tabpanel"
+                        disabled="@_isBatchProcessing"
+                        @onclick="@(() => OnActiveTabChanged(1))">
+                    <MudIcon Icon="@Icons.Material.Filled.Inventory2" Class="pending-tab-btn__icon"/>
+                    <div class="pending-tab-btn__body">
+                        <div class="pending-tab-btn__label">待入库</div>
+                        <div class="pending-tab-btn__count">
+                            @if (_isLoading)
+                            {
+                                <MudSkeleton Width="48px" Height="36px"/>
+                            }
+                            else
+                            {
+                                @FormatCount(_pendingTotalCount)
+                            }
+                        </div>
+                    </div>
+                </button>
+            </div>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudGrid>
+                <MudItem xs="6" sm="4" md="2">
+                    <MudPaper Elevation="2"
+                              Class="@GetStatCardClass(null)"
+                              @onclick="@(() => SetCategoryFilter(null))"
+                              tabindex="0"
+                              role="button"
+                              aria-pressed="@(_categoryFilter == null)"
+                              aria-label="@($"筛选全部类型，当前 {(IsUnidentifiedTab ? "待识别" : "待入库")} 共 {CurrentTabTotal} 条")"
+                              @onkeydown="@(e => { if (e.Key is "Enter" or " ") SetCategoryFilter(null); })">
+                        <div class="stat-card-body">
+                            <MudIcon Icon="@Icons.Material.Filled.Inbox"
+                                     Color="Color.Primary"
+                                     Size="Size.Medium"
+                                     Class="stat-card-icon"/>
+                            <div class="stat-card-text">
+                                <div class="stat-card-label">
+                                    @(IsUnidentifiedTab ? "待识别总计" : "待入库总计")
+                                </div>
+                                @if (_isLoading)
+                                {
+                                    <MudSkeleton Width="60px" Height="40px"/>
+                                }
+                                else
+                                {
+                                    <div class="stat-card-number stat-card-number-primary">@CurrentTabTotal</div>
+                                }
+                            </div>
+                        </div>
+                    </MudPaper>
+                </MudItem>
+
+                @foreach (var cat in StatCategories)
+                {
+                    var current = cat;
+                    <MudItem xs="6" sm="4" md="2">
+                        <MudPaper Elevation="2"
+                                  Class="@GetStatCardClass(current)"
+                                  @onclick="@(() => SetCategoryFilter(current))"
+                                  tabindex="0"
+                                  role="button"
+                                  aria-pressed="@(_categoryFilter == current)"
+                                  aria-label="@($"筛选 {GetCategoryName(current)} 类型，共 {GetCategoryCount(current)} 条")"
+                                  @onkeydown="@(e => { if (e.Key is "Enter" or " ") SetCategoryFilter(current); })">
+                            <div class="stat-card-body">
+                                <MudIcon Icon="@GetCategoryIcon(current)"
+                                         Color="@GetCategoryColor(current)"
+                                         Size="Size.Medium"
+                                         Class="stat-card-icon"/>
+                                <div class="stat-card-text">
+                                    <div class="stat-card-label">@GetCategoryName(current)</div>
+                                    @if (_isLoading)
+                                    {
+                                        <MudSkeleton Width="60px" Height="40px"/>
+                                    }
+                                    else
+                                    {
+                                        <div class="stat-card-number stat-card-number-@GetColorSuffix(GetCategoryColor(current))">
+                                            @GetCategoryCount(current)
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudItem>
+
+        <!-- 筛选和批量操作栏 —— 筛选在两 Tab 间共享；批量按钮随 Tab 切换 -->
+        <MudItem xs="12">
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudGrid>
+                    <MudItem xs="12" sm="12" md="4">
+                        <MudTextField @bind-Value="_searchText"
+                                      Label="搜索路径"
+                                      Immediate="true"
+                                      DebounceInterval="300"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      OnDebounceIntervalElapsed="ApplyFilters"
+                                      Clearable="true"
+                                      Disabled="@_isBatchProcessing"
+                                      OnClearButtonClick="@(() => { _searchText = ""; ApplyFilters(); })"/>
+                    </MudItem>
+                    <MudItem xs="6" sm="6" md="2">
+                        <MudSelect T="TopCategory?"
+                                   Value="@_categoryFilter"
+                                   Label="类型筛选"
+                                   Clearable="true"
+                                   Disabled="@_isBatchProcessing"
+                                   ValueChanged="@SetCategoryFilter">
+                            <MudSelectItem T="TopCategory?" Value="@((TopCategory?)null)">全部</MudSelectItem>
+                            <MudSelectItem T="TopCategory?" Value="@((TopCategory?)TopCategory.Video)">视频</MudSelectItem>
+                            <MudSelectItem T="TopCategory?" Value="@((TopCategory?)TopCategory.Audio)">音频</MudSelectItem>
+                            <MudSelectItem T="TopCategory?" Value="@((TopCategory?)TopCategory.Picture)">图片</MudSelectItem>
+                            <MudSelectItem T="TopCategory?" Value="@((TopCategory?)TopCategory.Text)">文本</MudSelectItem>
+                            <MudSelectItem T="TopCategory?" Value="@((TopCategory?)TopCategory.Game)">游戏</MudSelectItem>
+                            <MudSelectItem T="TopCategory?" Value="@((TopCategory?)TopCategory.Unknown)">未知</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="6" sm="6" md="2">
+                        <MudButton OnClick="@ResetFilters"
+                                   Variant="Variant.Outlined"
+                                   FullWidth="true"
+                                   Class="mt-2"
+                                   Disabled="@_isBatchProcessing"
+                                   StartIcon="@Icons.Material.Filled.FilterAltOff">
+                            重置筛选
+                        </MudButton>
+                    </MudItem>
+
+                    @if (IsUnidentifiedTab)
+                    {
+                        <MudItem xs="6" sm="6" md="2">
+                            <MudButton OnClick="@HandleBatchReidentifyAsync"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       FullWidth="true"
+                                       Class="@GetBatchButtonClass(_selectedItems.Count > 0)"
+                                       Disabled="@(_selectedItems.Count == 0 || _isBatchProcessing)"
+                                       StartIcon="@(_isBatchProcessing ? null : Icons.Material.Filled.PlaylistAdd)">
+                                @if (_isBatchProcessing)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1"/>
+                                }
+                                <span class="d-none d-sm-inline">批量加入</span>队列
+                                @if (_selectedItems.Count > 0)
+                                {
+                                    <span class="batch-count-chip batch-count-chip-primary">@_selectedItems.Count</span>
+                                }
+                            </MudButton>
+                        </MudItem>
+                        <MudItem xs="6" sm="6" md="2">
+                            <MudButton OnClick="@HandleBatchDeleteAsync"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Error"
+                                       FullWidth="true"
+                                       Class="@GetBatchButtonClass(_selectedItems.Count > 0)"
+                                       Disabled="@(_selectedItems.Count == 0 || _isBatchProcessing)"
+                                       StartIcon="@(_isBatchProcessing ? null : Icons.Material.Filled.Delete)">
+                                @if (_isBatchProcessing)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1"/>
+                                }
+                                <span class="d-none d-sm-inline">批量</span>删除
+                                @if (_selectedItems.Count > 0)
+                                {
+                                    <span class="batch-count-chip batch-count-chip-on-filled">@_selectedItems.Count</span>
+                                }
+                            </MudButton>
+                        </MudItem>
+                    }
+                    else
+                    {
+                        <MudItem xs="6" sm="6" md="2">
+                            <MudButton OnClick="@HandleBatchCommitPendingAsync"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Success"
+                                       FullWidth="true"
+                                       Class="@GetBatchButtonClass(_selectedPendingItems.Count > 0)"
+                                       Disabled="@(_selectedPendingItems.Count == 0 || _isBatchProcessing)"
+                                       StartIcon="@(_isBatchProcessing ? null : Icons.Material.Filled.CloudUpload)">
+                                @if (_isBatchProcessing)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1"/>
+                                }
+                                <span class="d-none d-sm-inline">批量</span>入库
+                                @if (_selectedPendingItems.Count > 0)
+                                {
+                                    <span class="batch-count-chip batch-count-chip-on-filled">@_selectedPendingItems.Count</span>
+                                }
+                            </MudButton>
+                        </MudItem>
+                        <MudItem xs="6" sm="6" md="2">
+                            <MudButton OnClick="@HandleBatchDiscardPendingAsync"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Warning"
+                                       FullWidth="true"
+                                       Class="@GetBatchButtonClass(_selectedPendingItems.Count > 0)"
+                                       Disabled="@(_selectedPendingItems.Count == 0 || _isBatchProcessing)"
+                                       StartIcon="@(_isBatchProcessing ? null : Icons.Material.Filled.RestartAlt)">
+                                @if (_isBatchProcessing)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1"/>
+                                }
+                                <span class="d-none d-sm-inline">批量</span>丢弃
+                                @if (_selectedPendingItems.Count > 0)
+                                {
+                                    <span class="batch-count-chip batch-count-chip-warning">@_selectedPendingItems.Count</span>
+                                }
+                            </MudButton>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudCard Elevation="2" aria-busy="@(_isLoading || _isBatchProcessing)">
+                @if (_isLoading)
+                {
+                    <MudProgressLinear Indeterminate="true"
+                                       Color="Color.Primary"
+                                       aria-label="正在加载待处理媒体源"/>
+                }
+                <div role="tabpanel" id="pending-tabpanel"
+                     aria-labelledby="@(IsUnidentifiedTab ? "tab-unidentified" : "tab-pending")">
+                @if (IsUnidentifiedTab)
+                {
+                            <MudDataGrid Items="@_filteredSources"
+                             T="MediaSource"
+                             Elevation="0"
+                             Dense="true"
+                             Hover="true"
+                             ReadOnly="true"
+                             Striped="true"
+                             FixedHeader="true"
+                             Height="calc(100vh - 480px)"
+                             Class="unknown-datagrid"
+                             MultiSelection="true"
+                             SelectedItems="@_selectedItems"
+                             SelectedItemsChanged="@((HashSet<MediaSource> items) => _selectedItems = items)">
+                    <Columns>
+                        <SelectColumn T="MediaSource" ShowInFooter="false" ShowInHeader="true"/>
+                        <TemplateColumn Title="类型" Sortable="true" SortBy="@(x => x.PossibleTopCategory)">
+                            <CellTemplate>
+                                <MudChip T="string"
+                                         Size="Size.Small"
+                                         Color="@GetCategoryColor(context.Item.PossibleTopCategory)"
+                                         Icon="@GetCategoryIcon(context.Item.PossibleTopCategory)">
+                                    @GetCategoryName(context.Item.PossibleTopCategory)
+                                </MudChip>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="类别" Sortable="true" SortBy="@(x => x.IsFolder)">
+                            <CellTemplate>
+                                <div class="d-flex align-center">
+                                    <MudIcon Icon="@(context.Item.IsFolder ? Icons.Material.Filled.Folder : Icons.Material.Filled.InsertDriveFile)"
+                                             Size="Size.Small"
+                                             Color="@(context.Item.IsFolder ? Color.Warning : Color.Default)"
+                                             Class="mr-2"/>
+                                    <MudText Typo="Typo.body2">@(context.Item.IsFolder ? "文件夹" : "文件")</MudText>
+                                </div>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="名称" Sortable="true" SortBy="@(x => x.GetFileName())">
+                            <CellTemplate>
+                                <MudTooltip Text="@context.Item.FullPath" Delay="500">
+                                    <MudText Typo="Typo.body2" Class="unknown-cell-name">
+                                        @context.Item.GetFileName()
+                                    </MudText>
+                                </MudTooltip>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="路径" Sortable="true" SortBy="@(x => x.FullPath)">
+                            <CellTemplate>
+                                <MudTooltip Text="@context.Item.FullPath" Delay="500">
+                                    <MudText Typo="Typo.body2" Class="mud-text-secondary unknown-cell-path">
+                                        @GetDirectoryPath(context.Item.FullPath)
+                                    </MudText>
+                                </MudTooltip>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="操作" Sortable="false">
+                            <CellTemplate>
+                                <!-- 桌面端 -->
+                                <div class="d-none d-md-flex gap-1">
+                                    <MudTooltip Text="查看详情">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                       Size="Size.Small"
+                                                       Color="Color.Info"
+                                                       aria-label="查看详情"
+                                                       Disabled="@_isBatchProcessing"
+                                                       Href="@context.Item.GetSourceLink()"/>
+                                    </MudTooltip>
+                                    <MudTooltip Text="重新识别">
+                                        <MudIconButton Icon="@Icons.Material.Filled.FindInPage"
+                                                       Size="Size.Small"
+                                                       Color="Color.Primary"
+                                                       aria-label="重新识别"
+                                                       Disabled="@_isBatchProcessing"
+                                                       OnClick="@(() => HandleIdentifyMediaAsync(context.Item))"/>
+                                    </MudTooltip>
+                                    <MudTooltip Text="手动添加媒体">
+                                        <MudIconButton Icon="@Icons.Material.Filled.PostAdd"
+                                                       Size="Size.Small"
+                                                       Color="Color.Success"
+                                                       aria-label="手动添加媒体"
+                                                       Disabled="@_isBatchProcessing"
+                                                       OnClick="@(() => HandleManualAddMediaAsync(context.Item))"/>
+                                    </MudTooltip>
+                                    <MudTooltip Text="加入识别队列">
+                                        <MudIconButton Icon="@Icons.Material.Filled.PlaylistAdd"
+                                                       Size="Size.Small"
+                                                       Color="Color.Secondary"
+                                                       aria-label="加入识别队列"
+                                                       Disabled="@_isBatchProcessing"
+                                                       OnClick="@(() => HandleAddToQueueAsync(context.Item))"/>
+                                    </MudTooltip>
+                                    @if (!IsRemoteAccess)
+                                    {
+                                        <MudTooltip Text="打开位置">
+                                            <MudIconButton Icon="@Icons.Material.Filled.FolderOpen"
+                                                           Size="Size.Small"
+                                                           Color="Color.Info"
+                                                           aria-label="打开文件位置"
+                                                           Disabled="@_isBatchProcessing"
+                                                           OnClick="@(() => HandleOpenLocationAsync(context.Item))"/>
+                                        </MudTooltip>
+                                    }
+                                    <MudTooltip Text="删除">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Size="Size.Small"
+                                                       Color="Color.Error"
+                                                       aria-label="删除媒体源"
+                                                       Disabled="@_isBatchProcessing"
+                                                       OnClick="@(() => HandleDeleteSourceAsync(context.Item))"/>
+                                    </MudTooltip>
+                                </div>
+                                <!-- 移动端 -->
+                                <div class="d-flex d-md-none align-center">
+                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                             Size="Size.Medium"
+                                             aria-label="更多操作"
+                                             Disabled="@_isBatchProcessing"
+                                             AnchorOrigin="Origin.BottomRight"
+                                             TransformOrigin="Origin.TopRight">
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Visibility"
+                                                     IconColor="Color.Info"
+                                                     Href="@context.Item.GetSourceLink()">
+                                            查看详情
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.FindInPage"
+                                                     IconColor="Color.Primary"
+                                                     OnClick="@(() => HandleIdentifyMediaAsync(context.Item))">
+                                            重新识别
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.PostAdd"
+                                                     IconColor="Color.Success"
+                                                     OnClick="@(() => HandleManualAddMediaAsync(context.Item))">
+                                            手动添加媒体
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.PlaylistAdd"
+                                                     IconColor="Color.Secondary"
+                                                     OnClick="@(() => HandleAddToQueueAsync(context.Item))">
+                                            加入识别队列
+                                        </MudMenuItem>
+                                        @if (!IsRemoteAccess)
+                                        {
+                                            <MudMenuItem Icon="@Icons.Material.Filled.FolderOpen"
+                                                         IconColor="Color.Info"
+                                                         OnClick="@(() => HandleOpenLocationAsync(context.Item))">
+                                                打开位置
+                                            </MudMenuItem>
+                                        }
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                                     IconColor="Color.Error"
+                                                     OnClick="@(() => HandleDeleteSourceAsync(context.Item))">
+                                            删除
+                                        </MudMenuItem>
+                                    </MudMenu>
+                                </div>
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                    <NoRecordsContent>
+                        <MudContainer Class="d-flex flex-column justify-center align-center py-8">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Large" Class="mb-4"/>
+                            <MudText Typo="Typo.h6" Color="Color.Success">没有待识别的媒体源</MudText>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">所有媒体源都已被识别过</MudText>
+                        </MudContainer>
+                    </NoRecordsContent>
+                    <PagerContent>
+                        <MudDataGridPager T="MediaSource" PageSizeOptions="new int[]{10, 25, 50, 100}"/>
+                    </PagerContent>
+                </MudDataGrid>
+                }
+                else
+                {
+                        @if (_filteredPendingSources.Count == 0)
+                        {
+                            <div class="pending-empty-state">
+                                <MudIcon Icon="@Icons.Material.Filled.Inventory2"
+                                         Color="Color.Success"
+                                         Class="pending-empty-icon"/>
+                                <MudText Typo="Typo.h5" Class="pending-empty-title">没有待入库的识别结果</MudText>
+                                <MudText Typo="Typo.body2" Class="pending-empty-body">
+                                    关闭全局的"自动入库"后，后台识别结果会先出现在这里等你审阅。
+                                </MudText>
+                                <MudButton Href="/settings"
+                                           Variant="Variant.Outlined"
+                                           Color="Color.Warning"
+                                           StartIcon="@Icons.Material.Filled.Settings"
+                                           Class="mt-4">
+                                    前往设置
+                                </MudButton>
+                            </div>
+                        }
+                        else
+                        {
+                            <MudDataGrid Items="@_filteredPendingSources"
+                                         T="PendingEntry"
+                                         Elevation="0"
+                                         Dense="true"
+                                         Hover="true"
+                                         ReadOnly="true"
+                                         Striped="true"
+                                         FixedHeader="true"
+                                         Height="calc(100vh - 480px)"
+                                         Class="unknown-datagrid"
+                                         MultiSelection="true"
+                                         SelectedItems="@_selectedPendingItems"
+                                         SelectedItemsChanged="@((HashSet<PendingEntry> items) => _selectedPendingItems = items)">
+                                <Columns>
+                                    <SelectColumn T="PendingEntry" ShowInFooter="false" ShowInHeader="true"/>
+                                    <TemplateColumn Title="类型" Sortable="true" SortBy="@(x => x.Source.PossibleTopCategory)">
+                                        <CellTemplate>
+                                            <MudChip T="string"
+                                                     Size="Size.Small"
+                                                     Color="@GetCategoryColor(context.Item.Source.PossibleTopCategory)"
+                                                     Icon="@GetCategoryIcon(context.Item.Source.PossibleTopCategory)">
+                                                @GetCategoryName(context.Item.Source.PossibleTopCategory)
+                                            </MudChip>
+                                        </CellTemplate>
+                                    </TemplateColumn>
+                                    <TemplateColumn Title="类别" Sortable="true" SortBy="@(x => x.Source.IsFolder)">
+                                        <CellTemplate>
+                                            <div class="d-flex align-center">
+                                                <MudIcon Icon="@(context.Item.Source.IsFolder ? Icons.Material.Filled.Folder : Icons.Material.Filled.InsertDriveFile)"
+                                                         Size="Size.Small"
+                                                         Color="@(context.Item.Source.IsFolder ? Color.Warning : Color.Default)"
+                                                         Class="mr-2"/>
+                                                <MudText Typo="Typo.body2">@(context.Item.Source.IsFolder ? "文件夹" : "文件")</MudText>
+                                            </div>
+                                        </CellTemplate>
+                                    </TemplateColumn>
+                                    <TemplateColumn Title="识别标题" Sortable="true" SortBy="@(x => x.Media.Title)">
+                                        <CellTemplate>
+                                            @{
+                                                var title = string.IsNullOrWhiteSpace(context.Item.Media.Title)
+                                                    ? context.Item.Source.GetFileName()
+                                                    : context.Item.Media.Title;
+                                            }
+                                            <MudTooltip Text="@title" Delay="500">
+                                                <MudText Typo="Typo.body2" Class="unknown-cell-name">
+                                                    @title
+                                                </MudText>
+                                            </MudTooltip>
+                                        </CellTemplate>
+                                    </TemplateColumn>
+                                    <TemplateColumn Title="路径" Sortable="true" SortBy="@(x => x.Source.FullPath)">
+                                        <CellTemplate>
+                                            <MudTooltip Text="@context.Item.Source.FullPath" Delay="500">
+                                                <MudText Typo="Typo.body2" Class="mud-text-secondary unknown-cell-path">
+                                                    @GetDirectoryPath(context.Item.Source.FullPath)
+                                                </MudText>
+                                            </MudTooltip>
+                                        </CellTemplate>
+                                    </TemplateColumn>
+                                    <TemplateColumn Title="操作" Sortable="false">
+                                        <CellTemplate>
+                                            @{
+                                                var committing = IsCommitting(context.Item.Source.Id);
+                                                var rowDisabled = committing || _isBatchProcessing;
+                                            }
+                                            <!-- 桌面端 -->
+                                            <div class="d-none d-md-flex align-center gap-1">
+                                                <MudTooltip Text="预览并确认入库">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                                   Size="Size.Small"
+                                                                   Color="Color.Info"
+                                                                   aria-label="预览并确认入库"
+                                                                   Disabled="@rowDisabled"
+                                                                   OnClick="@(() => HandlePendingPreviewAsync(context.Item.Media))"/>
+                                                </MudTooltip>
+                                                @if (committing)
+                                                {
+                                                    <MudTooltip Text="正在入库…">
+                                                        <div class="pending-commit-spinner"
+                                                             role="status"
+                                                             aria-live="polite"
+                                                             aria-label="正在入库">
+                                                            <MudProgressCircular Size="Size.Small"
+                                                                                 Indeterminate="true"
+                                                                                 Color="Color.Success"/>
+                                                        </div>
+                                                    </MudTooltip>
+                                                }
+                                                else
+                                                {
+                                                    <MudTooltip Text="直接入库（不预览）">
+                                                        <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
+                                                                       Size="Size.Small"
+                                                                       Color="Color.Success"
+                                                                       aria-label="直接入库"
+                                                                       Disabled="@rowDisabled"
+                                                                       OnClick="@(() => HandlePendingCommitAsync(context.Item.Source, context.Item.Media))"/>
+                                                    </MudTooltip>
+                                                }
+                                                <MudTooltip Text="重新识别（替换结果）">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.FindInPage"
+                                                                   Size="Size.Small"
+                                                                   Color="Color.Primary"
+                                                                   aria-label="重新识别"
+                                                                   Disabled="@rowDisabled"
+                                                                   OnClick="@(() => HandleIdentifyMediaAsync(context.Item.Source))"/>
+                                                </MudTooltip>
+                                                <MudTooltip Text="丢弃识别结果">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.RestartAlt"
+                                                                   Size="Size.Small"
+                                                                   Color="Color.Warning"
+                                                                   aria-label="丢弃识别结果"
+                                                                   Disabled="@rowDisabled"
+                                                                   OnClick="@(() => HandlePendingDiscardAsync(context.Item.Source))"/>
+                                                </MudTooltip>
+                                                <MudMenu Icon="@Icons.Material.Filled.MoreHoriz"
+                                                         Size="Size.Small"
+                                                         aria-label="更多操作"
+                                                         Disabled="@rowDisabled"
+                                                         AnchorOrigin="Origin.BottomRight"
+                                                         TransformOrigin="Origin.TopRight">
+                                                    <MudMenuItem Icon="@Icons.Material.Filled.Visibility"
+                                                                 IconColor="Color.Info"
+                                                                 Href="@context.Item.Source.GetSourceLink()">
+                                                        查看详情
+                                                    </MudMenuItem>
+                                                    @if (!IsRemoteAccess)
+                                                    {
+                                                        <MudMenuItem Icon="@Icons.Material.Filled.FolderOpen"
+                                                                     IconColor="Color.Info"
+                                                                     OnClick="@(() => HandleOpenLocationAsync(context.Item.Source))">
+                                                            打开位置
+                                                        </MudMenuItem>
+                                                    }
+                                                    <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                                                 IconColor="Color.Error"
+                                                                 OnClick="@(() => HandleDeleteSourceAsync(context.Item.Source))">
+                                                        删除媒体源
+                                                    </MudMenuItem>
+                                                </MudMenu>
+                                            </div>
+                                            <!-- 移动端 -->
+                                            <div class="d-flex d-md-none align-center">
+                                                @if (committing)
+                                                {
+                                                    <div class="pending-commit-spinner-mobile"
+                                                         role="status"
+                                                         aria-live="polite"
+                                                         aria-label="正在入库">
+                                                        <MudProgressCircular Size="Size.Small"
+                                                                             Indeterminate="true"
+                                                                             Color="Color.Success"/>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                                             Size="Size.Medium"
+                                                             aria-label="更多操作"
+                                                             Disabled="@_isBatchProcessing"
+                                                             AnchorOrigin="Origin.BottomRight"
+                                                             TransformOrigin="Origin.TopRight">
+                                                        <MudMenuItem Icon="@Icons.Material.Filled.Visibility"
+                                                                     IconColor="Color.Info"
+                                                                     OnClick="@(() => HandlePendingPreviewAsync(context.Item.Media))">
+                                                            预览入库
+                                                        </MudMenuItem>
+                                                        <MudMenuItem Icon="@Icons.Material.Filled.CheckCircle"
+                                                                     IconColor="Color.Success"
+                                                                     OnClick="@(() => HandlePendingCommitAsync(context.Item.Source, context.Item.Media))">
+                                                            直接入库
+                                                        </MudMenuItem>
+                                                        <MudMenuItem Icon="@Icons.Material.Filled.FindInPage"
+                                                                     IconColor="Color.Primary"
+                                                                     OnClick="@(() => HandleIdentifyMediaAsync(context.Item.Source))">
+                                                            重新识别
+                                                        </MudMenuItem>
+                                                        <MudMenuItem Icon="@Icons.Material.Filled.RestartAlt"
+                                                                     IconColor="Color.Warning"
+                                                                     OnClick="@(() => HandlePendingDiscardAsync(context.Item.Source))">
+                                                            丢弃结果
+                                                        </MudMenuItem>
+                                                        <MudDivider/>
+                                                        <MudMenuItem Icon="@Icons.Material.Filled.OpenInNew"
+                                                                     IconColor="Color.Info"
+                                                                     Href="@context.Item.Source.GetSourceLink()">
+                                                            查看详情
+                                                        </MudMenuItem>
+                                                        @if (!IsRemoteAccess)
+                                                        {
+                                                            <MudMenuItem Icon="@Icons.Material.Filled.FolderOpen"
+                                                                         IconColor="Color.Info"
+                                                                         OnClick="@(() => HandleOpenLocationAsync(context.Item.Source))">
+                                                                打开位置
+                                                            </MudMenuItem>
+                                                        }
+                                                        <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                                                     IconColor="Color.Error"
+                                                                     OnClick="@(() => HandleDeleteSourceAsync(context.Item.Source))">
+                                                            删除媒体源
+                                                        </MudMenuItem>
+                                                    </MudMenu>
+                                                }
+                                            </div>
+                                        </CellTemplate>
+                                    </TemplateColumn>
+                                </Columns>
+                                <PagerContent>
+                                    <MudDataGridPager T="PendingEntry" PageSizeOptions="new int[]{10, 25, 50, 100}"/>
+                                </PagerContent>
+                            </MudDataGrid>
+                        }
+                }
+                </div>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>

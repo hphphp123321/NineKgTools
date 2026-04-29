@@ -1,0 +1,65 @@
+# Git 属性配置 - 统一跨平台换行与二进制标记
+# 参考：https://docs.github.com/en/get-started/getting-started-with-git/configuring-git-to-handle-line-endings
+
+# 默认：自动识别文本并统一为 LF（Windows 端 checkout 时会自动转 CRLF 由用户本地 core.autocrlf 决定）
+* text=auto eol=lf
+
+# 明确的文本类型（以防被误判为二进制）
+*.cs        text eol=lf diff=csharp
+*.razor     text eol=lf
+*.csproj    text eol=lf
+*.sln       text eol=lf
+*.props     text eol=lf
+*.targets   text eol=lf
+*.json      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.md        text eol=lf
+*.xml       text eol=lf
+*.html      text eol=lf
+*.css       text eol=lf
+*.scss      text eol=lf
+*.js        text eol=lf
+*.ts        text eol=lf
+*.sh        text eol=lf
+
+# Windows 原生脚本必须 CRLF
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+
+# 二进制资源
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.webp      binary
+*.svg       text
+*.ttf       binary
+*.woff      binary
+*.woff2     binary
+*.otf       binary
+*.eot       binary
+*.pdf       binary
+*.zip       binary
+*.tar       binary
+*.gz        binary
+*.7z        binary
+
+# 数据库 / 向量库相关二进制
+*.db        binary
+*.db-shm    binary
+*.db-wal    binary
+*.sqlite    binary
+*.sqlite3   binary
+
+# 媒体文件
+*.mp3       binary
+*.wav       binary
+*.flac      binary
+*.mp4       binary
+*.mkv       binary
+
+# 平台特定文件：Windows 的 .sln 其实多以 UTF-8 BOM 存储，保持原状
+*.sln       working-tree-encoding=UTF-8

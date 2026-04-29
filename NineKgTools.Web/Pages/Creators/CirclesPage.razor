@@ -1,0 +1,237 @@
+@page "/circles"
+
+<PageTitle>社团管理</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <MudGrid>
+        <!-- 页面标题 -->
+        <MudItem xs="12">
+            <PageHeader Icon="@Icons.Material.Filled.Groups"
+                        IconColor="Color.Warning"
+                        Title="社团管理">
+                <SubtitleContent>
+                    <MudText Typo="Typo.body1" Class="card-subtitle">
+                        管理和组织媒体社团，共 @_totalCircleCount 个
+                    </MudText>
+                </SubtitleContent>
+                <Actions>
+                    <MudButton Color="Color.Success"
+                               Variant="Variant.Filled"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               Size="Size.Medium"
+                               OnClick="OpenAddDialog">
+                        添加社团
+                    </MudButton>
+                </Actions>
+            </PageHeader>
+        </MudItem>
+
+        <!-- 主要内容区域 -->
+        <MudItem xs="12">
+            <MudCard Elevation="3" Class="rounded-lg">
+                <!-- 工具栏 -->
+                <MudToolBar Dense="true" DisableGutters="true" Class="px-4 py-2 gap-3">
+                    <MudTextField T="string"
+                                  @bind-Value="_searchTerm"
+                                  Placeholder="搜索社团..."
+                                  Clearable="true"
+                                  Immediate="true"
+                                  DebounceInterval="300"
+                                  OnDebounceIntervalElapsed="HandleSearchTermChanged"
+                                  Class="flex-1"
+                                  Margin="Margin.Dense"
+                                  Variant="Variant.Outlined"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  AdornmentColor="Color.Primary" />
+
+                    <MudTooltip Text="刷新列表" Duration="0">
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       OnClick="LoadCircles"
+                                       Disabled="@_isLoading" />
+                    </MudTooltip>
+                </MudToolBar>
+
+                <MudDivider />
+
+                <!-- 内容区域 -->
+                <MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
+                    @if (_isLoading)
+                    {
+                        <MudGrid Spacing="3">
+                            @for (int i = 0; i < 8; i++)
+                            {
+                                <MudItem xs="12" sm="6" md="4" lg="3">
+                                    <MudPaper Elevation="2" Class="pa-4 rounded-lg">
+                                        <div class="d-flex align-center gap-3">
+                                            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="60px" Height="60px" />
+                                            <div class="flex-grow-1">
+                                                <MudSkeleton Width="60%" Height="24px" />
+                                                <MudSkeleton Width="40%" Height="20px" Class="mt-2" />
+                                            </div>
+                                        </div>
+                                    </MudPaper>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    }
+                    else if (_pagedCircles == null || _pagedCircles.Count == 0)
+                    {
+                        <MudPaper Elevation="0" Class="pa-6 rounded-lg">
+                            <MudStack AlignItems="AlignItems.Center" Spacing="4">
+                                <MudIcon Icon="@Icons.Material.Filled.GroupOff"
+                                         Color="Color.Default"
+                                         Size="Size.Large" />
+                                <MudText Typo="Typo.h6" Color="Color.Default" Align="Align.Center">
+                                    @if (string.IsNullOrWhiteSpace(_searchTerm))
+                                    {
+                                        <span>暂无社团</span>
+                                    }
+                                    else
+                                    {
+                                        <span>未找到匹配的社团</span>
+                                    }
+                                </MudText>
+                                @if (!string.IsNullOrWhiteSpace(_searchTerm))
+                                {
+                                    <MudButton Color="Color.Primary"
+                                               Variant="Variant.Text"
+                                               StartIcon="@Icons.Material.Filled.Clear"
+                                               OnClick="@(() => { _searchTerm = string.Empty; _currentPage = 1; LoadCircles(); })">
+                                        清除筛选
+                                    </MudButton>
+                                }
+                            </MudStack>
+                        </MudPaper>
+                    }
+                    else
+                    {
+                        <MudGrid Spacing="3">
+                            @foreach (var circle in _pagedCircles)
+                            {
+                                <MudItem xs="12" sm="6" md="4" lg="3">
+                                    <MudCard Elevation="2" Class="rounded-lg circle-list-card" @onclick="() => NavigateToCircle(circle)">
+                                        <MudCardContent Class="pa-3">
+                                            <div class="d-flex align-center gap-3">
+                                                @if (circle.Avatar != null)
+                                                {
+                                                    <MudAvatar Size="Size.Large">
+                                                        <MudImage Src="@circle.Avatar.GetImageUrl()" />
+                                                    </MudAvatar>
+                                                }
+                                                else
+                                                {
+                                                    <MudAvatar Color="Color.Tertiary" Size="Size.Large">
+                                                        <MudIcon Icon="@Icons.Material.Filled.Business" />
+                                                    </MudAvatar>
+                                                }
+
+                                                <div class="flex-grow-1" style="min-width: 0;">
+                                                    <MudText Typo="Typo.subtitle1" Class="text-truncate">
+                                                        @circle.Name
+                                                    </MudText>
+                                                    @if (circle.AliasNames.Any())
+                                                    {
+                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                            @circle.AliasNames.Count 个别名
+                                                        </MudText>
+                                                    }
+                                                </div>
+
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                               Size="Size.Small"
+                                                               Color="Color.Error"
+                                                               OnClick="() => DeleteCircle(circle)"
+                                                               OnClick:stopPropagation="true"
+                                                               Class="circle-delete-btn" />
+                                            </div>
+                                        </MudCardContent>
+                                    </MudCard>
+                                </MudItem>
+                            }
+                        </MudGrid>
+
+                        <!-- 分页栏 -->
+                        <div class="d-flex justify-center align-center gap-4 mt-6 flex-wrap">
+                            <MudSelect T="int"
+                                       Value="_pageSize"
+                                       Label="每页"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Dense="true"
+                                       Disabled="@_isLoading"
+                                       ValueChanged="OnPageSizeChanged"
+                                       Style="min-width: 110px;">
+                                @foreach (var size in AllowedPageSizes)
+                                {
+                                    <MudSelectItem T="int" Value="size">@size</MudSelectItem>
+                                }
+                            </MudSelect>
+
+                            <MudPagination Count="@Math.Max(_totalPages, 1)"
+                                           Selected="@_currentPage"
+                                           SelectedChanged="OnPageChanged"
+                                           BoundaryCount="1"
+                                           MiddleCount="3"
+                                           ShowFirstButton="true"
+                                           ShowLastButton="true"
+                                           Variant="Variant.Filled"
+                                           Color="Color.Tertiary"
+                                           Size="Size.Medium" />
+                        </div>
+                    }
+                </MudContainer>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+<!-- 新增社团对话框 -->
+<MudDialog @bind-Visible="_showAddDialog" Options="new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true }">
+    <TitleContent>
+        <div class="d-flex align-center">
+            <MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-2" />
+            <MudText Typo="Typo.h6">添加社团</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField T="string"
+                      @bind-Value="_newCircleName"
+                      Label="名称"
+                      Variant="Variant.Outlined"
+                      Placeholder="输入社团名称..."
+                      Required="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Default" OnClick="CloseAddDialog">取消</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="CreateCircle"
+                   Disabled="@string.IsNullOrWhiteSpace(_newCircleName)">
+            创建
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .circle-list-card {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .circle-list-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .circle-list-card .circle-delete-btn {
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .circle-list-card:hover .circle-delete-btn {
+        opacity: 1;
+    }
+</style>

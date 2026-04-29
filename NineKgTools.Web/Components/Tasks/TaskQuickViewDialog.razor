@@ -1,0 +1,115 @@
+@using NineKgTools.Core.Models.Tasks
+@using NineKgTools.Core.Services.Progress
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center">
+            <MudIcon Icon="@Icons.Material.Filled.TaskAlt" Color="Color.Primary" Class="mr-2"/>
+            <MudText Typo="Typo.h6">活动任务</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                          OnClick="RefreshTasks"
+                          Size="Size.Small"
+                          Color="Color.Success"/>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        @if (!_runningTasks.Any())
+        {
+            <div class="d-flex flex-column align-center justify-center py-8">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                        Size="Size.Large"
+                        Color="Color.Success"/>
+                <MudText Typo="Typo.h6" Class="mt-3">暂无运行中的任务</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                    所有任务都已完成
+                </MudText>
+            </div>
+        }
+        else
+        {
+            <MudList T="TaskProgress" Dense="true">
+                @foreach (var task in _runningTasks.Take(5))
+                {
+                    <MudListItem T="TaskProgress">
+                        <div class="d-flex flex-column w-100">
+                            <div class="d-flex align-center mb-1">
+                                <MudIcon Icon="@Icons.Material.Filled.PlayCircle"
+                                        Size="Size.Small"
+                                        Color="Color.Primary"
+                                        Class="mr-2"/>
+                                <MudText Typo="Typo.body2" Class="flex-grow-1 text-truncate" Style="max-width: 200px;">
+                                    @task.TaskName
+                                </MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @task.ProgressPercentage.ToString("F0")%
+                                </MudText>
+                            </div>
+                            <MudProgressLinear Value="@task.ProgressPercentage"
+                                             Color="Color.Primary"
+                                             Size="Size.Small"/>
+                            @if (task.IsParentTask)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                                    子任务: @task.ChildrenStats.SucceededCount / @task.ChildrenStats.TotalCount
+                                </MudText>
+                            }
+                            else if (!string.IsNullOrEmpty(task.CurrentMessage))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1 text-truncate">
+                                    @task.CurrentMessage
+                                </MudText>
+                            }
+                        </div>
+                    </MudListItem>
+                    <MudDivider/>
+                }
+            </MudList>
+
+            @if (_runningTasks.Count > 5)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center" Class="mt-2">
+                    还有 @(_runningTasks.Count - 5) 个任务...
+                </MudText>
+            }
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">关闭</MudButton>
+        <MudButton Color="Color.Primary"
+                  Variant="Variant.Filled"
+                  OnClick="NavigateToTasksPage">
+            查看全部
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Inject] private TaskProgressService ProgressService { get; set; } = null!;
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
+
+    private List<TaskProgress> _runningTasks = new();
+
+    protected override void OnInitialized()
+    {
+        RefreshTasks();
+    }
+
+    private void RefreshTasks()
+    {
+        _runningTasks = ProgressService.GetAllActiveProgress()
+            .Where(t => t.TaskType != TaskType.FolderMonitor)
+            .ToList();
+        StateHasChanged();
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void NavigateToTasksPage()
+    {
+        Navigation.NavigateTo("/tasks");
+        MudDialog.Close();
+    }
+}

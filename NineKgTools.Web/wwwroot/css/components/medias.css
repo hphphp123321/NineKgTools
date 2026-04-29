@@ -1,0 +1,440 @@
+/*
+ * medias.css — Components/Medias 下共享组件的样式
+ * 所有类名带语义前缀，token 化、BEM 风格与 common.css / creators.css 一致
+ */
+
+/* ========= Creator / Circle list（媒体详情里的作者/社团列表） ========= */
+.creator-link,
+.circle-link {
+    background-color: rgba(var(--mud-palette-surface-rgb), 0.6);
+    border: var(--border-width-thin, 1px) solid transparent;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    transition: background-color var(--transition-fast, 0.15s) ease,
+                border-color var(--transition-fast, 0.15s) ease,
+                box-shadow var(--transition-fast, 0.15s) ease,
+                transform var(--transition-fast, 0.15s) ease;
+}
+
+.creator-link:hover,
+.creator-link:focus-visible {
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.08);
+    transform: translateY(-2px);
+    border-color: var(--mud-palette-primary-lighten);
+    box-shadow: var(--shadow-sm);
+    outline: none;
+}
+
+.circle-link:hover,
+.circle-link:focus-visible {
+    background-color: rgba(var(--mud-palette-secondary-rgb), 0.08);
+    transform: translateY(-2px);
+    border-color: var(--mud-palette-secondary-lighten);
+    box-shadow: var(--shadow-sm);
+    outline: none;
+}
+
+.creator-title-chip {
+    font-weight: var(--font-weight-medium, 500);
+}
+
+/* ========= CategorySelector / CategorySelectorDialog ========= */
+.category-item {
+    cursor: pointer;
+    transition: background-color var(--transition-fast, 0.15s) ease,
+                transform var(--transition-fast, 0.15s) ease;
+}
+
+.category-item:hover,
+.category-item:focus-visible {
+    background-color: var(--mud-palette-action-default-hover);
+    transform: translateX(3px);
+    outline: none;
+}
+
+.category-item:focus-visible {
+    box-shadow: 0 0 0 2px rgba(var(--mud-palette-primary-rgb), 0.5);
+}
+
+.category-item.selected-category {
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.1);
+    transform: translateX(3px);
+}
+
+/* ========= MediaSelectorDialog ========= */
+.media-selector-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--spacing-md, 12px);
+    padding: var(--spacing-xs);
+}
+
+.media-selector-item {
+    position: relative;
+    cursor: pointer;
+    border-radius: var(--radius-md, 8px);
+    transition: transform var(--transition-fast, 0.15s) ease-out,
+                box-shadow var(--transition-fast, 0.15s) ease-out;
+}
+
+.media-selector-item:hover {
+    transform: translateY(-2px);
+}
+
+.media-selector-item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(var(--mud-palette-primary-rgb), 0.5);
+}
+
+.media-selector-item.selected {
+    outline: 2px solid var(--mud-palette-primary);
+    border-radius: var(--radius-md, 8px);
+}
+
+.media-selector-check {
+    position: absolute;
+    top: var(--spacing-xs, 4px);
+    right: var(--spacing-xs, 4px);
+    z-index: 1;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+.media-selector-list-item {
+    border-radius: var(--radius-md, 8px);
+    margin-bottom: var(--spacing-xs, 4px);
+    transition: background-color var(--transition-fast, 0.15s);
+}
+
+.media-selector-list-item:hover {
+    background-color: var(--mud-palette-action-default-hover);
+}
+
+.media-selector-list-item.selected {
+    background-color: var(--mud-palette-primary-lighten) !important;
+}
+
+/* MediaSelectorDialog 列表里的分类徽章：替代原来的硬编码 height:18px; font-size:0.65rem */
+.media-selector-category-badge {
+    font-size: var(--font-size-xs, 0.75rem);
+    height: auto;
+    padding: 2px var(--spacing-xs);
+    line-height: 1.4;
+}
+
+/* 触屏禁用 hover 位移 */
+@media (hover: none) {
+    .media-selector-item:hover {
+        transform: translateZ(0);
+    }
+}
+
+/* ========= FavoriteSelector ========= */
+.favorite-selector {
+    position: relative;
+}
+
+.favorite-button,
+.favorite-icon-button {
+    transition: transform var(--transition-fast, 0.15s) ease-out;
+}
+
+.favorite-button:hover,
+.favorite-button:focus-visible {
+    transform: scale(1.05);
+}
+
+.favorite-icon-button:hover,
+.favorite-icon-button:focus-visible {
+    transform: scale(1.1);
+}
+
+.favorite-item {
+    transition: background-color var(--transition-fast, 0.15s) ease;
+}
+
+.favorite-item:hover {
+    background-color: var(--mud-palette-action-default-hover);
+}
+
+.favorite-list {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+@media (hover: none) {
+    .favorite-button:hover,
+    .favorite-icon-button:hover {
+        transform: none;
+    }
+}
+
+/* ========= MediaInfoDialog ========= */
+.media-info-poster-image {
+    filter: brightness(0.8);
+}
+
+.media-info-poster-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.8) 0%,
+        rgba(0, 0, 0, 0.3) 50%,
+        rgba(0, 0, 0, 0) 100%
+    );
+    padding: var(--spacing-md, 16px);
+    display: flex;
+    align-items: flex-end;
+    height: 100%;
+}
+
+.media-info-poster-title {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+    font-weight: var(--font-weight-bold, 700);
+    color: white;
+}
+
+.media-info-path-text {
+    word-break: break-all;
+    font-size: 0.8rem;
+}
+
+/* ========= InfoEditor ========= */
+.info-editor-field-key {
+    width: 30%;
+    flex-shrink: 0;
+}
+
+/* ========= MediaCard 评分（H-3：从 Color.Warning 迁出，用专用 token） ========= */
+.media-card-rating {
+    /* 评分是"质量指示器"，不是警告。项目没有独立的 rating token，
+       这里借用 Color.Primary 作为正向强调，避免和 Warning 混淆 */
+    color: var(--mud-palette-primary);
+}
+
+.media-card-rating-value {
+    color: var(--mud-palette-primary);
+    font-weight: var(--font-weight-medium, 500);
+}
+
+/* ========= ManualAddMediaDialog ========= */
+.manual-add-frame {
+    /* 给 manual-add 专用的 frame 更柔和的圆角衔接 MudDialog */
+    border-radius: inherit;
+}
+
+.manual-add-hero {
+    /* Hero 高度略大，容纳两行文件名 + 路径 + 元数据 chip 行 */
+    min-height: 120px;
+}
+
+/* 路径可点击复制：hover 时颜色加深 */
+.manual-add-path {
+    cursor: pointer;
+    user-select: all;
+    transition: color var(--transition-fast, 0.15s);
+    border-radius: var(--radius-sm);
+    padding: 2px 4px;
+    margin-left: -4px;
+}
+
+.manual-add-path:hover,
+.manual-add-path:focus-visible {
+    color: var(--mud-palette-text-primary);
+    background-color: rgba(var(--nk-accent-rgb, var(--mud-palette-primary-rgb)), 0.08);
+    outline: none;
+}
+
+/* Hero 元数据 chip —— 轻量 pill，区别于主按钮类 chip */
+.manual-add-meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--radius-full, 9999px);
+    background-color: rgba(var(--nk-accent-rgb, var(--mud-palette-primary-rgb)), 0.12);
+    font-size: var(--font-size-xs, 0.75rem);
+    color: var(--mud-palette-text-primary);
+    border: 1px solid rgba(var(--nk-accent-rgb, var(--mud-palette-primary-rgb)), 0.25);
+}
+
+.manual-add-meta-chip .mud-icon-root {
+    font-size: 14px;
+    color: rgb(var(--nk-accent-rgb, var(--mud-palette-primary-rgb)));
+}
+
+/* Body 容器：去掉 content 默认的子元素 margin-top 收敛，改用 gap */
+.manual-add-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.manual-add-body > * + * {
+    margin-top: 0;
+}
+
+/* 类型 chip 行：间距统一 */
+.manual-add-category-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+}
+
+/* 选中的类型 chip 加发光 —— 略胜一档的微增量 */
+.manual-add-category-chip--selected {
+    box-shadow: 0 0 0 2px rgba(var(--mud-palette-surface-rgb), 1),
+                0 0 0 3px rgba(var(--mud-palette-primary-rgb), 0.5),
+                var(--glow-primary);
+    transform: translateY(-1px);
+    transition: box-shadow var(--transition-normal), transform var(--transition-normal);
+}
+
+/* 手风琴容器：去掉默认背景，只用细边框 */
+.manual-add-optional-panel {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: transparent;
+}
+
+.manual-add-optional-panel .mud-expansion-panel {
+    background: transparent;
+}
+
+/* ========= MediaKindPickerDialog ========= */
+.media-kind-picker-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-lg);
+}
+
+/* 卡片基样式 —— 实际上是 <button>，去掉 UA 默认样式，保留可点击/可聚焦 */
+.media-kind-picker-card {
+    appearance: none;
+    -webkit-appearance: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-2xl) var(--spacing-lg);
+    min-height: 180px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--mud-palette-lines-default);
+    border-left-width: 4px;
+    background: linear-gradient(
+        135deg,
+        rgba(var(--mud-palette-surface-rgb), 1) 0%,
+        rgba(var(--mud-palette-surface-rgb), 0.7) 100%
+    );
+    color: var(--mud-palette-text-primary);
+    cursor: pointer;
+    transition:
+        transform var(--transition-slow),
+        box-shadow var(--transition-slow),
+        border-color var(--transition-slow),
+        background var(--transition-slow);
+    font: inherit;
+    text-align: center;
+}
+
+.media-kind-picker-card--folder {
+    border-left-color: var(--mud-palette-warning);
+}
+
+.media-kind-picker-card--folder .media-kind-picker-card__icon {
+    color: var(--mud-palette-warning);
+}
+
+.media-kind-picker-card--file {
+    border-left-color: var(--mud-palette-info);
+}
+
+.media-kind-picker-card--file .media-kind-picker-card__icon {
+    color: var(--mud-palette-info);
+}
+
+.media-kind-picker-card:hover,
+.media-kind-picker-card:focus-visible {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    outline: none;
+}
+
+.media-kind-picker-card--folder:hover,
+.media-kind-picker-card--folder:focus-visible {
+    border-color: var(--mud-palette-warning);
+    box-shadow: var(--shadow-lg), var(--glow-warning);
+    background: linear-gradient(
+        135deg,
+        rgba(var(--mud-palette-warning-rgb), 0.08) 0%,
+        rgba(var(--mud-palette-surface-rgb), 0.9) 100%
+    );
+}
+
+.media-kind-picker-card--file:hover,
+.media-kind-picker-card--file:focus-visible {
+    border-color: var(--mud-palette-info);
+    box-shadow: var(--shadow-lg), var(--glow-info);
+    background: linear-gradient(
+        135deg,
+        rgba(var(--mud-palette-info-rgb), 0.08) 0%,
+        rgba(var(--mud-palette-surface-rgb), 0.9) 100%
+    );
+}
+
+.media-kind-picker-card:active {
+    transform: translateY(-2px);
+    transition-duration: 0.1s;
+}
+
+.media-kind-picker-card__icon {
+    font-size: 48px !important;
+}
+
+.media-kind-picker-card__icon .mud-icon-root,
+.media-kind-picker-card .media-kind-picker-card__icon {
+    font-size: 48px !important;
+}
+
+.media-kind-picker-card__title {
+    font-size: var(--font-size-lg, 1.125rem);
+    font-weight: var(--font-weight-semibold, 600);
+    margin-top: var(--spacing-sm);
+}
+
+.media-kind-picker-card__desc {
+    font-size: var(--font-size-sm, 0.875rem);
+    color: var(--mud-palette-text-secondary);
+}
+
+.media-kind-picker-card__hint {
+    font-size: var(--font-size-xs, 0.75rem);
+    color: var(--mud-palette-text-disabled);
+    margin-top: var(--spacing-xs);
+}
+
+/* 小屏下卡片改为竖排 */
+@media (max-width: 480px) {
+    .media-kind-picker-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .media-kind-picker-card {
+        min-height: 140px;
+        padding: var(--spacing-lg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .media-kind-picker-card {
+        transition: none;
+    }
+    .media-kind-picker-card:hover,
+    .media-kind-picker-card:focus-visible {
+        transform: none;
+    }
+}

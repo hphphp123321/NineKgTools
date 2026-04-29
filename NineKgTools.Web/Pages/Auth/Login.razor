@@ -1,0 +1,80 @@
+@page "/login"
+@layout LoginLayout
+@using Microsoft.AspNetCore.Authorization
+@using NineKgTools.Layout
+@attribute [AllowAnonymous]
+
+<PageTitle>登录 - NineKgTools</PageTitle>
+
+<div class="login-container">
+    <MudCard Elevation="4" Class="card-header login-card">
+        <MudCardContent>
+            <!-- Logo区域 -->
+            <div class="login-logo">
+                <div class="login-brand-lockup">
+                    <MudImage Src="data/images/logo-9-icon-transparent.png" Width="160" Alt="9KgTools Logo" />
+                </div>
+            </div>
+
+            <!-- 登录表单 -->
+            <MudForm @ref="_form" @bind-IsValid="_formValid">
+                <MudTextField @bind-Value="Username"
+                              Label="用户名"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="请输入用户名"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Person"
+                              UserAttributes="@_usernameAttrs"
+                              Class="mb-4" />
+
+                <MudTextField @bind-Value="Password"
+                              Label="密码"
+                              Variant="Variant.Outlined"
+                              InputType="@_passwordInputType"
+                              Required="true"
+                              RequiredError="请输入密码"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@_passwordIcon"
+                              OnAdornmentClick="TogglePasswordVisibility"
+                              UserAttributes="@_passwordAttrs"
+                              @onkeydown="HandlePasswordKeyDown"
+                              Class="mb-2" />
+
+                <div class="d-flex align-center mb-4">
+                    <MudCheckBox @bind-Value="_rememberMe"
+                                 Label="记住我"
+                                 Color="Color.Primary"
+                                 Dense="true" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">30 天内自动登录</MudText>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div role="alert">
+                        <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4">@_errorMessage</MudAlert>
+                    </div>
+                }
+
+                <MudButton FullWidth="true"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Size="Size.Large"
+                           Disabled="@_isLoading"
+                           OnClick="HandleLogin"
+                           Class="login-button">
+                    @if (_isLoading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>登录中...</span>
+                    }
+                    else
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Login" Class="mr-2" />
+                        <span>登录</span>
+                    }
+                </MudButton>
+            </MudForm>
+        </MudCardContent>
+    </MudCard>
+</div>

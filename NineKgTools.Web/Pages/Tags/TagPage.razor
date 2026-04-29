@@ -1,0 +1,148 @@
+@page "/tag/{tagId:int}"
+
+<PageTitle>@(_tag?.Name ?? "标签详情")</PageTitle>
+
+@using NineKgTools.Core.Models.Tags
+@using NineKgTools.Core.Services.Tags
+@using NineKgTools.Core.Models.Media
+@using NineKgTools.Components.Medias
+
+@if (_isLoading)
+{
+    <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+        <MudGrid>
+            <MudItem xs="12">
+                <MudCard Elevation="4" Class="card-base card-header mb-4">
+                    <MudCardContent>
+                        <div class="d-flex align-center page-header-row">
+                            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="64px" Height="64px" Class="mr-4"/>
+                            <div class="flex-grow-1">
+                                <MudSkeleton SkeletonType="SkeletonType.Text" Width="200px" Height="32px" Class="mb-2"/>
+                                <MudSkeleton SkeletonType="SkeletonType.Text" Width="300px" Height="24px"/>
+                            </div>
+                            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Width="120px" Height="40px"/>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
+}
+else if (_tag == null)
+{
+    <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+        <MudGrid>
+            <MudItem xs="12">
+                <PageHeader Icon="@Icons.Material.Filled.ErrorOutline"
+                            IconColor="Color.Error"
+                            Title="标签不存在"
+                            Subtitle="@($"未找到ID为 {TagId} 的标签，该标签可能已被删除")">
+                    <Actions>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                                   Size="Size.Medium"
+                                   Href="/tags">
+                            返回标签列表
+                        </MudButton>
+                    </Actions>
+                </PageHeader>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+        <MudGrid>
+            <!-- 页面标题 -->
+            <MudItem xs="12">
+                <PageHeader Icon="@Icons.Material.Filled.LocalOffer"
+                            IconColor="Color.Primary"
+                            Title="标签详情"
+                            Subtitle="@_tag.Name">
+                    <Actions>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Secondary"
+                                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                                   Size="Size.Medium"
+                                   Href="/tags">
+                            返回标签管理
+                        </MudButton>
+                        <MudButton Color="Color.Primary"
+                                   Variant="Variant.Filled"
+                                   StartIcon="@(!_saveProcessing ? Icons.Material.Filled.Save : null)"
+                                   OnClick="SaveTag"
+                                   Disabled="@_saveProcessing"
+                                   Size="Size.Medium">
+                            @if (_saveProcessing)
+                            {
+                                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                                <MudText Class="ms-2">保存中</MudText>
+                            }
+                            else
+                            {
+                                <MudText>保存修改</MudText>
+                            }
+                        </MudButton>
+                    </Actions>
+                </PageHeader>
+            </MudItem>
+
+            <!-- 标签基本信息卡片 -->
+            <MudItem xs="12">
+                <MudCard Elevation="3" Class="card-base card-bordered-primary mb-4">
+                    <MudCardContent>
+                        <div class="d-flex align-center mb-3">
+                            <MudIcon Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" Class="mr-2"/>
+                            <MudText Typo="Typo.h6" Color="Color.Primary">标签信息</MudText>
+                            @if (_tag.TopTag != null)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Tertiary"
+                                         Variant="Variant.Outlined" Class="ml-4">
+                                    @_tag.TopTag.Name
+                                </MudChip>
+                            }
+                        </div>
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_tag.Name"
+                                              Label="标签名称"
+                                              Variant="Variant.Outlined"
+                                              Class="tag-name-field"
+                                              Immediate="true"/>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_tag.Description"
+                                              Label="标签描述"
+                                              Variant="Variant.Outlined"
+                                              Lines="3"
+                                              Class="tag-description-field"
+                                              Immediate="true"
+                                              Placeholder="请输入标签描述..."/>
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- 媒体展示区域 -->
+            <MudItem xs="12">
+                <MediaShownView InitialQueryParameters="@_initialParams"
+                                Title="关联媒体"
+                                TitleIcon="@Icons.Material.Filled.Collections"
+                                TitleColor="Color.Primary"
+                                EmptyDescription="当前标签还没有关联任何媒体，您可以在媒体详情页面为媒体添加此标签"
+                                EmptyStateText="当前标签还没有关联任何媒体"
+                                DefaultGridView="true"
+                                Simple="false"
+                                ShowCategoryFilter="true"
+                                ShowTagFilter="false"
+                                ShowFavoriteFilter="true"
+                                ShowRatingFilter="true"
+                                ShowDateFilter="true"
+                                PageSize="20"/>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
+}

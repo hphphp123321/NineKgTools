@@ -1,0 +1,122 @@
+@page "/media/overview"
+@page "/media/overview/{Category}"
+@using NineKgTools.Components.Medias
+@using NineKgTools.Core.Models.Categories
+@using NineKgTools.Utils
+
+<PageTitle>@_pageTitle</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <MudGrid>
+        <!-- 页面标题区域 -->
+        <MudItem xs="12">
+            <PageHeader Icon="@_selectedIcon"
+                        IconColor="@_selectedColor"
+                        Title="@_pageTitle"
+                        Subtitle="浏览和管理您的媒体库">
+                <Actions>
+                    <MudButton StartIcon="@Icons.Material.Filled.PostAdd"
+                               Color="Color.Success"
+                               Variant="Variant.Filled"
+                               Size="Size.Medium"
+                               aria-label="手动新建媒体"
+                               OnClick="HandleNewMediaAsync">
+                        新建媒体
+                    </MudButton>
+                </Actions>
+            </PageHeader>
+        </MudItem>
+
+        <!-- 分类选择卡片区域 -->
+        <MudItem xs="12">
+            <MudGrid>
+                <!-- 全部 -->
+                <MudItem xs="6" sm="4" md="2">
+                    <MudPaper Elevation="2"
+                              Class="@GetCategoryCardClass(null)"
+                              @onclick="@(() => SelectCategory(null))"
+                              tabindex="0"
+                              role="button"
+                              aria-pressed="@(_selectedCategory == null)"
+                              @onkeydown="@(async e => { if (e.Key is "Enter" or " ") await SelectCategory(null); })">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.Apps"
+                                     Color="Color.Primary"
+                                     Size="Size.Medium"
+                                     Class="mr-3"/>
+                            <div>
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">全部</MudText>
+                                @if (_isLoadingStats)
+                                {
+                                    <MudSkeleton Width="48px" Height="32px"/>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.h5" Color="Color.Primary">@_totalCount</MudText>
+                                }
+                            </div>
+                        </div>
+                    </MudPaper>
+                </MudItem>
+
+                @foreach (var cat in Categories)
+                {
+                    var current = cat;
+                    <MudItem xs="6" sm="4" md="2">
+                        <MudPaper Elevation="2"
+                                  Class="@GetCategoryCardClass(current)"
+                                  @onclick="@(() => SelectCategory(current))"
+                                  tabindex="0"
+                                  role="button"
+                                  aria-pressed="@(_selectedCategory == current)"
+                                  @onkeydown="@(async e => { if (e.Key is "Enter" or " ") await SelectCategory(current); })">
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@MediaUIHelper.GetCategoryIcon(current)"
+                                         Color="@MediaUIHelper.GetMediaColor(current)"
+                                         Size="Size.Medium"
+                                         Class="mr-3"/>
+                                <div>
+                                    <MudText Typo="Typo.body2" Class="mud-text-secondary">@GetCategoryName(current)</MudText>
+                                    @if (_isLoadingStats)
+                                    {
+                                        <MudSkeleton Width="48px" Height="32px"/>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.h5" Color="@MediaUIHelper.GetMediaColor(current)">@GetCategoryCount(current)</MudText>
+                                    }
+                                </div>
+                            </div>
+                        </MudPaper>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudItem>
+
+        <!-- 核心媒体展示区域 -->
+        <MudItem xs="12">
+            <div class="@(_isTransitioning ? "media-overview-content-area is-transitioning" : "media-overview-content-area")">
+                <MediaShownView
+                    @key="_mediaShownViewKey"
+                    InitialQueryParameters="@_queryParams"
+                    Title="@_mediaViewTitle"
+                    TitleIcon="@_selectedIcon"
+                    TitleColor="@_selectedColor"
+                    EmptyTitle="暂无媒体"
+                    EmptyDescription="当前筛选条件下没有找到媒体"
+                    EmptyIcon="@Icons.Material.Filled.ImageNotSupported"
+                    EmptyStateText="暂无媒体"
+                    DefaultGridView="true"
+                    Simple="false"
+                    ShowCategoryFilter="true"
+                    ShowTagFilter="true"
+                    ShowFavoriteFilter="true"
+                    ShowRatingFilter="true"
+                    ShowDateFilter="true"
+                    ShowSortOptions="true"
+                    PageSize="24"
+                    Class="mb-4" />
+            </div>
+        </MudItem>
+    </MudGrid>
+</MudContainer>

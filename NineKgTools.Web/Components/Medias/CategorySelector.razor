@@ -1,0 +1,181 @@
+@using NineKgTools.Core.Models.Categories
+@using NineKgTools.Utils
+@using NineKgTools.Core.Services.Categories
+@using Microsoft.AspNetCore.Components.Web
+@inject CategoryService CategoryService
+
+<div class="d-flex align-center">
+    <MudButton StartIcon="@MediaUIHelper.GetCategoryIcon(_selectedCategory.TopCategory)" 
+                  Color="@MediaUIHelper.GetMediaColor(_selectedCategory.TopCategory)"
+                  OnClick="OpenCategoryMenu" 
+                  Variant="Variant.Filled" 
+                  Class="mr-1">
+                  @_selectedCategory.Name
+    </MudButton>
+    
+    
+    <MudPopover Open="_isCategoryMenuOpen" 
+                Fixed="true" 
+                AnchorOrigin="Origin.BottomCenter" 
+                TransformOrigin="Origin.TopCenter"
+                Class="pa-4 rounded-lg mud-elevation-10"
+                Style="min-width: 300px;"
+                RelativeWidth="DropdownWidth.Adaptive"
+                MaxHeight="400"
+                OverlayClick="CloseCategoryMenu">
+        <div class="d-flex flex-column">
+            <MudText Typo="Typo.h6" Class="mb-3">选择分类</MudText>
+            
+            <MudDivider Class="mb-3" />
+
+            <!-- 顶层分类 -->
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                @foreach (var topCategory in Enum.GetValues<TopCategory>())
+                {
+                    if (topCategory != TopCategory.Unknown)
+                    {
+                        <MudChip T="string"
+                                Variant="@(_selectedTopCategory == topCategory ? Variant.Filled : Variant.Outlined)"
+                                Color="@MediaUIHelper.GetMediaColor(topCategory)"
+                                OnClick="@(() => SelectTopCategory(topCategory))"
+                                Size="Size.Medium"
+                                Label="true">
+                            @GetMediaTypeName(topCategory)
+                        </MudChip>
+                    }
+                }
+            </div>
+            
+            <!-- 子分类 -->
+            @if (_selectedTopCategory != TopCategory.Unknown)
+            {
+                <div class="d-flex flex-column gap-2">
+                    @foreach (var category in _categoriesByTopCategory)
+                    {
+                        var isSelected = _selectedCategory.Id == category.Id;
+                        var categoryClass = isSelected ? "pa-2 rounded-lg category-item selected-category" : "pa-2 rounded-lg category-item";
+                        var colorClass = GetColorClass(category.TopCategory);
+                        var borderStyle = $"border-left: 3px solid var(--mud-palette-{colorClass});";
+                        
+                        <MudPaper Elevation="0"
+                                 Outlined="@isSelected"
+                                 Class="@categoryClass"
+                                 Style="@borderStyle"
+                                 role="button"
+                                 tabindex="0"
+                                 aria-pressed="@(isSelected ? "true" : "false")"
+                                 aria-label="@($"选择分类 {category.Name}")"
+                                 @onclick="@(() => SelectCategoryAndNotify(category))"
+                                 @onkeydown="@((KeyboardEventArgs e) => OnCategoryKeyDown(e, category))">
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@MediaUIHelper.GetCategoryIcon(category.TopCategory)"
+                                        Size="Size.Small"
+                                        Color="@MediaUIHelper.GetMediaColor(category.TopCategory)"
+                                        Class="mr-2" />
+                                <MudText>@category.Name</MudText>
+                            </div>
+                        </MudPaper>
+                    }
+                </div>
+            }
+            
+            <!-- 操作按钮 -->
+            <MudDivider Class="mt-3 mb-3" />
+            <div class="d-flex justify-end gap-2">
+                <MudButton OnClick="CloseCategoryMenu" 
+                           Variant="Variant.Outlined" 
+                           Color="Color.Default"
+                           StartIcon="@Icons.Material.Filled.Cancel"
+                           Size="Size.Small">
+                    取消
+                </MudButton>
+            </div>
+        </div>
+    </MudPopover>
+</div>
+
+@* 所有样式已迁移到 /css/components/medias.css *@
+
+@code {
+    [Parameter]
+    public Category SelectedCategory { get; set; } = StaticCategories.Unknown;
+    
+    [Parameter]
+    public EventCallback<Category> SelectedCategoryChanged { get; set; }
+    
+    private bool _isCategoryMenuOpen;
+    private TopCategory _selectedTopCategory = TopCategory.Unknown;
+    private Category _selectedCategory = StaticCategories.Unknown;
+    private List<Category> _categoriesByTopCategory = new();
+    
+    protected override void OnParametersSet()
+    {
+        _selectedCategory = SelectedCategory;
+        _selectedTopCategory = SelectedCategory.TopCategory;
+        FilterCategoriesByTopCategory();
+    }
+    
+    private void OpenCategoryMenu()
+    {
+        _isCategoryMenuOpen = true;
+    }
+    
+    private void CloseCategoryMenu()
+    {
+        _isCategoryMenuOpen = false;
+    }
+    
+    private void SelectTopCategory(TopCategory topCategory)
+    {
+        _selectedTopCategory = topCategory;
+        FilterCategoriesByTopCategory();
+    }
+    
+    private void FilterCategoriesByTopCategory()
+    {
+        _categoriesByTopCategory = StaticCategories.CategoryList
+            .Where(c => c.TopCategory == _selectedTopCategory)
+            .ToList();
+    }
+    
+    private void SelectCategory(Category category)
+    {
+        _selectedCategory = category;
+    }
+    
+    private async Task SelectCategoryAndNotify(Category category)
+    {
+        _selectedCategory = category;
+        await SelectedCategoryChanged.InvokeAsync(category);
+        CloseCategoryMenu();
+    }
+
+    // WAI-ARIA button 模式：Enter / Space 等同 click
+    private async Task OnCategoryKeyDown(KeyboardEventArgs e, Category category)
+    {
+        if (e.Key == "Enter" || e.Key == " " || e.Key == "Spacebar")
+        {
+            await SelectCategoryAndNotify(category);
+        }
+    }
+    
+    private string GetMediaTypeName(TopCategory category) => category switch
+    {
+        TopCategory.Video => "视频",
+        TopCategory.Audio => "音频",
+        TopCategory.Picture => "图片",
+        TopCategory.Text => "文本",
+        TopCategory.Game => "游戏",
+        _ => "未知"
+    };
+    
+    private string GetColorClass(TopCategory category) => category switch
+    {
+        TopCategory.Video => "primary",
+        TopCategory.Audio => "secondary",
+        TopCategory.Picture => "warning",
+        TopCategory.Text => "tertiary",
+        TopCategory.Game => "info",
+        _ => "default"
+    };
+} 

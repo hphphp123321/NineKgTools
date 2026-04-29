@@ -1,0 +1,56 @@
+/* ==============================================
+   媒体卡片网格样式
+   统一的媒体卡片网格布局样式
+   ============================================== */
+
+/* 基础网格容器 */
+.media-card-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    transition: all var(--transition-slow);
+}
+
+/* 空状态容器 */
+.media-card-grid-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl) var(--spacing-md);
+    min-height: 200px;
+    background: linear-gradient(135deg, rgba(var(--mud-palette-info-rgb), 0.03) 0%, rgba(var(--mud-palette-info-rgb), 0.01) 100%);
+    border-radius: var(--radius-lg);
+    border: 2px dashed rgba(var(--mud-palette-info-rgb), 0.2);
+    transition: all var(--transition-slow);
+}
+
+.media-card-grid-empty:hover {
+    border-color: rgba(var(--mud-palette-info-rgb), 0.4);
+    background: rgba(var(--mud-palette-info-rgb), 0.05);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .media-card-grid {
+        gap: var(--spacing-sm);
+        justify-content: center;
+    }
+
+    .media-card-grid-empty {
+        min-height: 150px;
+        padding: var(--spacing-lg) var(--spacing-sm);
+    }
+}
+
+@media (max-width: 480px) {
+    .media-card-grid {
+        gap: var(--spacing-xs);
+    }
+
+    .media-card-grid-empty {
+        min-height: 120px;
+        padding: var(--spacing-md) var(--spacing-xs);
+    }
+}
+

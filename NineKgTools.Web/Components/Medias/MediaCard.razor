@@ -1,0 +1,96 @@
+﻿@using MudBlazor
+@using NineKgTools.Core.Models.Media
+@using NineKgTools.Utils
+@using System.Text.RegularExpressions
+@using NineKgTools.Core.Models.Categories
+
+@if (_isLoading)
+{
+    <MudCard Class="media-card-skeleton rounded-lg ma-2" Elevation="2">
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="150px"/>
+        <MudCardContent Class="pb-1">
+            <MudSkeleton Width="30%" Height="42px;"/>
+            <MudSkeleton Width="80%"/>
+            <MudSkeleton Width="100%"/>
+        </MudCardContent>
+    </MudCard>
+}
+else if (_media != null)
+{
+    <MudCard Class="media-card rounded-lg ma-2" Elevation="2">
+        <div class="position-relative">
+            <!-- 海报图片区域 -->
+            <div class="poster-container">
+                <MudCardMedia Image="@_posterUrl" Height="150" Class="poster-image"/>
+                <div class="card-poster-overlay">
+                    <div class="category-badge">
+                        <MudChip T="string"
+                                Size="Size.Small"
+                                Color="@GetMediaColor(_media.Category.TopCategory)"
+                                Variant="Variant.Filled"
+                                Class="ma-0">
+                            @_media.Category.Name
+                        </MudChip>
+                    </div>
+
+                    <!-- 收藏按钮悬浮在右下角 -->
+                    @if (!HideFavoriteButton)
+                    {
+                        <div class="favorite-button-container">
+                            <FavoriteSelector MediaId="@MediaId" OnFavoritesChanged="RefreshMedia" SimpleMode="true" />
+                        </div>
+                    }
+                    @CardActions
+                </div>
+            </div>
+        </div>
+        
+        <MudCardContent Class="pa-2">
+            <MudContainer Gutters="false" Class="d-flex flex-column" Style="height: 120px">
+                <!-- 标题区域 -->
+                <div class="media-title-container">
+                    <MudLink Typo="Typo.subtitle1" Href="@_mediaLink" Class="media-title" Title="@_mediaName">
+                        @_mediaName
+                    </MudLink>
+                </div>
+                
+                <MudSpacer/>
+                
+                <!-- 社团信息 -->
+                @if (_circle != null)
+                {
+                    <MudLink Typo="Typo.body2" Href="@_circle.GetCircleLink()" Class="circle-link">
+                        <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" Class="mr-1" />
+                        @_circle.Name
+                    </MudLink>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="d-flex align-center">
+                        <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" Class="mr-1" />
+                        未知
+                    </MudText>
+                }
+
+                <!-- 评分区域：刻意避开 Color.Warning，它是语义"警告"色，不应代表评分 -->
+                <div class="d-flex align-center mt-1">
+                    <MudRating SelectedValue="@((int)(_rating/2))"
+                              Size="Size.Small" ReadOnly="true"
+                              Color="Color.Primary"/>
+                    <MudText Typo="Typo.body2" Class="ml-1 media-card-rating-value">
+                        @_rating.ToString("F1")
+                    </MudText>
+                </div>
+            </MudContainer>
+        </MudCardContent>
+    </MudCard>
+}
+else
+{
+    <MudCard Class="media-card rounded-lg ma-2" Elevation="2">
+        <MudCardContent Class="d-flex flex-column align-center justify-center" Style="height: 270px;">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" Size="Size.Large" Class="mb-2"/>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">加载失败</MudText>
+        </MudCardContent>
+    </MudCard>
+}

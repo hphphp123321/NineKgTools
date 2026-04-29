@@ -1,0 +1,57 @@
+@using System.Collections.Generic
+
+<div class="mt-4">
+    <MudExpansionPanels Elevation="0" DisableGutters="true" Class="mt-2">
+        <MudExpansionPanel>
+            <TitleContent>
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.DataObject" Color="Color.Info" Class="mr-2" />
+                    <MudText Typo="Typo.h6" Color="Color.Info">扩展信息</MudText>
+                </div>
+            </TitleContent>
+            <ChildContent>
+                <div class="d-flex flex-column gap-3 pa-3">
+                    @foreach (var info in Infos ?? new Dictionary<string, string>())
+                    {
+                        <MudPaper Elevation="0" Class="pa-2 media-info-item">
+                            <div class="d-flex align-start">
+                                <MudChip Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" Class="mr-2 info-key-chip" T="string">
+                                    @info.Key
+                                </MudChip>
+                                <MudText Typo="Typo.body2" Class="mt-1">
+                                    @if (info.Key == "Duration" && int.TryParse(info.Value, out var duration))
+                                    {
+                                        @FormatDuration(duration)
+                                    }
+                                    else
+                                    {
+                                        @info.Value
+                                    }
+                                </MudText>
+                            </div>
+                        </MudPaper>
+                    }
+                </div>
+            </ChildContent>
+        </MudExpansionPanel>
+    </MudExpansionPanels>
+</div>
+
+@code {
+    [Parameter]
+    public Dictionary<string, string>? Infos { get; set; }
+    
+    private string FormatDuration(int seconds)
+    {
+        if (seconds <= 0) return "未知";
+        
+        var timeSpan = TimeSpan.FromSeconds(seconds);
+        
+        if (timeSpan.TotalHours >= 1)
+        {
+            return $"{(int)timeSpan.TotalHours}小时{timeSpan.Minutes}分钟";
+        }
+        
+        return $"{timeSpan.Minutes}分钟{timeSpan.Seconds}秒";
+    }
+} 

@@ -1,0 +1,61 @@
+@using MudBlazor
+@using NineKgTools.Core.Models.Media
+@using NineKgTools.Core.Models.Categories
+@using NineKgTools.Utils
+@using NineKgTools.Core.Services.Media
+
+@if (_media != null)
+{
+    <MudCard Elevation="2"
+             Class="rounded-lg simple-media-card">
+        <div class="position-relative poster-container">
+            <MudImage Src="@(_media.Poster?.GetImageUrl() ?? StaticStrings.ImageNotFound)"
+                      ObjectFit="ObjectFit.Cover"
+                      Height="140"
+                      Width="140"
+                      Class="poster-image rounded-t-lg"/>
+
+            <!-- 类型标签悬浮在左上角 -->
+            <div class="category-badge-overlay">
+                <MudChip T="string"
+                        Size="Size.Small"
+                        Color="@GetMediaColor(_media.Category.TopCategory)"
+                        Variant="Variant.Filled"
+                        Class="category-chip">
+                    @_media.Category.Name
+                </MudChip>
+            </div>
+        </div>
+
+        <MudCardContent Class="pa-2" Style="height: 60px;">
+            <MudLink Href="@_media.GetMediaLink()"
+                     Typo="Typo.body2"
+                     Class="media-title-link">
+                @_media.Title
+            </MudLink>
+
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                @(_media.ReleaseDate.HasValue ? _media.ReleaseDate.Value.ToString("yyyy-MM-dd") : "未知日期")
+            </MudText>
+        </MudCardContent>
+    </MudCard>
+}
+else if (_isLoading)
+{
+    <MudCard Elevation="2" Class="rounded-lg simple-media-card">
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="140px" Width="140px" Class="rounded-t-lg"/>
+        <MudCardContent Class="pa-2" Style="height: 60px;">
+            <MudSkeleton SkeletonType="SkeletonType.Text" Width="100%" Height="20px" Class="mb-1"/>
+            <MudSkeleton SkeletonType="SkeletonType.Text" Width="60%" Height="16px"/>
+        </MudCardContent>
+    </MudCard>
+}
+else
+{
+    <MudCard Elevation="2" Class="rounded-lg simple-media-card">
+        <MudCardContent Class="d-flex flex-column align-center justify-center" Style="height: 200px;">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" Size="Size.Large" Class="mb-2"/>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">加载失败</MudText>
+        </MudCardContent>
+    </MudCard>
+}

@@ -1,0 +1,141 @@
+@using System.Collections.Generic
+
+<div class="info-editor-container">
+    <div class="d-flex align-center justify-space-between mb-3">
+        <div class="d-flex align-center">
+            <MudIcon Icon="@Icons.Material.Filled.DataObject" Color="Color.Info" Class="mr-2" />
+            <MudText Typo="Typo.h6" Color="Color.Info">扩展信息</MudText>
+        </div>
+        @if (IsEditable)
+        {
+            <MudButton OnClick="AddNewInfo"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Color="Color.Info"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small">
+                添加信息
+            </MudButton>
+        }
+    </div>
+
+    @if (InfoDictionary.Count > 0)
+    {
+        <div class="d-flex flex-column gap-3">
+            @foreach (var info in InfoDictionary.ToList())
+            {
+                <MudPaper Elevation="1" Class="pa-3 info-item-container">
+                    @if (_editingKey == info.Key)
+                    {
+                        <!-- 编辑模式 -->
+                        <div class="d-flex gap-2 align-end">
+                            <MudTextField @bind-Value="_tempKey"
+                                          Label="键"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          Class="flex-shrink-0 info-editor-field-key" />
+                            <MudTextField @bind-Value="_tempValue"
+                                          Label="值"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          AutoGrow="true"
+                                          Class="flex-grow-1" />
+                            <div class="d-flex gap-1">
+                                <MudIconButton Icon="@Icons.Material.Filled.Check"
+                                               Color="Color.Success"
+                                               Size="Size.Small"
+                                               aria-label="保存修改"
+                                               OnClick="() => SaveEdit(info.Key)" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                               Color="Color.Default"
+                                               Size="Size.Small"
+                                               aria-label="取消编辑"
+                                               OnClick="CancelEdit" />
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- 显示模式 -->
+                        <div class="d-flex align-start gap-2">
+                            <MudChip Size="Size.Small" 
+                                     Color="Color.Info" 
+                                     Variant="Variant.Outlined" 
+                                     Class="mr-2 info-key-chip flex-shrink-0" 
+                                     T="string">
+                                @info.Key
+                            </MudChip>
+                            <MudText Typo="Typo.body2" Class="flex-grow-1 mt-1">
+                                @if (info.Key == "Duration" && int.TryParse(info.Value, out var duration))
+                                {
+                                    @FormatDuration(duration)
+                                }
+                                else
+                                {
+                                    @info.Value
+                                }
+                            </MudText>
+                            @if (IsEditable)
+                            {
+                                <div class="d-flex gap-1 ml-auto">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                   Color="Color.Primary"
+                                                   Size="Size.Small"
+                                                   aria-label="@($"编辑 {info.Key}")"
+                                                   OnClick="() => StartEdit(info.Key, info.Value)" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Color="Color.Error"
+                                                   Size="Size.Small"
+                                                   aria-label="@($"删除 {info.Key}")"
+                                                   OnClick="() => RemoveInfo(info.Key)" />
+                                </div>
+                            }
+                        </div>
+                    }
+                </MudPaper>
+            }
+        </div>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined">
+            <MudText Typo="Typo.body2">@(IsEditable ? "还没有扩展信息，点击下方按钮添加" : "暂无扩展信息")</MudText>
+        </MudAlert>
+    }
+
+    <!-- 添加新信息的卡片 -->
+    @if (_isAddingNew)
+    {
+        <MudPaper Elevation="2" Class="pa-3 mt-3 add-info-container">
+            <div class="d-flex gap-2 align-end">
+                <MudTextField @bind-Value="_newKey"
+                              Label="键"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="flex-shrink-0 info-editor-field-key"
+                              Placeholder="例如：Duration" />
+                <MudTextField @bind-Value="_newValue"
+                              Label="值"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              AutoGrow="true"
+                              Class="flex-grow-1"
+                              Placeholder="对应的值" />
+                <div class="d-flex gap-1">
+                    <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                   Color="Color.Success"
+                                   Size="Size.Small"
+                                   aria-label="确认添加"
+                                   OnClick="ConfirmAddNew"
+                                   Disabled="@(string.IsNullOrWhiteSpace(_newKey) || string.IsNullOrWhiteSpace(_newValue))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                   Color="Color.Default"
+                                   Size="Size.Small"
+                                   aria-label="取消添加"
+                                   OnClick="CancelAddNew" />
+                </div>
+            </div>
+        </MudPaper>
+    }
+</div>
+
+ 

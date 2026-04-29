@@ -1,0 +1,237 @@
+@using NineKgTools.Core.Models.Media
+@using NineKgTools.Core.Services.Media
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center">
+            <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" />
+            <MudText Typo="Typo.h6">选择创作者</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <!-- 搜索框和类型筛选 -->
+        <div class="creator-search-row">
+            <MudTextField T="string"
+                          @bind-Value="_searchTerm"
+                          Label="搜索创作者"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          AdornmentColor="Color.Primary"
+                          Placeholder="按名称或别名搜索（至少 2 个字）"
+                          HelperText="清空可查看全部"
+                          Clearable="true"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          OnDebounceIntervalElapsed="HandleSearchTermChanged"
+                          AutoFocus="true"
+                          Class="flex-grow-1" />
+
+            <MudSelect T="CreatorType?"
+                       Value="_selectedType"
+                       Label="类型筛选"
+                       Variant="Variant.Outlined"
+                       Clearable="true"
+                       Class="creator-type-select"
+                       ValueChanged="HandleTypeFilterChanged">
+                @foreach (CreatorType type in Enum.GetValues<CreatorType>())
+                {
+                    <MudSelectItem Value="@((CreatorType?)type)">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@GetCreatorTypeIcon(type)" Size="Size.Small" Class="mr-2" />
+                            @GetCreatorTypeName(type)
+                        </div>
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+
+        <!-- 新增按钮：选择语义由卡片的视觉状态（边框/背景/CheckCircle/底部预览）传达，无需文字提示 -->
+        <div class="d-flex justify-end mb-3">
+            <MudButton Color="Color.Success"
+                       Variant="Variant.Outlined"
+                       StartIcon="@(_showAddCreatorPanel ? Icons.Material.Filled.Close : Icons.Material.Filled.Add)"
+                       Size="Size.Small"
+                       OnClick="ToggleAddCreatorPanel">
+                @(_showAddCreatorPanel ? "取消" : "新增创作者")
+            </MudButton>
+        </div>
+
+        <!-- 新增创作者面板 -->
+        <MudCollapse Expanded="_showAddCreatorPanel">
+            <MudPaper Elevation="0" Class="pa-3 mb-3 rounded-lg creator-add-panel">
+                <MudText Typo="Typo.subtitle2" Class="mb-2">新增创作者</MudText>
+
+                <MudTextField @ref="_newCreatorNameField"
+                              T="string"
+                              @bind-Value="_newCreatorName"
+                              Label="创作者名称"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Placeholder="例如：宫崎骏"
+                              Required="true"
+                              RequiredError="请输入创作者名称"
+                              MaxLength="100"
+                              Immediate="true"
+                              Class="mb-2" />
+
+                <MudText Typo="Typo.caption" Class="mb-1">类型（可多选）</MudText>
+                <div class="d-flex flex-wrap gap-2 mb-2">
+                    @foreach (CreatorType type in Enum.GetValues<CreatorType>())
+                    {
+                        var isSelected = _newCreatorTypes.Contains(type);
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="@(isSelected ? GetCreatorTypeColor(type) : Color.Default)"
+                                 Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                                 OnClick="() => ToggleCreatorType(type)"
+                                 Class="creator-type-chip">
+                            @if (isSelected)
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Class="mr-1" />
+                            }
+                            @GetCreatorTypeName(type)
+                        </MudChip>
+                    }
+                </div>
+
+                <MudButton Color="Color.Primary"
+                           Variant="Variant.Filled"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="CreateNewCreator"
+                           Disabled="@string.IsNullOrWhiteSpace(_newCreatorName)">
+                    创建
+                </MudButton>
+            </MudPaper>
+        </MudCollapse>
+
+        <!-- 加载状态 -->
+        @if (_isLoading)
+        {
+            <div class="d-flex justify-center py-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            </div>
+        }
+        else
+        {
+            <!-- 创作者列表 -->
+            @if (_filteredCreators.Count > 0)
+            {
+                @if (_isResultsTruncated)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+                        <MudText Typo="Typo.caption">
+                            匹配项较多，仅展示前 @_filteredCreators.Count 位。输入更精确的关键词可缩小范围。
+                        </MudText>
+                    </MudAlert>
+                }
+                <div class="creator-list-wrap">
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var creator in _filteredCreators)
+                        {
+                            var isSelected = IsCreatorSelected(creator);
+                            var creatorLocal = creator;
+                            <div class="@GetCardCssClass(isSelected)"
+                                 role="button"
+                                 tabindex="0"
+                                 aria-pressed="@(isSelected ? "true" : "false")"
+                                 aria-label="@GetCardAriaLabel(creator, isSelected)"
+                                 @onclick="() => ToggleCreator(creatorLocal)"
+                                 @onkeydown="@((KeyboardEventArgs e) => OnCreatorCardKeyDown(e, creatorLocal))">
+                                <div class="d-flex align-center gap-2">
+                                    @if (creator.Avatar != null)
+                                    {
+                                        <MudAvatar Size="Size.Medium">
+                                            <MudImage Src="@creator.Avatar.GetImageUrl()" />
+                                        </MudAvatar>
+                                    }
+                                    else
+                                    {
+                                        <MudAvatar Color="@(isSelected ? Color.Primary : Color.Default)" Size="Size.Medium">
+                                            <MudIcon Icon="@Icons.Material.Filled.Person" />
+                                        </MudAvatar>
+                                    }
+
+                                    <div>
+                                        <MudText Typo="Typo.body2">@creator.Name</MudText>
+                                        @if (creator.Types.Any())
+                                        {
+                                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                                @foreach (var type in creator.Types.Take(2))
+                                                {
+                                                    <MudChip T="string"
+                                                             Size="Size.Small"
+                                                             Color="@GetCreatorTypeColor(type)"
+                                                             Variant="Variant.Text"
+                                                             Class="creator-type-badge">
+                                                        @GetCreatorTypeName(type)
+                                                    </MudChip>
+                                                }
+                                                @if (creator.Types.Count > 2)
+                                                {
+                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">+@(creator.Types.Count - 2)</MudText>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+
+                                    @if (isSelected)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                                 Color="Color.Primary"
+                                                 Size="Size.Small"
+                                                 Class="ml-auto" />
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    <MudText Typo="Typo.body2">没有匹配的创作者</MudText>
+                </MudAlert>
+            }
+        }
+
+        <!-- 已选择的创作者预览 (仅多选模式) -->
+        @if (AllowMultiSelect && _tempSelectedCreators.Count > 0)
+        {
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.subtitle2" Class="mb-2">已选择 @_tempSelectedCreators.Count 位</MudText>
+            <div class="d-flex flex-wrap gap-1">
+                @foreach (var creator in _tempSelectedCreators.OrderBy(c => c.Name))
+                {
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="Color.Primary"
+                             Variant="Variant.Filled"
+                             OnClose="() => ToggleCreator(creator)"
+                             CloseIcon="@Icons.Material.Filled.Close">
+                        @if (creator.Avatar != null)
+                        {
+                            <MudAvatar Size="Size.Small" Class="mr-1">
+                                <MudImage Src="@creator.Avatar.GetImageUrl()" />
+                            </MudAvatar>
+                        }
+                        @creator.Name
+                    </MudChip>
+                }
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Default" OnClick="Cancel">取消</MudButton>
+        <MudButton Color="Color.Primary"
+                   OnClick="Confirm"
+                   Variant="Variant.Filled"
+                   Disabled="@(!AllowMultiSelect && _tempSelectedCreators.Count == 0)">
+            @GetConfirmButtonLabel()
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@* 所有样式已迁移到 /css/components/creators.css *@

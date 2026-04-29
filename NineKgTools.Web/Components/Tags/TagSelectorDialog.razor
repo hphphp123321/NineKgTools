@@ -1,0 +1,143 @@
+@using NineKgTools.Core.Models.Tags
+@using NineKgTools.Core.Services.Tags
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center">
+            <MudIcon Icon="@Icons.Material.Filled.LocalOffer" Class="mr-2" />
+            <MudText Typo="Typo.h6">选择标签</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <!-- 搜索框 -->
+        <MudTextField T="string"
+                      @bind-Value="_searchTerm"
+                      Label="搜索标签"
+                      Variant="Variant.Outlined"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      AdornmentColor="Color.Primary"
+                      Placeholder="输入标签名称进行搜索..."
+                      Clearable="true"
+                      Immediate="true"
+                      DebounceInterval="300"
+                      OnDebounceIntervalElapsed="HandleSearchTermChanged"
+                      Class="mb-3" />
+
+        <!-- 多选模式说明 -->
+        @if (AllowMultiSelect)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                <MudText Typo="Typo.caption">多选模式：点击标签进行选择/取消选择</MudText>
+            </MudAlert>
+        }
+
+        <!-- 加载状态 -->
+        @if (_isLoading)
+        {
+            <div class="d-flex justify-center py-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            </div>
+        }
+        else
+        {
+            <!-- 标签列表按顶层分组 -->
+            @if (_filteredTags.Count > 0)
+            {
+                <MudExpansionPanels Elevation="0" Class="tag-groups">
+                    @foreach (var group in _filteredTags.Where(t => t.TopTag != null).GroupBy(t => t.TopTag))
+                    {
+                        <MudExpansionPanel
+                            Expanded="@(!string.IsNullOrWhiteSpace(_searchTerm))">
+                            <TitleContent>
+                                <div class="d-flex align-center">
+                                    <MudIcon Icon="@Icons.Material.Filled.Category" Color="Color.Secondary" Class="mr-2" />
+                                    <MudText Typo="Typo.subtitle1">@group.Key.Name</MudText>
+                                    <MudSpacer />
+                                    <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Outlined">
+                                        @group.Count() 个标签
+                                    </MudChip>
+                                </div>
+                            </TitleContent>
+                            <ChildContent>
+                                <div class="d-flex flex-wrap gap-2 pa-3">
+                                    @foreach (var tag in group.OrderBy(t => t.Name))
+                                    {
+                                        var isSelected = _tempSelectedTags.Any(t => t.Id == tag.Id);
+                                        <MudChip T="string"
+                                                 Size="Size.Medium"
+                                                 Color="@(isSelected ? Color.Primary : Color.Default)"
+                                                 Variant="@(isSelected ? Variant.Filled : Variant.Outlined)"
+                                                 OnClick="() => ToggleTag(tag)"
+                                                 Class="selectable-tag"
+                                                 Style="cursor: pointer;">
+                                            @if (isSelected)
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Class="mr-1" />
+                                            }
+                                            @tag.Name
+                                        </MudChip>
+                                    }
+                                </div>
+                            </ChildContent>
+                        </MudExpansionPanel>
+                    }
+                </MudExpansionPanels>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    <MudText Typo="Typo.body2">没有找到匹配的标签</MudText>
+                </MudAlert>
+            }
+        }
+
+        <!-- 已选择的标签预览 (仅多选模式) -->
+        @if (AllowMultiSelect && _tempSelectedTags.Count > 0)
+        {
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.subtitle2" Class="mb-2">已选择 (@_tempSelectedTags.Count):</MudText>
+            <div class="d-flex flex-wrap gap-1">
+                @foreach (var tag in _tempSelectedTags.OrderBy(t => t.Name))
+                {
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="Color.Primary"
+                             Variant="Variant.Filled"
+                             OnClose="() => ToggleTag(tag)"
+                             CloseIcon="@Icons.Material.Filled.Close">
+                        @tag.Name
+                    </MudChip>
+                }
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Default" OnClick="Cancel">取消</MudButton>
+        <MudButton Color="Color.Primary" 
+                   OnClick="Confirm" 
+                   Variant="Variant.Filled"
+                   Disabled="@(!AllowMultiSelect && _tempSelectedTags.Count == 0)">
+            确定@(AllowMultiSelect && _tempSelectedTags.Count > 0 ? $" ({_tempSelectedTags.Count})" : "")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .selectable-tag {
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .selectable-tag:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .tag-groups .mud-expand-panel {
+        margin-bottom: 8px;
+    }
+
+    .tag-groups .mud-expand-panel-header {
+        padding: 12px 16px;
+    }
+</style>

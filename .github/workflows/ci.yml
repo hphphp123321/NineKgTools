@@ -1,0 +1,61 @@
+name: CI
+
+# 在 PR 与 push 到 main 时跑 build + test
+# 排除 NineKgTools.Desktop（MAUI Windows 专属，Linux runner 编不动）
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# 同一 PR 触发新 push 时取消旧 run，节省 CI 配额
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET (read version from global.json)
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore (Web + Tests)
+        run: |
+          dotnet restore NineKgTools.Web/NineKgTools.Web.csproj
+          dotnet restore NineKgTools.Tests/NineKgTools.Tests.csproj
+
+      - name: Build Web
+        run: dotnet build NineKgTools.Web/NineKgTools.Web.csproj --configuration Release --no-restore
+
+      - name: Build Tests
+        run: dotnet build NineKgTools.Tests/NineKgTools.Tests.csproj --configuration Release --no-restore
+
+      - name: Run Tests
+        run: >-
+          dotnet test NineKgTools.Tests/NineKgTools.Tests.csproj
+          --configuration Release
+          --no-build
+          --logger "trx;LogFileName=test-results.trx"
+          --logger "console;verbosity=normal"
+          --results-directory ./TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/*.trx
+          retention-days: 7

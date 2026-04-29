@@ -1,0 +1,257 @@
+@using MudBlazor
+@using NineKgTools.Core.Models.Search
+@using NineKgTools.Core.Models.Categories
+@using NineKgTools.Core.Models.Tags
+@using NineKgTools.Core.Services.Categories
+@using NineKgTools.Core.Services.Tags
+@using NineKgTools.Components.Tags
+@using NineKgTools.Components.Medias
+
+<MudDialog>
+    <DialogContent>
+        <div class="filter-dialog-content">
+            <MudText Typo="Typo.h6" Class="mb-4">搜索筛选器</MudText>
+
+            <!-- 实体类型选择 -->
+            <div class="filter-section mb-4">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">搜索范围</MudText>
+                <div class="entity-type-chips">
+                    <MudChip T="string"
+                             Color="@(CurrentOptions.EntityTypes.HasFlag(SearchEntityTypes.Media) ? Color.Primary : Color.Default)"
+                             Variant="@(CurrentOptions.EntityTypes.HasFlag(SearchEntityTypes.Media) ? Variant.Filled : Variant.Outlined)"
+                             OnClick="@(() => ToggleEntityType(SearchEntityTypes.Media))"
+                             Class="ma-1">
+                        <MudIcon Icon="@Icons.Material.Filled.Movie" Size="Size.Small" Class="mr-1" />
+                        媒体
+                    </MudChip>
+                    <MudChip T="string"
+                             Color="@(CurrentOptions.EntityTypes.HasFlag(SearchEntityTypes.Tag) ? Color.Primary : Color.Default)"
+                             Variant="@(CurrentOptions.EntityTypes.HasFlag(SearchEntityTypes.Tag) ? Variant.Filled : Variant.Outlined)"
+                             OnClick="@(() => ToggleEntityType(SearchEntityTypes.Tag))"
+                             Class="ma-1">
+                        <MudIcon Icon="@Icons.Material.Filled.Tag" Size="Size.Small" Class="mr-1" />
+                        标签
+                    </MudChip>
+                    <MudChip T="string"
+                             Color="@(CurrentOptions.EntityTypes.HasFlag(SearchEntityTypes.Circle) ? Color.Primary : Color.Default)"
+                             Variant="@(CurrentOptions.EntityTypes.HasFlag(SearchEntityTypes.Circle) ? Variant.Filled : Variant.Outlined)"
+                             OnClick="@(() => ToggleEntityType(SearchEntityTypes.Circle))"
+                             Class="ma-1">
+                        <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" Class="mr-1" />
+                        社团
+                    </MudChip>
+                    <MudChip T="string"
+                             Color="@(CurrentOptions.EntityTypes.HasFlag(SearchEntityTypes.Creator) ? Color.Primary : Color.Default)"
+                             Variant="@(CurrentOptions.EntityTypes.HasFlag(SearchEntityTypes.Creator) ? Variant.Filled : Variant.Outlined)"
+                             OnClick="@(() => ToggleEntityType(SearchEntityTypes.Creator))"
+                             Class="ma-1">
+                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-1" />
+                        创作者
+                    </MudChip>
+                </div>
+            </div>
+
+            <!-- 向量搜索开关 -->
+            <div class="filter-section mb-4">
+                <MudSwitch T="bool"
+                          @bind-Value="CurrentOptions.EnableVectorSearch"
+                          Label="启用AI语义搜索"
+                          Color="Color.Primary" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    使用AI理解搜索意图，提供更智能的搜索结果，需要在设置里开启AI并填写相关配置
+                </MudText>
+            </div>
+
+            <!-- 分类筛选 - 使用 CategorySelectorDialog -->
+            <div class="filter-section mb-4">
+                <div class="d-flex align-center justify-space-between mb-2">
+                    <MudText Typo="Typo.subtitle1">分类筛选</MudText>
+                    <MudButton OnClick="OpenCategorySelector"
+                               StartIcon="@Icons.Material.Filled.Category"
+                               Color="Color.Primary"
+                               Variant="Variant.Outlined"
+                               Size="Size.Small">
+                        选择分类
+                    </MudButton>
+                </div>
+
+                @if (HasCategoryFilter)
+                {
+                    <div class="selected-categories mb-3">
+                        @if (_onlyTopCategory && _selectedTopCategory != TopCategory.Unknown)
+                        {
+                            <!-- 按顶级分类筛选 -->
+                            <MudChip T="string"
+                                    Size="Size.Small"
+                                    Color="@GetCategoryColor(_selectedTopCategory)"
+                                    Variant="Variant.Filled"
+                                    OnClose="ClearCategoryFilter"
+                                    CloseIcon="@Icons.Material.Filled.Close"
+                                    Class="ma-1">
+                                <MudIcon Icon="@GetCategoryIcon(_selectedTopCategory)" Size="Size.Small" Class="mr-1" />
+                                @GetCategoryDisplayText()
+                            </MudChip>
+                        }
+                        else if (_selectedCategories.Any())
+                        {
+                            <!-- 多选分类显示 -->
+                            <MudText Typo="Typo.caption" Class="mb-2">已选择的分类 (@_selectedCategories.Count):</MudText>
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach (var category in _selectedCategories)
+                                {
+                                    <MudChip T="string"
+                                            Size="Size.Small"
+                                            Color="@GetCategoryColor(category.TopCategory)"
+                                            Variant="Variant.Filled"
+                                            OnClose="@(() => RemoveCategory(category))"
+                                            CloseIcon="@Icons.Material.Filled.Close"
+                                            Class="ma-1">
+                                        <MudIcon Icon="@GetCategoryIcon(category.TopCategory)" Size="Size.Small" Class="mr-1" />
+                                        @category.Name
+                                    </MudChip>
+                                }
+                            </div>
+
+                            <!-- 分类筛选模式 -->
+                            @if (_selectedCategories.Count > 1)
+                            {
+                                <div class="mt-2">
+                                    <MudRadioGroup T="FilterMode" @bind-Value="_categoryFilterMode">
+                                        <MudRadio Value="FilterMode.Union" Color="Color.Primary">
+                                            满足任一分类 (或)
+                                        </MudRadio>
+                                        <MudRadio Value="FilterMode.Intersection" Color="Color.Primary">
+                                            同时满足所有分类 (与)
+                                        </MudRadio>
+                                    </MudRadioGroup>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3" Variant="Variant.Outlined">
+                        <MudText Typo="Typo.body2">点击"选择分类"按钮来添加分类筛选条件</MudText>
+                    </MudAlert>
+                }
+            </div>
+
+            <!-- 标签筛选 -->
+            <div class="filter-section mb-4">
+                <div class="d-flex align-center justify-space-between mb-2">
+                    <MudText Typo="Typo.subtitle1">标签筛选</MudText>
+                    <MudButton OnClick="OpenTagSelector"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               Color="Color.Primary"
+                               Variant="Variant.Outlined"
+                               Size="Size.Small">
+                        选择标签
+                    </MudButton>
+                </div>
+
+                @if (_selectedTags.Any())
+                {
+                    <div class="selected-tags mb-3">
+                        <MudText Typo="Typo.caption" Class="mb-2">已选择的标签 (@_selectedTags.Count):</MudText>
+                        <div class="d-flex flex-wrap gap-1">
+                            @foreach (var tag in _selectedTags)
+                            {
+                                <MudChip T="string"
+                                        Size="Size.Small"
+                                        Color="Color.Primary"
+                                        Variant="Variant.Filled"
+                                        OnClose="@(() => RemoveTag(tag))"
+                                        CloseIcon="@Icons.Material.Filled.Close"
+                                        Class="ma-1">
+                                    @tag.Name
+                                </MudChip>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3" Variant="Variant.Outlined">
+                        <MudText Typo="Typo.body2">点击"选择标签"按钮来添加标签筛选条件</MudText>
+                    </MudAlert>
+                }
+
+                <!-- 标签筛选模式 -->
+                @if (_selectedTags.Count > 1)
+                {
+                    <div class="mt-2">
+                        <MudRadioGroup T="FilterMode" @bind-Value="_tagFilterMode">
+                            <MudRadio Value="FilterMode.Union" Color="Color.Primary">
+                                满足任一标签 (或)
+                            </MudRadio>
+                            <MudRadio Value="FilterMode.Intersection" Color="Color.Primary">
+                                同时满足所有标签 (与)
+                            </MudRadio>
+                        </MudRadioGroup>
+                    </div>
+                }
+            </div>
+
+            <!-- 评分筛选 -->
+            <div class="filter-section mb-4">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">评分筛选</MudText>
+                <div class="rating-filter">
+                    <MudSlider T="float"
+                              @bind-Value="_minRating"
+                              Min="0f"
+                              Max="10f"
+                              Step="0.5f"
+                              Color="Color.Primary">
+                        最低评分: @_minRating.ToString("F1")
+                    </MudSlider>
+                    <MudSlider T="float"
+                              @bind-Value="_maxRating"
+                              Min="0f"
+                              Max="10f"
+                              Step="0.5f"
+                              Color="Color.Primary"
+                              Class="mt-2">
+                        最高评分: @_maxRating.ToString("F1")
+                    </MudSlider>
+                </div>
+            </div>
+
+            <!-- 搜索设置 -->
+            <div class="filter-section mb-4">
+                <MudText Typo="Typo.subtitle1" Class="mb-2">搜索设置</MudText>
+                <MudNumericField T="int"
+                                @bind-Value="CurrentOptions.MaxResultsPerType"
+                                Label="每类型最大结果数"
+                                Variant="Variant.Outlined"
+                                Min="1"
+                                Max="100"
+                                Class="mb-2" />
+                <MudSlider T="double"
+                          @bind-Value="CurrentOptions.MinRelevanceScore"
+                          Min="0.0"
+                          Max="1.0"
+                          Step="0.05"
+                          Color="Color.Primary">
+                    最小相关性: @CurrentOptions.MinRelevanceScore.ToString("P0")
+                </MudSlider>
+            </div>
+        </div>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="ResetFilters" Variant="Variant.Text">重置</MudButton>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">取消</MudButton>
+        <MudButton OnClick="ApplyFilters" Variant="Variant.Filled" Color="Color.Primary">应用筛选</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- 标签选择对话框 -->
+@if (_isTagSelectorVisible)
+{
+    <TagSelectorDialog AllowMultiSelect="true"
+                       InitialSelectedTags="_selectedTags"
+                       OnTagsSelected="OnTagsSelected"
+                       OnCancel="CloseTagSelector" />
+}
+

@@ -1,0 +1,35 @@
+﻿<MudNavMenu
+    Color="Color.Warning"
+    Margin="Margin.Normal"
+    Rounded="true">
+
+    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">总览</MudNavLink>
+    <MudNavLink Href="/search" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Search">本地搜索</MudNavLink>
+    <MudNavLink Href="/media/overview" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Dashboard">媒体库</MudNavLink>
+
+    <MudNavLink Href="/favorites" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Bookmark">收藏夹</MudNavLink>
+
+    <MudNavGroup Title="媒体源管理" Icon="@Icons.Material.Filled.FolderSpecial" Expanded="false">
+        <MudNavLink Href="/sources" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.FolderOpen">媒体源管理</MudNavLink>
+        <MudNavLink Href="/source/pending" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.HourglassBottom">待处理</MudNavLink>
+    </MudNavGroup>
+
+    <MudNavGroup Title="任务" Icon="@Icons.Material.Filled.TaskAlt" Expanded="false">
+        <MudNavLink Href="/tasks" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.PlayCircle">任务概览</MudNavLink>
+        <MudNavLink Href="/tasks/background" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.CloudQueue">后台任务</MudNavLink>
+        <MudNavLink Href="/tasks/scheduled" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Schedule">定时任务</MudNavLink>
+        <MudNavLink Href="/tasks/history" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.History">执行历史</MudNavLink>
+    </MudNavGroup>
+
+    <MudNavLink Href="/website" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Apps">站点管理</MudNavLink>
+    <MudNavLink Href="/tags" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Label">标签管理</MudNavLink>
+    <MudNavLink Href="/creators" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.People">创作者</MudNavLink>
+    <MudNavLink Href="/circles" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Groups">社团</MudNavLink>
+
+
+
+    <MudNavLink Href="/settings" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Settings">设置</MudNavLink>
+
+</MudNavMenu>
+
+

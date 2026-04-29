@@ -1,0 +1,146 @@
+@using NineKgTools.Core.Models.Media
+@using NineKgTools.Utils
+
+<!-- 图片墙组件 -->
+<div class="photo-wall-container" data-image-count="@ImageCount">
+    <!-- 数量选择控制栏 -->
+    <div class="d-flex align-center mb-3 photo-wall-controls">
+        <MudIcon Icon="@Icons.Material.Filled.GridView" Color="Color.Info" Class="mr-2"/>
+        <MudText Typo="Typo.h6" Color="Color.Info" Class="flex-grow-1">@Title</MudText>
+        
+        @if (ShowCountSelector)
+        {
+            <!-- 数量选择按钮组 -->
+            <MudButtonGroup Color="Color.Info" 
+                            Variant="Variant.Outlined" 
+                            Size="Size.Small"
+                            Class="mr-3">
+                <MudButton OnClick="@(() => ChangeImageCount(10))" 
+                           Variant="@(ImageCount == 10 ? Variant.Filled : Variant.Outlined)"
+                           Color="@(ImageCount == 10 ? Color.Info : Color.Default)"
+                           Disabled="@IsLoading"
+                           Class="@(ImageCount == 10 ? "selected-button" : "")">
+                    10张
+                </MudButton>
+                <MudButton OnClick="@(() => ChangeImageCount(20))" 
+                           Variant="@(ImageCount == 20 ? Variant.Filled : Variant.Outlined)"
+                           Color="@(ImageCount == 20 ? Color.Info : Color.Default)"
+                           Disabled="@IsLoading"
+                           Class="@(ImageCount == 20 ? "selected-button" : "")">
+                    20张
+                </MudButton>
+                <MudButton OnClick="@(() => ChangeImageCount(40))" 
+                           Variant="@(ImageCount == 40 ? Variant.Filled : Variant.Outlined)"
+                           Color="@(ImageCount == 40 ? Color.Info : Color.Default)"
+                           Disabled="@IsLoading"
+                           Class="@(ImageCount == 40 ? "selected-button" : "")">
+                    40张
+                </MudButton>
+            </MudButtonGroup>
+        }
+        
+        @if (ShowRefreshButton)
+        {
+            <MudButton OnClick="RefreshImages" 
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       Variant="Variant.Text"
+                       Disabled="@IsLoading">
+                换一批
+            </MudButton>
+        }
+    </div>
+
+    @if (IsLoading)
+    {
+        <!-- 加载状态 -->
+        <div class="photo-wall-grid" data-columns="@(Columns > 0 ? Columns.ToString() : "auto")">
+            @for (int i = 0; i < ImageCount; i++)
+            {
+                var skeletonIndex = i;
+                <div class="photo-wall-item photo-wall-skeleton"
+                     style="height: @(_skeletonHeights[skeletonIndex])px; animation-delay: @($"{skeletonIndex * 0.05:F2}s");">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle"
+                                 Height="100%"
+                                 Class="rounded-lg"/>
+                </div>
+            }
+        </div>
+    }
+    else if (_imagePositions?.Any() == true)
+    {
+        <!-- 图片墙主体 -->
+        <div class="photo-wall-grid" 
+             data-columns="@(Columns > 0 ? Columns.ToString() : "auto")"
+             style="height: @($"{_containerHeight:F0}px");">
+            @foreach (var position in _imagePositions)
+            {
+                <div class="photo-wall-item positioned" 
+                     style="left: @($"{position.LeftPercent:F1}%"); 
+                            top: @($"{position.TopPx:F0}px"); 
+                            width: @($"{position.WidthPercent:F1}%");
+                            height: @($"{position.HeightPx:F0}px");
+                            animation-delay: @($"{position.AnimationDelay:F2}s");">
+                    @if (position.Image.MediaId.HasValue)
+                    {
+                        <MudLink Href="@($"/media/{position.Image.MediaId}")"
+                                 Class="photo-wall-link"
+                                 aria-label="@(string.IsNullOrEmpty(position.Image.CategoryName)
+                                     ? position.Image.MediaTitle
+                                     : $"{position.Image.MediaTitle}（{position.Image.CategoryName}）")">
+                            <MudImage Src="@position.Image.ImageUrl"
+                                      Alt="@position.Image.MediaTitle"
+                                      ObjectFit="ObjectFit.Cover"
+                                      Class="photo-wall-image"
+                                      Title="@position.Image.MediaTitle"
+                                      Loading="lazy"/>
+                            <div class="photo-wall-overlay">
+                                <div class="photo-wall-info">
+                                    <MudText Typo="Typo.caption" Class="photo-wall-title">
+                                        @position.Image.MediaTitle
+                                    </MudText>
+                                    @if (!string.IsNullOrEmpty(position.Image.CategoryName))
+                                    {
+                                        <MudChip T="string"
+                                                 Size="Size.Small" 
+                                                 Color="@position.Image.CategoryColor" 
+                                                 Variant="Variant.Filled"
+                                                 Class="mt-1">
+                                            @position.Image.CategoryName
+                                        </MudChip>
+                                    }
+                                </div>
+                            </div>
+                        </MudLink>
+                    }
+                    else
+                    {
+                        <div class="photo-wall-link">
+                            <MudImage Src="@position.Image.ImageUrl"
+                                      Alt="@(string.IsNullOrEmpty(position.Image.ImageName) ? "图片" : position.Image.ImageName)"
+                                      ObjectFit="ObjectFit.Cover"
+                                      Class="photo-wall-image"
+                                      Title="@position.Image.ImageName"
+                                      Loading="lazy"/>
+                            <div class="photo-wall-overlay">
+                                <div class="photo-wall-info">
+                                    <MudText Typo="Typo.caption" Class="photo-wall-title">
+                                        @position.Image.ImageName
+                                    </MudText>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <!-- 空状态 -->
+        <div class="text-center py-8 empty-state" role="status">
+            <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported" Size="Size.Large" Color="Color.Secondary" aria-hidden="true"/>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">@EmptyMessage</MudText>
+        </div>
+    }
+</div>

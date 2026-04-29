@@ -1,0 +1,150 @@
+@page "/tasks/history"
+<PageTitle>执行历史</PageTitle>
+@using NineKgTools.Core.Services.Tasks
+@using NineKgTools.Core.Models.Tasks
+@using NineKgTools.Utils
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <MudStack Spacing="4">
+        <!-- 页面标题卡片 -->
+        <PageHeader Icon="@Icons.Material.Filled.History"
+                    IconColor="Color.Primary"
+                    Title="执行历史"
+                    Subtitle="查看和管理所有已完成的任务记录">
+            <Actions>
+                <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
+                           Color="Color.Secondary"
+                           Variant="Variant.Outlined"
+                           Size="Size.Medium"
+                           Href="/tasks">
+                    返回任务管理
+                </MudButton>
+                <MudButton StartIcon="@Icons.Material.Filled.Refresh"
+                           Color="Color.Primary"
+                           Variant="Variant.Filled"
+                           Size="Size.Medium"
+                           OnClick="@RefreshAsync">
+                    刷新
+                </MudButton>
+            </Actions>
+        </PageHeader>
+
+        <!-- 筛选栏 -->
+        <MudPaper Elevation="3" Class="card-base pa-4">
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudTextField Value="@_searchText"
+                                  Label="搜索任务名称"
+                                  Immediate="true"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  ValueChanged="@((string value) => { _searchText = value; ApplyFilters(); })"/>
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudSelect Value="@_statusFilter"
+                               Label="状态筛选"
+                               Clearable="true"
+                               ValueChanged="@((bool? value) => { _statusFilter = value; ApplyFilters(); })">
+                        <MudSelectItem Value="@((bool?)null)">全部</MudSelectItem>
+                        <MudSelectItem Value="@((bool?)true)">成功</MudSelectItem>
+                        <MudSelectItem Value="@((bool?)false)">失败</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudSelect T="TaskType?"
+                               Value="@_searchTaskType"
+                               Label="任务类型"
+                               Clearable="true"
+                               ValueChanged="@((TaskType? value) => { _searchTaskType = value; ApplyFilters(); })">
+                        <MudSelectItem T="TaskType?" Value="@((TaskType?)null)">全部</MudSelectItem>
+                        @foreach (var taskType in Enum.GetValues<TaskType>())
+                        {
+                            <MudSelectItem T="TaskType?" Value="@((TaskType?)taskType)">
+                                @taskType.GetDisplayName()
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <MudButton OnClick="@ResetFilters"
+                               Variant="Variant.Outlined"
+                               FullWidth="true"
+                               StartIcon="@Icons.Material.Filled.FilterAltOff">
+                        重置筛选
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <!-- 数据表格 -->
+        <MudDataGrid Items="@_filteredHistory"
+                     Elevation="3"
+                     Dense="true"
+                     Hover="true"
+                     ReadOnly="true"
+                     Striped="true"
+                     FixedHeader="true"
+                     Height="calc(100vh - 400px)">
+            <Columns>
+                <PropertyColumn Property="x => x.TaskName" Title="任务名称"/>
+                <TemplateColumn Title="任务类型" Sortable="false">
+                    <CellTemplate>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info">
+                            @context.Item.TaskType.GetDisplayName()
+                        </MudChip>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="状态" Sortable="false">
+                    <CellTemplate>
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@GetStatusColor(context.Item.Success)">
+                            @(context.Item.Success ? "成功" : "失败")
+                        </MudChip>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Property="x => x.Duration" Title="耗时">
+                    <CellTemplate>
+                        <MudText>@TaskUIHelper.FormatDuration(context.Item.Duration)</MudText>
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.ProcessedItems" Title="处理数"/>
+                <TemplateColumn Property="x => x.FailedItems" Title="失败数">
+                    <CellTemplate>
+                        <MudText Color="@(context.Item.FailedItems > 0 ? Color.Error : Color.Default)">
+                            @context.Item.FailedItems
+                        </MudText>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Property="x => x.StartTime" Title="开始时间">
+                    <CellTemplate>
+                        <MudText>@context.Item.StartTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</MudText>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="操作" Sortable="false">
+                    <CellTemplate>
+                        <div class="d-flex">
+                            @if (CanRetryIdentification(context.Item))
+                            {
+                                <MudTooltip Text="重新手动识别" Duration="0">
+                                    <MudIconButton Icon="@Icons.Material.Filled.FindInPage"
+                                                   Size="Size.Small"
+                                                   Color="Color.Warning"
+                                                   OnClick="@(() => HandleRetryIdentificationAsync(context.Item))"/>
+                                </MudTooltip>
+                            }
+                            <MudTooltip Text="查看详情" Duration="0">
+                                <MudIconButton Icon="@Icons.Material.Filled.Info"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => ShowHistoryDetailsAsync(context.Item))"/>
+                            </MudTooltip>
+                        </div>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="TaskExecutionInfo" PageSizeOptions="new int[]{10, 25, 50, 100}"/>
+            </PagerContent>
+        </MudDataGrid>
+    </MudStack>
+</MudContainer>

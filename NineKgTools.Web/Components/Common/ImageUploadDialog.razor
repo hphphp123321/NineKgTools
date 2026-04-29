@@ -1,0 +1,89 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+<MudDialog DisableSidePadding="true">
+    <TitleContent>
+        <MudText Typo="Typo.h6" Color="Color.Primary">
+            <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Class="mr-3 mb-n1" aria-hidden="true"/>
+            上传图片
+        </MudText>
+    </TitleContent>
+
+    <DialogContent>
+        <MudContainer MaxWidth="MaxWidth.Medium" Class="pa-4">
+            <MudPaper Class="d-flex flex-column align-center pa-4" Elevation="0">
+                @if (_isLoading)
+                {
+                    <MudProgressCircular Color="Color.Primary" Size="Size.Large" Indeterminate="true" aria-hidden="true" />
+                    <MudText Class="mt-4" role="status" aria-live="polite">正在上传，请稍候…</MudText>
+                }
+                else
+                {
+                    <!-- 图片预览区域 -->
+                    <MudPaper Elevation="0" Class="image-upload-preview">
+                        @if (!string.IsNullOrEmpty(_imagePreviewUrl))
+                        {
+                            <MudImage Src="@_imagePreviewUrl"
+                                      Alt="已选图片预览"
+                                      ObjectFit="ObjectFit.Cover"
+                                      Class="image-upload-preview__image"/>
+                        }
+                        else
+                        {
+                            <div class="image-upload-preview__placeholder">
+                                <MudIcon Icon="@Icons.Material.Filled.Image"
+                                         Color="Color.Default"
+                                         Size="Size.Large"
+                                         aria-hidden="true"/>
+                                <MudText Typo="Typo.body2"
+                                         Align="Align.Center"
+                                         Class="mt-2">
+                                    预览区
+                                </MudText>
+                            </div>
+                        }
+                    </MudPaper>
+
+                    <!-- 文件选择器 -->
+                    <MudText Typo="Typo.caption" Class="mb-2 align-self-start">
+                        JPG 或 PNG · 最大 10 MB
+                    </MudText>
+
+                    <InputFile id="fileInput"
+                               OnChange="OnInputFileChange"
+                               accept=".jpg,.jpeg,.png"
+                               class="d-none" />
+
+                    <MudButton HtmlTag="label"
+                               for="fileInput"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.AddPhotoAlternate"
+                               FullWidth="true"
+                               Size="Size.Large"
+                               Class="mb-2">
+                        @(_selectedFile == null ? "选择图片" : "重新选择")
+                    </MudButton>
+
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <MudAlert Severity="Severity.Error"
+                                  Class="mt-3"
+                                  ShowCloseIcon="true"
+                                  CloseIconClicked="() => _errorMessage = null">
+                            @_errorMessage
+                        </MudAlert>
+                    }
+                }
+            </MudPaper>
+        </MudContainer>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_isLoading">取消</MudButton>
+        <MudButton Color="Color.Primary"
+                   OnClick="Submit"
+                   Disabled="@(string.IsNullOrEmpty(_imagePreviewUrl) || _isLoading)">
+            上传
+        </MudButton>
+    </DialogActions>
+</MudDialog>

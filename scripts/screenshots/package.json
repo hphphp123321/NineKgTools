@@ -1,0 +1,23 @@
+{
+  "name": "ninekgtools-screenshots",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright 脚本，自动为 NineKgTools README 生成项目截图",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "capture": "playwright test",
+    "capture:headed": "playwright test --headed",
+    "capture:debug": "PWDEBUG=1 playwright test",
+    "install-browsers": "playwright install chromium",
+    "clean": "rimraf auth.json test-results playwright-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^22.7.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.6.0"
+  }
+}

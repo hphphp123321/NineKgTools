@@ -1,0 +1,63 @@
+<MudDialog DefaultFocus="DefaultFocus.Element">
+    <DialogContent>
+        <div class="@FrameCssClass">
+            <div class="@HeroCssClass">
+                <div class="nk-dialog-hero__body">
+                    <div class="nk-dialog-hero__icon" aria-hidden="true">
+                        <MudIcon Icon="@ResolvedIcon" />
+                    </div>
+                    <div class="nk-dialog-hero__text">
+                        <h2 class="nk-dialog-hero__title">@Title</h2>
+                        @if (!string.IsNullOrWhiteSpace(HeroSubtitle))
+                        {
+                            <div class="nk-dialog-hero__subtitle">@HeroSubtitle</div>
+                        }
+                    </div>
+                    @if (Intent == ConfirmIntent.DestructiveBatch && AffectedCount.HasValue)
+                    {
+                        <div>
+                            <div class="nk-dialog-hero__count">@AffectedCount</div>
+                            <div class="nk-dialog-hero__count-label">条记录</div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="nk-dialog-content">
+                @if (Intent is ConfirmIntent.Destructive && !string.IsNullOrWhiteSpace(TargetName))
+                {
+                    <div class="nk-dialog-target-card">
+                        <MudIcon Icon="@(TargetIcon ?? Icons.Material.Filled.Delete)"
+                                 Class="nk-dialog-target-card__icon"
+                                 Size="Size.Medium"
+                                 aria-hidden="true" />
+                        <div class="nk-dialog-target-card__name">@TargetName</div>
+                    </div>
+                }
+
+                <MudText Typo="Typo.body1">@Message</MudText>
+
+                @if (Intent is ConfirmIntent.Destructive or ConfirmIntent.DestructiveBatch)
+                {
+                    <div class="nk-dialog-warning-line">
+                        <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Size="Size.Small" aria-hidden="true" />
+                        <span>@(WarningLine ?? "此操作不可撤销")</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel"
+                   Variant="Variant.Text"
+                   Color="Color.Default">
+            @CancelText
+        </MudButton>
+        <MudButton OnClick="Confirm"
+                   Variant="Variant.Filled"
+                   Color="@ConfirmButtonColor"
+                   StartIcon="@ResolvedIcon">
+            @ConfirmText
+        </MudButton>
+    </DialogActions>
+</MudDialog>

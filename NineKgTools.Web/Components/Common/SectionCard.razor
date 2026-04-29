@@ -1,0 +1,33 @@
+@using MudBlazor
+
+<MudCard Elevation="@Elevation" Class="@CombinedClass">
+    <MudCardHeader Class="@(ShowDivider ? "pb-0" : "")">
+        <CardHeaderAvatar>
+            <MudAvatar Color="@IconColor" Class="section-card-avatar">
+                <MudIcon Icon="@Icon" Size="Size.Medium"/>
+            </MudAvatar>
+        </CardHeaderAvatar>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6" Color="@IconColor" Class="font-weight-bold">@Title</MudText>
+            @if (!string.IsNullOrEmpty(Subtitle))
+            {
+                <MudText Typo="Typo.caption">@Subtitle</MudText>
+            }
+        </CardHeaderContent>
+        <CardHeaderActions>
+            @if (HeaderActions != null)
+            {
+                @HeaderActions
+            }
+        </CardHeaderActions>
+    </MudCardHeader>
+
+    @if (ShowDivider)
+    {
+        <MudDivider Class="mx-4 mt-3"/>
+    }
+
+    <MudCardContent Class="@ContentClass">
+        @ChildContent
+    </MudCardContent>
+</MudCard>

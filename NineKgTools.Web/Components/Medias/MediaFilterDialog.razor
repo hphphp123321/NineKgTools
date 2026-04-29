@@ -1,0 +1,259 @@
+@using NineKgTools.Core.Models.Categories
+@using NineKgTools.Core.Models.Favorites
+@using NineKgTools.Core.Models.Tags
+
+<MudDialog>
+    <DialogContent>
+        <MudExpansionPanels MultiExpansion="true">
+
+            <!-- 面板1：分类与标签筛选 -->
+            <MudExpansionPanel IsInitiallyExpanded="true">
+                <TitleContent>
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Category" Color="@GetTopCategoryColor()" />
+                        <MudText Typo="Typo.h6">分类与标签</MudText>
+                        @if (HasCategoryFilter || !string.IsNullOrEmpty(SelectedTagName))
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info">已设置</MudChip>
+                        }
+                    </div>
+                </TitleContent>
+                <ChildContent>
+                    <MudGrid Spacing="3">
+                        <!-- 分类筛选 -->
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Value="@GetCategoryDisplayText()"
+                                          Label="@GetCategoryLabel()"
+                                          Variant="Variant.Outlined"
+                                          ReadOnly="true"
+                                          Clearable="@HasCategoryFilter"
+                                          OnClearButtonClick="@ClearCategoryFilter"
+                                          Placeholder="点击右侧按钮选择..."
+                                          Adornment="Adornment.End"
+                                          AdornmentIcon="@Icons.Material.Filled.Category"
+                                          AdornmentColor="@GetTopCategoryColor()"
+                                          OnAdornmentClick="@OpenCategorySelector"
+                                          HelperText="支持仅选类型或多选分类"
+                                          Margin="Margin.Dense" />
+                        </MudItem>
+
+                        <!-- 标签筛选 -->
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string"
+                                          Value="@SelectedTagName"
+                                          Label="标签筛选"
+                                          Variant="Variant.Outlined"
+                                          ReadOnly="true"
+                                          Clearable="true"
+                                          OnClearButtonClick="@(() => SelectedTagName = null)"
+                                          Placeholder="点击右侧按钮选择..."
+                                          Adornment="Adornment.End"
+                                          AdornmentIcon="@Icons.Material.Filled.Search"
+                                          AdornmentColor="Color.Primary"
+                                          OnAdornmentClick="@OpenTagSelector"
+                                          HelperText="点击搜索按钮选择标签"
+                                          Margin="Margin.Dense" />
+                        </MudItem>
+                    </MudGrid>
+
+                    <!-- 已选分类展示 -->
+                    @if (SelectedCategories.Count > 1)
+                    {
+                        <div class="mt-3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">已选分类：</MudText>
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach (var category in SelectedCategories)
+                                {
+                                    <MudChip T="string"
+                                            Size="Size.Small"
+                                            Color="@GetTopCategoryColor()"
+                                            Variant="Variant.Outlined"
+                                            OnClose="@(() => RemoveCategory(category))">
+                                        @category.Name
+                                    </MudChip>
+                                }
+                            </div>
+                        </div>
+                    }
+                </ChildContent>
+            </MudExpansionPanel>
+
+            <!-- 面板2：收藏夹与评分筛选 -->
+            <MudExpansionPanel IsInitiallyExpanded="true">
+                <TitleContent>
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Star" Color="@GetTopCategoryColor()" />
+                        <MudText Typo="Typo.h6">收藏与评分</MudText>
+                        @if (!string.IsNullOrEmpty(SelectedFavoriteName) || MinRating.HasValue)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info">已设置</MudChip>
+                        }
+                    </div>
+                </TitleContent>
+                <ChildContent>
+                    <MudGrid Spacing="3">
+                        <!-- 收藏夹筛选 -->
+                        <MudItem xs="12" md="6">
+                            <MudSelect T="string"
+                                       @bind-Value="SelectedFavoriteName"
+                                       Label="收藏夹筛选"
+                                       Variant="Variant.Outlined"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Clearable="true"
+                                       HelperText="仅显示指定收藏夹中的媒体"
+                                       Margin="Margin.Dense">
+                                @foreach (var favorite in AllFavorites.OrderBy(f => f.Name))
+                                {
+                                    <MudSelectItem T="string" Value="@favorite.Name">
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Bookmark" Size="Size.Small" Class="mr-2" />
+                                            @favorite.Name
+                                        </div>
+                                    </MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+
+                        <!-- 评分筛选 -->
+                        <MudItem xs="12" md="6">
+                            <MudSelect T="float?"
+                                       @bind-Value="MinRating"
+                                       Label="最低评分"
+                                       Variant="Variant.Outlined"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       Clearable="true"
+                                       HelperText="筛选大于等于指定评分的媒体"
+                                       Margin="Margin.Dense">
+                                <MudSelectItem T="float?" Value="@(1f)">
+                                    <div class="d-flex align-center">
+                                        <MudRating SelectedValue="1" ReadOnly="true" Size="Size.Small" Class="mr-2" />
+                                        1星及以上
+                                    </div>
+                                </MudSelectItem>
+                                <MudSelectItem T="float?" Value="@(2f)">
+                                    <div class="d-flex align-center">
+                                        <MudRating SelectedValue="2" ReadOnly="true" Size="Size.Small" Class="mr-2" />
+                                        2星及以上
+                                    </div>
+                                </MudSelectItem>
+                                <MudSelectItem T="float?" Value="@(3f)">
+                                    <div class="d-flex align-center">
+                                        <MudRating SelectedValue="3" ReadOnly="true" Size="Size.Small" Class="mr-2" />
+                                        3星及以上
+                                    </div>
+                                </MudSelectItem>
+                                <MudSelectItem T="float?" Value="@(4f)">
+                                    <div class="d-flex align-center">
+                                        <MudRating SelectedValue="4" ReadOnly="true" Size="Size.Small" Class="mr-2" />
+                                        4星及以上
+                                    </div>
+                                </MudSelectItem>
+                                <MudSelectItem T="float?" Value="@(5f)">
+                                    <div class="d-flex align-center">
+                                        <MudRating SelectedValue="5" ReadOnly="true" Size="Size.Small" Class="mr-2" />
+                                        5星
+                                    </div>
+                                </MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                    </MudGrid>
+                </ChildContent>
+            </MudExpansionPanel>
+
+            <!-- 面板3：日期筛选 -->
+            <MudExpansionPanel>
+                <TitleContent>
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.DateRange" Color="@GetTopCategoryColor()" />
+                        <MudText Typo="Typo.h6">日期筛选</MudText>
+                        @if (StartDate.HasValue || EndDate.HasValue)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info">已设置</MudChip>
+                        }
+                    </div>
+                </TitleContent>
+                <ChildContent>
+                    <MudGrid Spacing="3">
+                        <!-- 日期类型 -->
+                        <MudItem xs="12">
+                            <MudSelect T="string"
+                                       @bind-Value="DateFilterType"
+                                       Label="日期类型"
+                                       Variant="Variant.Outlined"
+                                       AnchorOrigin="Origin.BottomCenter"
+                                       HelperText="选择用于筛选的日期字段"
+                                       Margin="Margin.Dense">
+                                <MudSelectItem T="string" Value="@("ReleaseDate")">
+                                    <div class="d-flex align-center">
+                                        <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" Class="mr-2" />
+                                        发售日期
+                                    </div>
+                                </MudSelectItem>
+                                <MudSelectItem T="string" Value="@("StoreDate")">
+                                    <div class="d-flex align-center">
+                                        <MudIcon Icon="@Icons.Material.Filled.Archive" Size="Size.Small" Class="mr-2" />
+                                        入库日期
+                                    </div>
+                                </MudSelectItem>
+                                <MudSelectItem T="string" Value="@("LastOpenDate")">
+                                    <div class="d-flex align-center">
+                                        <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Class="mr-2" />
+                                        最后打开
+                                    </div>
+                                </MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+
+                        <!-- 开始日期 -->
+                        <MudItem xs="12" md="6">
+                            <MudDatePicker @bind-Date="StartDate"
+                                           Label="开始日期"
+                                           Variant="Variant.Outlined"
+                                           Clearable="true"
+                                           HelperText="筛选此日期之后的媒体"
+                                           Margin="Margin.Dense" />
+                        </MudItem>
+
+                        <!-- 结束日期 -->
+                        <MudItem xs="12" md="6">
+                            <MudDatePicker @bind-Date="EndDate"
+                                           Label="结束日期"
+                                           Variant="Variant.Outlined"
+                                           Clearable="true"
+                                           HelperText="筛选此日期之前的媒体"
+                                           Margin="Margin.Dense" />
+                        </MudItem>
+                    </MudGrid>
+                </ChildContent>
+            </MudExpansionPanel>
+
+        </MudExpansionPanels>
+    </DialogContent>
+
+    <DialogActions>
+        <!-- 左侧：重置按钮 -->
+        <MudButton OnClick="OnReset"
+                   StartIcon="@Icons.Material.Filled.RestartAlt"
+                   Variant="Variant.Text"
+                   Color="Color.Default">
+            重置
+        </MudButton>
+
+        <MudSpacer />
+
+        <!-- 右侧：取消和确认按钮 -->
+        <MudButton OnClick="Cancel"
+                   Variant="Variant.Text"
+                   Color="Color.Default">
+            取消
+        </MudButton>
+
+        <MudButton OnClick="Apply"
+                   StartIcon="@Icons.Material.Filled.Check"
+                   Variant="Variant.Filled"
+                   Color="@GetTopCategoryColor()">
+            应用筛选
+        </MudButton>
+    </DialogActions>
+</MudDialog>

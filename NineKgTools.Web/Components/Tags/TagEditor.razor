@@ -1,0 +1,155 @@
+﻿@using NineKgTools.Components.Medias
+@using NineKgTools.Core.Models.Tags
+@inject ISnackbar Snackbar
+
+<MudDialog Options="@_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center">
+            <MudAvatar Color="Color.Primary" Size="Size.Medium" Class="mr-3">
+                <MudIcon Icon="@Icons.Material.Filled.NewLabel" Size="Size.Medium"/>
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.h5" Color="Color.Primary">编辑标签</MudText>
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">@Tag.Name</MudText>
+            </div>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        <MudContainer Class="pa-0">
+            <!-- 标签信息编辑区域 -->
+            <MudPaper Elevation="2" Class="pa-4 mb-4 rounded-lg tag-info-section">
+                <div class="d-flex align-center mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Edit" Color="Color.Info" Class="mr-2"/>
+                    <MudText Typo="Typo.h6" Color="Color.Info">标签信息</MudText>
+                </div>
+                
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="@_tagName" 
+                                      Label="标签名称"
+                                      Required="true" 
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Label"
+                                      AdornmentColor="Color.Primary"/>
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="@_tagDescription" 
+                                      Label="标签描述"
+                                      Variant="Variant.Outlined"
+                                      Lines="3"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Description"
+                                      AdornmentColor="Color.Secondary"
+                                      AutoGrow="true"/>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- 关联媒体列表 -->
+            @if (Tag.Medias.Count > 0)
+            {
+                <MudPaper Elevation="2" Class="pa-4 rounded-lg related-media-section">
+                    <div class="d-flex align-center justify-space-between mb-3">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.Collections" Color="Color.Warning" Class="mr-2"/>
+                            <MudText Typo="Typo.h6" Color="Color.Warning">关联媒体</MudText>
+                        </div>
+                        <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Outlined">
+                            共 @Tag.Medias.Count 个作品
+                        </MudChip>
+                    </div>
+                    
+                    @if (Tag.Medias.Count <= 12)
+                    {
+                        <!-- 如果媒体数量不多，直接显示 -->
+                        <MediaGrid Medias="@Tag.Medias"
+                                      EmptyStateText="暂无关联媒体" />
+                    }
+                    else
+                    {
+                        <!-- 如果媒体数量很多，使用折叠显示 -->
+                        <MudExpansionPanels Elevation="0" Class="media-expansion">
+                            <MudExpansionPanel IsInitiallyExpanded="false"
+                                               Class="rounded-lg">
+                                <TitleContent>
+                                    <div class="d-flex align-center">
+                                        <MudIcon Icon="@Icons.Material.Filled.ExpandMore" Class="mr-2"/>
+                                        <MudText Typo="Typo.body1">点击展开查看所有 @Tag.Medias.Count 个媒体</MudText>
+                                    </div>
+                                </TitleContent>
+                                <ChildContent>
+                                    <MediaGrid Medias="@Tag.Medias"
+                                                  Class="pa-3"
+                                                  EmptyStateText="暂无关联媒体" />
+                                </ChildContent>
+                            </MudExpansionPanel>
+                        </MudExpansionPanels>
+                    }
+                </MudPaper>
+            }
+            else
+            {
+                <MudPaper Elevation="2" Class="pa-4 rounded-lg empty-media-section">
+                    <MudContainer Class="d-flex flex-column justify-center align-center" Style="height: 120px;">
+                        <MudIcon Icon="@Icons.Material.Filled.CollectionsBookmark" 
+                                 Color="Color.Info" 
+                                 Size="Size.Large" 
+                                 Class="mb-2"/>
+                        <MudText Typo="Typo.body1" Color="Color.Info" Align="Align.Center">
+                            暂无关联媒体
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Align="Align.Center">
+                            当媒体被标记为此标签时，将在这里显示
+                        </MudText>
+                    </MudContainer>
+                </MudPaper>
+            }
+        </MudContainer>
+    </DialogContent>
+
+    <DialogActions>
+        <div class="d-flex justify-space-between align-center w-100">
+            <div class="d-flex gap-2">
+                <MudButton OnClick="NavigateToTagPage"
+                           Variant="Variant.Outlined"
+                           Color="Color.Info"
+                           StartIcon="@Icons.Material.Filled.OpenInNew">
+                    查看详情页
+                </MudButton>
+                <MudButton Color="Color.Primary"
+                           OnClick="EditTag"
+                           Variant="Variant.Filled"
+                           StartIcon="@Icons.Material.Filled.Save"
+                           Disabled="@(string.IsNullOrWhiteSpace(_tagName))">
+                    保存更改
+                </MudButton>
+            </div>
+        </div>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Large,
+        FullWidth = true,
+        CloseOnEscapeKey = true,
+        CloseButton = true
+    };
+    
+    private void EditTag()
+    {
+        if (string.IsNullOrWhiteSpace(_tagName))
+        {
+            Snackbar.Add("标签名称不能为空", Severity.Warning);
+            return;
+        }
+
+        Tag.Name = _tagName.Trim();
+        Tag.Description = string.IsNullOrWhiteSpace(_tagDescription) ? null : _tagDescription.Trim();
+        
+        MudDialog.Close(DialogResult.Ok<Tag>(Tag));
+    }
+}

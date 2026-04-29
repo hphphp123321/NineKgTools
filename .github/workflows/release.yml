@@ -1,0 +1,148 @@
+name: Release
+
+# 触发：tag v* push 时自动产 GitHub Release，附 Windows 便携版 zip
+#
+# 与 docker.yml 并行：tag 推送时两个 workflow 同时跑——Release 拿 zip，Docker 推镜像
+#
+# Release body 组成（08 号 todo 落地）：
+#   1. 头部：下载表（Windows zip + GHCR 镜像）+ 快速开始
+#   2. 中段：从 CHANGELOG.md 抽取对应版本节（v1.2.3 -> [1.2.3] 节内容）
+#   3. 尾部：GitHub auto-generate 的 commit list（since 上一个 tag）
+# 抽取失败时降级到只用头部 + auto-generate（不阻断发布）
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write  # 创建 Release 需要写权限
+
+jobs:
+  build-windows:
+    name: Build Windows portable zip
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Build win-x64 portable
+        run: |
+          chmod +x scripts/publish/build-windows.sh
+          bash scripts/publish/build-windows.sh --zip --clean
+
+      - name: Verify zip exists
+        run: |
+          ls -lh publish/NineKgTools-win-x64.zip
+          test -f publish/NineKgTools-win-x64.zip
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NineKgTools-win-x64
+          path: publish/NineKgTools-win-x64.zip
+          retention-days: 7
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-windows
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Windows zip
+        uses: actions/download-artifact@v4
+        with:
+          name: NineKgTools-win-x64
+          path: ./release-assets
+
+      - name: Determine if pre-release
+        id: prerelease
+        run: |
+          # tag 含 -alpha/-beta/-rc 视为 pre-release
+          ref="${{ github.ref_name }}"
+          if [[ "$ref" =~ -(alpha|beta|rc) ]]; then
+            echo "value=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build release body (header + CHANGELOG section)
+        id: body
+        run: |
+          set -euo pipefail
+          REF="${{ github.ref_name }}"
+          VER="${REF#v}"   # 去掉 v 前缀: v1.2.3 -> 1.2.3
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.repository }}"
+
+          {
+            echo "## 下载"
+            echo
+            echo "| 平台 | 文件 / 镜像 | 说明 |"
+            echo "|---|---|---|"
+            echo "| 🪟 Windows x64 | \`NineKgTools-win-x64.zip\` | 解压双击即用，无需 .NET SDK |"
+            echo "| 🐳 Docker | \`ghcr.io/${OWNER}/nine-kg-tools:${REF}\` | \`docker compose up -d\` |"
+            echo
+            echo "## 快速开始"
+            echo
+            echo "**Windows**：下载 zip → 解压 → 编辑 \`Config\\config.yaml\` 填 \`OPENAI_API_KEY\` → 双击 \`NineKgTools.Web.exe\` → 浏览器打开 http://localhost:23333（默认账号 admin/admin）"
+            echo
+            echo "**Docker**：见 [README — Docker 部署](https://github.com/${REPO}/blob/${REF}/README.md#-快速开始)"
+            echo
+          } > release-body.md
+
+          # 从 CHANGELOG.md 抽取 ## [VER] 节内容（不含版本标题行）
+          # 用字符类 [[] 替代 \[ 避免 gawk 4+ 的 escape warning
+          if [ -f CHANGELOG.md ]; then
+            extracted=$(awk -v ver="$VER" '
+              /^## [[]/ {
+                if ($0 ~ "[[]" ver "[]]") { in_section = 1; next }
+                else if (in_section) { exit }
+              }
+              in_section { print }
+            ' CHANGELOG.md)
+
+            if [ -n "$extracted" ]; then
+              {
+                echo "## v${VER} 变更"
+                echo
+                echo "$extracted"
+                echo
+                echo "---"
+                echo
+              } >> release-body.md
+              echo "found=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "⚠️ 未在 CHANGELOG.md 找到 [${VER}] 节"
+              echo "found=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+          {
+            echo "*完整提交列表见下方自动生成内容；版本说明权威来源见 [CHANGELOG.md](https://github.com/${REPO}/blob/${REF}/CHANGELOG.md)。*"
+          } >> release-body.md
+
+          echo "----- release-body.md 预览 -----"
+          cat release-body.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true   # 在 body_path 内容**之后**追加 commit list
+          body_path: release-body.md
+          prerelease: ${{ steps.prerelease.outputs.value }}
+          draft: false
+          files: |
+            ./release-assets/NineKgTools-win-x64.zip

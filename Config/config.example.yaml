@@ -1,0 +1,331 @@
+# NineKgTools 配置示例文件
+# 首次使用：复制为 Config/config.yaml 并按需修改
+#   cp Config/config.example.yaml Config/config.yaml
+# 敏感字段（api_key 等）可留空，通过同名环境变量覆盖（见字段注释）
+
+# Web应用设置
+app:
+  # 主机地址, 例如: ::
+  web_host: 0.0.0.0
+  # 端口
+  web_port: 23333
+  # 代理设置
+  proxy:
+    # 代理地址，以http://或https://开头
+    proxy_addr:
+    # 代理用户名
+    proxy_user:
+    # 代理密码
+    proxy_password:
+  # 浏览器User-Agent
+  user_agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 Edg/126.0.0.0
+# 数据库配置
+database:
+  # 数据库文件保存路径
+  path: Database/database.db
+  # Hangfire数据库文件保存路径
+  hangfire_path: Database/hangfire.db
+# 日志配置
+log:
+  # 日志输出类型, 可选值: Console, File, Server
+  log_types:
+  - Console
+  - File
+  # 日志文件路径
+  log_path: Logs/
+  # 日志服务器地址, 例如群晖默认为'群晖ip:514'。留空表示不启用 Syslog
+  log_server:
+  # 日志级别, 可选值: Verbose, Debug, Information, Warning, Error, Fatal
+  log_level: Information
+  # 日志模板
+  log_template: '{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u4}] {Method}: {Message:lj} - {SourceFile}:{LineNumber}{NewLine}{Exception}'
+# 缓存相关配置（启动前固定，不在前端 Settings 页暴露）
+cache:
+  # 缓存根目录，包括图片与识别缓存等
+  path: .cache/
+  # 识别缓存过期时间（分钟）
+  expiration_minutes: 30
+# AI相关配置
+ai:
+  # 是否使用AI
+  use_ai: false
+  # 是否使用AI进行关键词切分
+  use_ai_for_keyword_splitting: false
+  # OpenAI配置
+  open_ai:
+    # OpenAI API Key。留空则从 OPENAI_API_KEY 环境变量读取
+    api_key:
+    # OpenAI API版本，即base domain后面的后缀
+    api_version: v1
+    # 默认模型
+    default_model: gpt-4o-mini
+    # OpenAI API基础域名，注意不能有域名/后面的后缀。官方：https://api.openai.com/
+    base_domain: https://api.openai.com/
+  # 向量配置
+  vector:
+    # 是否启用向量功能
+    enable: true
+    # 媒体向量配置
+    media:
+      # 是否启用媒体向量
+      enable: true
+      # 搜索最小相似度（0-1）
+      min_similarity: 0.7
+    # 标签向量配置
+    tag:
+      # 是否启用标签向量
+      enable: true
+      # 匹配相似度阈值（0-1）
+      similarity_threshold: 0.05
+      # 搜索返回最大结果数
+      search_top_k: 3
+    # 向量搜索配置
+    search:
+      # 向量搜索权重（0-1）
+      weight: 0.6
+    # 向量数据库配置
+    db:
+      # 向量数据库提供者
+      provider: sqlite
+      # 数据库连接字符串
+      connection_string: Data Source=Database/vectors.db
+      # 向量维度
+      dimension: 1536
+      # 批处理大小
+      batch_size: 100
+# 媒体源相关配置
+source:
+  # 监控文件夹。容器部署建议映射到 /app/media 这类跨平台路径
+  watch_folders:
+  - ./media
+# 网站相关配置
+website:
+  # 网站识别的优先级
+  priority:
+    # 音频顺序
+    audio:
+    - DLsite
+    # 视频顺序
+    video:
+    - DLsite
+    - Bangumi
+    # 游戏顺序
+    game:
+    - DLsite
+    - Steam
+    - Bangumi
+    # 文本顺序
+    text:
+    - Bangumi
+    # 图片顺序
+    picture:
+    - DLsite
+    - Bangumi
+    # 未知媒体即默认的识别顺序
+    unknown:
+    - DLsite
+    - Bangumi
+    - Steam
+  # Dlsite配置
+  dlsite:
+    # 是否启用DLsite
+    enable: true
+    # 是否使用Selenium获取评分
+    use_selenium_for_rating: false
+  # Bangumi配置
+  bangumi:
+    # 是否启用Bangumi
+    enable: true
+    # Bangumi API Key, 从 https://next.bgm.tv/demo/access-token 申请。留空将无法使用 Bangumi 识别
+    api_key:
+  # Steam配置
+  steam:
+    # 是否启用Steam
+    enable: true
+    # 请求语言，影响name/description本地化。常见值：schinese / english / japanese
+    language: schinese
+    # 国家代码，影响价格/发行区域。禁用cn（部分游戏对CN区未开放），推荐us
+    country_code: us
+# 文件相关配置
+files:
+  # 最小文件大小（字节），小于此大小的文件将被忽略
+  minimum_file_size: 0
+  # 忽略的文件名列表（精确匹配，不区分大小写）
+  ignored_files:
+  - Thumbs.db
+  - .DS_Store
+  - desktop.ini
+  - .gitkeep
+  - .gitignore
+  # 忽略的文件名模式（支持简单通配符：* 匹配任意字符）
+  ignored_patterns:
+  - .*
+  - '*.tmp'
+  - '*.temp'
+  - '*.cache'
+  - '*.log'
+  - '*.bak'
+  - '*.swp'
+  - '*.swo'
+  # 是否跳过隐藏文件
+  skip_hidden_files: true
+  # 是否跳过系统文件
+  skip_system_files: true
+  # 允许的文件扩展名列表（为空表示允许所有扩展名）
+  allowed_extensions: []
+# 任务相关配置
+tasks:
+  # 定时任务配置列表
+  scheduled_tasks:
+  - # 任务名称
+    name: CacheCleanup
+    # 任务类型
+    type: CacheCleanup
+    # Cron表达式
+    cron: 0 0 * * *
+    # 是否启用
+    enabled: true
+    # 任务描述
+    description: 清理未使用的图片缓存、更新图片哈希值并清理过期文件
+    # 任务参数
+    parameters:
+      max_age_days: 0
+    # 覆盖默认超时时间(分钟)
+    timeout_override:
+    # 任务优先级
+    priority:
+  - # 任务名称
+    name: MediaCleanup
+    # 任务类型
+    type: MediaCleanup
+    # Cron表达式
+    cron: 0 0 4 * *
+    # 是否启用
+    enabled: true
+    # 任务描述
+    description: 清理无效的媒体记录
+    # 任务参数
+    parameters:
+      clean_duplicates: false
+    # 覆盖默认超时时间(分钟)
+    timeout_override:
+    # 任务优先级
+    priority:
+  - # 任务名称
+    name: TagVectorSync
+    # 任务类型
+    type: TagVectorSync
+    # Cron表达式
+    cron: 0 0 */6 * *
+    # 是否启用
+    enabled: true
+    # 任务描述
+    description: 同步标签数据到向量数据库
+    # 任务参数
+    parameters:
+      batch_size: 100
+      force_update: false
+      cleanup_orphans: false
+    # 覆盖默认超时时间(分钟)
+    timeout_override:
+    # 任务优先级
+    priority:
+  - # 任务名称
+    name: MediaVectorSync
+    # 任务类型
+    type: MediaVectorSync
+    # Cron表达式
+    cron: 0 6 */6 * *
+    # 是否启用
+    enabled: true
+    # 任务描述
+    description: 同步媒体数据到向量数据库
+    # 任务参数
+    parameters:
+      batch_size: 100
+      force_update: false
+      cleanup_orphans: false
+    # 覆盖默认超时时间(分钟)
+    timeout_override:
+    # 任务优先级
+    priority:
+  - # 任务名称
+    name: PendingIdentificationCleanup
+    # 任务类型
+    type: PendingIdentificationCleanup
+    # Cron表达式
+    cron: 0 3 * * *
+    # 是否启用
+    enabled: true
+    # 任务描述
+    description: 清理超过保留期限的待入库识别结果
+    # 任务参数
+    parameters:
+    # 覆盖默认超时时间(分钟)
+    timeout_override:
+    # 任务优先级
+    priority:
+  # 任务失败重试次数
+  retry_count: 0
+  # 最大并发识别任务数
+  max_concurrent_identification_tasks: 8
+  # 缓存清理配置
+  cache_cleanup:
+    # 缓存文件最大保留天数，0表示不按时间清理
+    max_age_days: 0
+    # 是否清理过期图片缓存
+    cleanup_image_cache: true
+    # 是否清理临时文件
+    cleanup_temp_files: true
+# 标签匹配配置
+tag_matching:
+  # 是否启用模糊匹配（默认启用）
+  enable_fuzzy_matching: true
+  # 相似度匹配阈值（0-1之间，默认0.7）
+  similarity_threshold: 0.7
+  # 是否启用包含匹配（默认启用）
+  enable_contains_matching: true
+  # 是否启用规范化匹配（默认启用）
+  enable_normalized_matching: true
+  # 返回的最大匹配结果数（默认5）
+  max_match_results: 5
+  # 是否记录匹配详情（用于调试，默认关闭）
+  log_match_details: false
+# 搜索配置
+search:
+  # 是否启用全局搜索功能
+  enable_global_search: true
+  # 是否启用搜索缓存以提高性能
+  enable_search_cache: true
+  # 搜索缓存过期时间（分钟）
+  cache_expiration_minutes: 5
+  # 最大并发搜索数量限制
+  max_concurrent_searches: 10
+  # 每种类型默认最大结果数
+  default_max_results_per_type: 20
+  # 默认最小相关性分数（低于此分数的结果将被过滤）
+  default_min_relevance_score: 0.3
+  # 搜索超时时间（秒）
+  search_timeout_seconds: 30
+  # 文本搜索相关配置
+  text_search:
+    # 是否启用搜索结果高亮显示
+    enable_highlighting: true
+    # 搜索结果高亮显示使用的HTML标签
+    highlight_tag: <mark>
+# 识别默认配置
+identification:
+  # 是否跳过缓存，强制重新识别
+  skip_cache: false
+  # 单个网站的识别超时时间（秒）
+  timeout_seconds: 30
+  # 最小相似度，低于此相似度的搜索结果将被忽略
+  min_similarity: 0.8
+  # 识别策略 (Auto, Manual, Hybrid, ForceRefresh, CacheOnly, Quick)
+  strategy: Auto
+  # 覆盖默认的网站优先级列表
+  website_priority_override:
+  # 识别完成后是否自动添加到数据库（仅影响后台识别任务）
+  auto_add_to_database: true
+  # 待入库识别结果的保留天数（0 = 永不清理）
+  pending_retention_days: 30

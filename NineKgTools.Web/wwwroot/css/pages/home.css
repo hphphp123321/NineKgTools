@@ -1,0 +1,125 @@
+/* ==============================================
+   主页专用样式
+   仪表板统计、分类卡片、内容区域
+   ============================================== */
+
+/* 分类统计卡片 */
+.category-stat-card {
+    min-height: 140px;
+    transition: all var(--transition-slow);
+    position: relative;
+    overflow: hidden;
+    border-top: 3px solid transparent;
+}
+
+.home-category-card-inner {
+    height: 100%;
+}
+
+.category-stat-card:hover {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: var(--shadow-xl);
+    border-top-color: var(--mud-palette-primary);
+}
+
+/* 内容卡片（最近入库/收藏） */
+.content-card {
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+}
+
+.content-card .media-card-grid {
+    flex: 1;
+    align-content: flex-start;
+    min-height: 180px;
+}
+
+/* 全局统计横幅 - 6列等宽网格 */
+.home-global-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--spacing-md);
+}
+
+/* 单个统计指标格 */
+.home-stat-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: var(--spacing-md) var(--spacing-sm);
+    background: rgba(var(--mud-palette-primary-rgb), 0.04);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(var(--mud-palette-primary-rgb), 0.08);
+    transition: all var(--transition-slow);
+    min-width: 0;
+}
+
+/* 统计链接：确保触摸目标最小尺寸 44×44px */
+.home-stat-chip a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.home-stat-chip:hover {
+    background: rgba(var(--mud-palette-primary-rgb), 0.08);
+    border-color: rgba(var(--mud-palette-primary-rgb), 0.18);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* 分类卡片网格 */
+.home-category-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--spacing-md);
+}
+
+/* === 响应式 === */
+
+@media (max-width: 1280px) {
+    .home-global-stats-grid { grid-template-columns: repeat(3, 1fr); }
+    .home-category-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 768px) {
+    .home-global-stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .home-category-grid { grid-template-columns: repeat(2, 1fr); }
+
+    .category-stat-card .mud-typography-h3 {
+        font-size: 1.75rem;
+        line-height: 1.2;
+    }
+}
+
+@media (max-width: 480px) {
+    .home-global-stats-grid { grid-template-columns: 1fr; }
+    .home-category-grid { grid-template-columns: 1fr; }
+
+    .category-stat-card {
+        min-height: 80px;
+    }
+
+    .category-stat-card .mud-typography-h3 {
+        font-size: 2rem;
+    }
+
+}
+
+/* 无障碍：减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+    .category-stat-card,
+    .home-stat-chip {
+        transition: none !important;
+        animation: none !important;
+    }
+
+    .category-stat-card:hover,
+    .home-stat-chip:hover {
+        transform: none !important;
+    }
+}

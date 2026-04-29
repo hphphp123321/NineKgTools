@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 使用问题 / 想法讨论
+    url: https://github.com/hphphp123321/NineKgTools/discussions
+    about: 使用中的疑问、功能构想、架构讨论请到 Discussions
+  - name: 🔒 安全漏洞报告
+    url: https://github.com/hphphp123321/NineKgTools/blob/main/SECURITY.md
+    about: 请按 SECURITY.md 的指引私下报告，不要公开

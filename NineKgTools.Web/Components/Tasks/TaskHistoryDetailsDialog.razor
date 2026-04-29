@@ -1,0 +1,194 @@
+@using NineKgTools.Core.Services.Tasks
+@using NineKgTools.Core.Models.Tasks
+@using NineKgTools.Core.Models.Tasks.Diagnostics
+@using NineKgTools.Utils
+
+<MudDialog>
+    <DialogContent>
+        <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+            <!-- 基础信息标签页 -->
+            <MudTabPanel Text="基础信息" Icon="@Icons.Material.Filled.Info">
+                <MudGrid>
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">任务ID</MudText>
+                        <MudText Typo="Typo.body1" Class="font-weight-medium">@ExecutionInfo.TaskId</MudText>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">任务名称</MudText>
+                        <MudText Typo="Typo.body1" Class="font-weight-medium">@ExecutionInfo.TaskName</MudText>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">状态</MudText>
+                        <MudChip T="string" Color="@(ExecutionInfo.Success ? Color.Success : Color.Error)" Size="Size.Small">
+                            @(ExecutionInfo.Success ? "成功" : "失败")
+                        </MudChip>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">执行耗时</MudText>
+                        <MudText Typo="Typo.body1">@TaskUIHelper.FormatDuration(ExecutionInfo.Duration)</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudTabPanel>
+
+            <!-- 执行详情标签页 -->
+            <MudTabPanel Text="执行详情" Icon="@Icons.Material.Filled.Description">
+                <MudGrid>
+                    <MudItem xs="12" md="4">
+                        <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Class="mr-2"/>
+                                <div>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">处理总数</MudText>
+                                    <MudText Typo="Typo.h6">@ExecutionInfo.ProcessedItems</MudText>
+                                </div>
+                            </div>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@Icons.Material.Filled.Error"
+                                        Color="@(ExecutionInfo.FailedItems > 0 ? Color.Error : Color.Default)"
+                                        Class="mr-2"/>
+                                <div>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">失败数</MudText>
+                                    <MudText Typo="Typo.h6" Color="@(ExecutionInfo.FailedItems > 0 ? Color.Error : Color.Default)">
+                                        @ExecutionInfo.FailedItems
+                                    </MudText>
+                                </div>
+                            </div>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudPaper Class="pa-3" Elevation="0" Outlined="true">
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@Icons.Material.Filled.Analytics" Color="Color.Info" Class="mr-2"/>
+                                <div>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">成功率</MudText>
+                                    <MudText Typo="Typo.h6" Color="Color.Success">
+                                        @GetSuccessRate()%
+                                    </MudText>
+                                </div>
+                            </div>
+                        </MudPaper>
+                    </MudItem>
+
+                    @if (!string.IsNullOrEmpty(ExecutionInfo.Message))
+                    {
+                        <MudItem xs="12">
+                            <MudDivider Class="my-3"/>
+                            <MudAlert Severity="@(ExecutionInfo.Success ? Severity.Success : Severity.Error)"
+                                      Variant="Variant.Outlined"
+                                      Dense="true">
+                                <MudText Typo="Typo.caption">任务消息：</MudText>
+                                <MudText Typo="Typo.body2">@ExecutionInfo.Message</MudText>
+                            </MudAlert>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudTabPanel>
+
+            <!-- 执行日志标签页 -->
+            <MudTabPanel Text="@GetLogTabTitle()" Icon="@Icons.Material.Filled.Terminal">
+                @if (_logEntries.Any())
+                {
+                    <TaskLogViewer LogEntries="@_logEntries"/>
+                }
+                else
+                {
+                    <div class="d-flex flex-column align-center justify-center py-8">
+                        <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Large" Color="Color.Secondary"/>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">暂无执行日志</MudText>
+                    </div>
+                }
+            </MudTabPanel>
+
+            <!-- 识别诊断标签页（仅识别类任务有） -->
+            @if (_diagnostics is not null)
+            {
+                <MudTabPanel Text="识别诊断" Icon="@Icons.Material.Filled.Insights">
+                    <IdentificationDiagnosticsView Diagnostics="_diagnostics"/>
+                </MudTabPanel>
+            }
+
+            <!-- 时间信息标签页 -->
+            <MudTabPanel Text="时间信息" Icon="@Icons.Material.Filled.Schedule">
+                <MudTimeline>
+                    <MudTimelineItem Color="Color.Info" Size="Size.Small">
+                        <ItemOpposite>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @ExecutionInfo.StartTime.ToLocalTime().ToString("HH:mm:ss")
+                            </MudText>
+                        </ItemOpposite>
+                        <ItemContent>
+                            <MudText Typo="Typo.body2" Class="font-weight-medium">任务开始</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @ExecutionInfo.StartTime.ToLocalTime().ToString("yyyy年MM月dd日")
+                            </MudText>
+                        </ItemContent>
+                    </MudTimelineItem>
+                    <MudTimelineItem Color="Color.Primary" Size="Size.Small" Variant="Variant.Outlined">
+                        <ItemOpposite>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                耗时
+                            </MudText>
+                        </ItemOpposite>
+                        <ItemContent>
+                            <MudText Typo="Typo.body2">
+                                @TaskUIHelper.FormatDuration(ExecutionInfo.Duration)
+                            </MudText>
+                        </ItemContent>
+                    </MudTimelineItem>
+                    <MudTimelineItem Color="@(ExecutionInfo.Success ? Color.Success : Color.Error)" Size="Size.Small">
+                        <ItemOpposite>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @ExecutionInfo.EndTime.ToLocalTime().ToString("HH:mm:ss")
+                            </MudText>
+                        </ItemOpposite>
+                        <ItemContent>
+                            <MudText Typo="Typo.body2" Class="font-weight-medium">任务结束</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @ExecutionInfo.EndTime.ToLocalTime().ToString("yyyy年MM月dd日")
+                            </MudText>
+                        </ItemContent>
+                    </MudTimelineItem>
+                </MudTimeline>
+            </MudTabPanel>
+        </MudTabs>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" StartIcon="@Icons.Material.Filled.Close">关闭</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public TaskExecutionInfo ExecutionInfo { get; set; } = default!;
+
+    private List<TaskLogEntry> _logEntries = new();
+    private IdentificationDiagnostics? _diagnostics;
+
+    protected override void OnParametersSet()
+    {
+        if (ExecutionInfo != null)
+        {
+            _logEntries = ExecutionInfo.GetLogEntries();
+            _diagnostics = ExecutionInfo.GetIdentificationDiagnostics();
+        }
+    }
+
+    private void Close() => MudDialog.Close();
+
+    private string GetLogTabTitle()
+    {
+        return _logEntries.Any() ? $"执行日志 ({_logEntries.Count})" : "执行日志";
+    }
+
+    private string GetSuccessRate()
+    {
+        if (ExecutionInfo.ProcessedItems == 0) return "0.0";
+        var successCount = ExecutionInfo.ProcessedItems - ExecutionInfo.FailedItems;
+        return ((double)successCount / ExecutionInfo.ProcessedItems * 100).ToString("F1");
+    }
+
+}

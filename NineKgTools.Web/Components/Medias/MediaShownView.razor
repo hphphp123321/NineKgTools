@@ -1,0 +1,229 @@
+@using NineKgTools.Core.Models.Media
+@using NineKgTools.Core.Services.Media.QueryParameters
+
+<!-- 媒体展示组件 - 支持筛选和分页 -->
+<MudCard Elevation="@Elevation" Class="@($"rounded-lg {Class}")">
+    <!-- 标题栏 -->
+    <MudToolBar Dense="true" Gutters="true" Class="px-4 py-2">
+        <MudIcon Icon="@TitleIcon" Color="@TitleColor" Size="Size.Small" Class="mr-2" />
+        <MudText Typo="Typo.h6" Color="@TitleColor">@Title</MudText>
+        <MudSpacer />
+        @TitleActions
+        <div class="d-flex align-center gap-2">
+            @if (!_isLoading && _totalItemCount > 0)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    @_totalItemCount 个媒体
+                </MudText>
+                <MudDivider Vertical="true" FlexItem="true" />
+            }
+            <MudTooltip Text="@(_isGridView ? "切换到列表视图" : "切换到网格视图")" Duration="0">
+                <MudToggleIconButton Toggled="_isGridView"
+                                   Icon="@Icons.Material.Filled.ViewModule"
+                                   ToggledIcon="@Icons.Material.Filled.ViewList"
+                                   Color="Color.Primary"
+                                   ToggledColor="Color.Secondary"
+                                   Size="Size.Small"
+                                   ToggledChanged="OnViewModeToggled" />
+            </MudTooltip>
+        </div>
+    </MudToolBar>
+
+    <MudDivider />
+
+    <!-- 筛选与排序工具栏 -->
+    <MudToolBar Dense="true" Gutters="true" Class="px-4 py-2 d-flex justify-space-between">
+        <div class="d-flex align-center gap-2">
+            <!-- 筛选按钮 -->
+            <MudButton StartIcon="@Icons.Material.Filled.FilterList"
+                      Color="@TitleColor"
+                      Variant="Variant.Outlined"
+                      Size="Size.Medium"
+                      OnClick="OpenFilterDialog">
+                筛选
+                @if (HasActiveUserFilters())
+                {
+                    <MudChip T="string" Size="Size.Medium" Color="Color.Warning" Class="ml-2">
+                        @GetActiveFilterCount()
+                    </MudChip>
+                }
+            </MudButton>
+
+            <!-- 重置筛选按钮 -->
+            @if (HasActiveUserFilters())
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.FilterAltOff"
+                              Color="Color.Default"
+                              Variant="Variant.Outlined"
+                              Size="Size.Medium"
+                              OnClick="ResetFilters"
+                              Title="重置筛选" />
+            }
+        </div>
+
+        <!-- 排序选项 -->
+        @if (ShowSortOptions)
+        {
+            <div class="d-flex align-center gap-2">
+                <MudSelect T="MediaSortOption"
+                          Value="_currentQueryParams.SortOption"
+                          Label="排序"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          AnchorOrigin="Origin.BottomCenter"
+                          ValueChanged="OnSortOptionChanged"
+                          Style="min-width: 150px;">
+                    <MudSelectItem T="MediaSortOption" Value="MediaSortOption.StoreDateDesc">
+                        <div class="d-flex align-center gap-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Archive" Size="Size.Small" />
+                            <span>入库日期↓</span>
+                        </div>
+                    </MudSelectItem>
+                    <MudSelectItem T="MediaSortOption" Value="MediaSortOption.StoreDateAsc">
+                        <div class="d-flex align-center gap-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Archive" Size="Size.Small" />
+                            <span>入库日期↑</span>
+                        </div>
+                    </MudSelectItem>
+                    <MudSelectItem T="MediaSortOption" Value="MediaSortOption.ReleaseDateDesc">
+                        <div class="d-flex align-center gap-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" />
+                            <span>发售日期↓</span>
+                        </div>
+                    </MudSelectItem>
+                    <MudSelectItem T="MediaSortOption" Value="MediaSortOption.ReleaseDateAsc">
+                        <div class="d-flex align-center gap-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Event" Size="Size.Small" />
+                            <span>发售日期↑</span>
+                        </div>
+                    </MudSelectItem>
+                    <MudSelectItem T="MediaSortOption" Value="MediaSortOption.RatingDesc">
+                        <div class="d-flex align-center gap-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" />
+                            <span>评分↓</span>
+                        </div>
+                    </MudSelectItem>
+                    <MudSelectItem T="MediaSortOption" Value="MediaSortOption.RatingAsc">
+                        <div class="d-flex align-center gap-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" />
+                            <span>评分↑</span>
+                        </div>
+                    </MudSelectItem>
+                    <MudSelectItem T="MediaSortOption" Value="MediaSortOption.SizeDesc">
+                        <div class="d-flex align-center gap-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Small" />
+                            <span>大小↓</span>
+                        </div>
+                    </MudSelectItem>
+                    <MudSelectItem T="MediaSortOption" Value="MediaSortOption.SizeAsc">
+                        <div class="d-flex align-center gap-1">
+                            <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Small" />
+                            <span>大小↑</span>
+                        </div>
+                    </MudSelectItem>
+                    <MudSelectItem T="MediaSortOption" Value="MediaSortOption.TitleAsc">
+                        <div class="d-flex align-center gap-1">
+                            <MudIcon Icon="@Icons.Material.Filled.SortByAlpha" Size="Size.Small" />
+                            <span>标题A-Z</span>
+                        </div>
+                    </MudSelectItem>
+                    <MudSelectItem T="MediaSortOption" Value="MediaSortOption.TitleDesc">
+                        <div class="d-flex align-center gap-1">
+                            <MudIcon Icon="@Icons.Material.Filled.SortByAlpha" Size="Size.Small" />
+                            <span>标题Z-A</span>
+                        </div>
+                    </MudSelectItem>
+                </MudSelect>
+            </div>
+        }
+    </MudToolBar>
+
+    <MudDivider />
+
+    <!-- 加载状态 -->
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="@TitleColor" />
+    }
+
+    <MudCardContent Class="pa-4">
+        <!-- 媒体展示区域 -->
+        @if (_pagedMedias != null && _pagedMedias.Any())
+        {
+            @if (_isGridView)
+            {
+                <MediaGrid Medias="@_pagedMedias.ToList()"
+                          Simple="@Simple"
+                          EmptyStateText="@EmptyStateText"
+                          HideFavoriteButton="@HideFavoriteButton"
+                          ShowEmptyState="false" />
+            }
+            else
+            {
+                <MediaList Medias="@_pagedMedias.ToList()"
+                          Simple="@Simple"
+                          EmptyStateText="@EmptyStateText"
+                          HideFavoriteButton="@HideFavoriteButton"
+                          ShowEmptyState="false" />
+            }
+
+            <!-- 分页栏：每页数量选择器 + 分页控件并排居中
+                 即使总数 ≤ 1 页也始终渲染分页器（Count=1），保持布局稳定。 -->
+            <div class="media-pager-bar mt-6">
+                <div class="media-pager-bar__size">
+                    <MudSelect T="int"
+                               Value="_userPageSize"
+                               Label="每页"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Dense="true"
+                               Disabled="@_isLoading"
+                               ValueChanged="OnPageSizeChanged"
+                               aria-label="每页显示数量"
+                               Style="min-width: 110px;">
+                        @foreach (var size in AllowedPageSizes)
+                        {
+                            <MudSelectItem T="int" Value="size">@size</MudSelectItem>
+                        }
+                    </MudSelect>
+                </div>
+                <div class="media-pager-bar__pages">
+                    <MudPagination
+                        Count="@Math.Max(_totalPages, 1)"
+                        Selected="@_currentPage"
+                        SelectedChanged="OnPageChanged"
+                        BoundaryCount="1"
+                        MiddleCount="3"
+                        ShowFirstButton="true"
+                        ShowLastButton="true"
+                        ShowPreviousButton="true"
+                        ShowNextButton="true"
+                        Variant="Variant.Filled"
+                        Color="@TitleColor"
+                        Size="Size.Medium" />
+                </div>
+            </div>
+        }
+        else if (!_isLoading)
+        {
+            <!-- 空状态 -->
+            <MudContainer Class="d-flex flex-column align-center py-8">
+                <MudIcon Icon="@EmptyIcon" Color="Color.Default" Size="Size.Large" Class="mb-4" />
+                <MudText Align="Align.Center" Typo="Typo.h6">@EmptyTitle</MudText>
+                <MudText Align="Align.Center" Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
+                    @EmptyDescription
+                </MudText>
+                @if (HasActiveUserFilters())
+                {
+                    <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                              Color="Color.Primary"
+                              Variant="Variant.Outlined"
+                              OnClick="ResetFilters"
+                              Class="mt-4">
+                        重置筛选条件
+                    </MudButton>
+                }
+            </MudContainer>
+        }
+    </MudCardContent>
+</MudCard>

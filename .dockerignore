@@ -1,0 +1,74 @@
+# Docker build context 排除规则
+# 目标：把构建上下文压到最小，避免上传不必要文件、避免开发期数据进镜像
+
+# .NET / 构建产物
+**/bin/
+**/obj/
+**/TestResults/
+**/.vs/
+**/.vscode/
+**/.idea/
+**/*.user
+**/*.suo
+**/*.userosscache
+**/*.DotSettings.user
+
+# .NET SDK 缓存
+artifacts/
+.cache/
+node_modules/
+
+# Git / Claude / 编辑器
+.git/
+.gitignore
+.gitattributes
+.editorconfig
+.github/
+.claude/
+.playwright-mcp/
+.run/
+CLAUDE.md
+
+# 文档与脚本不进镜像（不影响运行时）
+docs/
+scripts/
+*.md
+!README.md
+
+# 项目层面：本机数据 / 日志（重要：避免开发期数据被打进镜像）
+Database/
+Logs/
+data/
+logs/
+config/
+media/
+
+# Desktop 项目（MAUI Windows，Linux 镜像里不需要）
+NineKgTools.Desktop/
+
+# 测试项目（不进运行镜像）
+NineKgTools.Tests/
+
+# 配置：example 与 tags 进镜像（Dockerfile 显式 COPY），但避免本地 config.yaml 泄密
+Config/config.yaml
+
+# 环境与密钥
+.env
+.env.local
+.env.*.local
+
+# 平台特定脚本
+*.bat
+*.ps1
+run-web.*
+
+# Solution / IDE
+*.sln.iml
+*.sln.docstates
+
+# 备份与压缩
+*.bak
+*.zip
+*.tar
+*.gz
+*.7z

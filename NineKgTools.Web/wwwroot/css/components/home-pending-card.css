@@ -1,0 +1,185 @@
+/* ==============================================
+   首页 · 待处理导航入口卡片
+   展示"待识别"和"待入库"两个计数，点击直达 UnknownPage 对应 Tab。
+   零状态时整块由 Razor 层 @if 控制不渲染。
+   ============================================== */
+
+/* 卡片头部（图标 + 标题 + 副标题） */
+.home-pending-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+.home-pending-header__title {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+/* 两列网格 */
+.home-pending-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+}
+
+/* 单个可点击入口 */
+.home-pending-slot {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+        "icon label arrow"
+        "number number hint";
+    column-gap: var(--spacing-md);
+    row-gap: var(--spacing-xs);
+    align-items: center;
+    min-height: 88px;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: rgba(var(--mud-palette-warning-rgb), 0.04);
+    border: 1px solid rgba(var(--mud-palette-warning-rgb), 0.15);
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition: background-color var(--transition-normal),
+                border-color var(--transition-normal),
+                transform var(--transition-normal),
+                box-shadow var(--transition-normal);
+}
+
+.home-pending-slot:hover,
+.home-pending-slot:focus-visible {
+    background: rgba(var(--mud-palette-warning-rgb), 0.09);
+    border-color: rgba(var(--mud-palette-warning-rgb), 0.32);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    text-decoration: none;
+}
+
+.home-pending-slot:focus-visible {
+    outline: 2px solid var(--mud-palette-warning);
+    outline-offset: 2px;
+}
+
+.home-pending-slot:active {
+    transform: translateY(0);
+    transition-duration: 0.08s;
+}
+
+.home-pending-slot__icon {
+    grid-area: icon;
+    color: var(--mud-palette-warning);
+    display: flex;
+    align-items: center;
+}
+
+.home-pending-slot__label {
+    grid-area: label;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--mud-palette-text-primary);
+    letter-spacing: 0.01em;
+}
+
+.home-pending-slot__number {
+    grid-area: number;
+    font-size: 2.25rem;
+    font-weight: var(--font-weight-bold);
+    line-height: 1.1;
+    color: var(--mud-palette-warning);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+}
+
+.home-pending-slot__hint {
+    grid-area: hint;
+    font-size: var(--font-size-xs);
+    color: var(--mud-palette-text-secondary);
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.home-pending-slot__arrow {
+    grid-area: arrow;
+    display: flex;
+    align-items: center;
+    color: var(--mud-palette-text-secondary);
+    transition: transform var(--transition-normal),
+                color var(--transition-normal);
+}
+
+.home-pending-slot:hover .home-pending-slot__arrow,
+.home-pending-slot:focus-visible .home-pending-slot__arrow {
+    transform: translateX(4px);
+    color: var(--mud-palette-warning);
+}
+
+/* 半零状态：当前列为 0 时弱化视觉权重 */
+.home-pending-slot--muted {
+    background: transparent;
+    border-color: var(--mud-palette-lines-default);
+}
+
+.home-pending-slot--muted .home-pending-slot__icon,
+.home-pending-slot--muted .home-pending-slot__number {
+    color: var(--mud-palette-text-secondary);
+    opacity: 0.7;
+}
+
+.home-pending-slot--muted:hover,
+.home-pending-slot--muted:focus-visible {
+    background: rgba(var(--mud-palette-warning-rgb), 0.04);
+    border-color: rgba(var(--mud-palette-warning-rgb), 0.15);
+    transform: none;
+    box-shadow: none;
+}
+
+.home-pending-slot--muted:hover .home-pending-slot__arrow,
+.home-pending-slot--muted:focus-visible .home-pending-slot__arrow {
+    transform: none;
+    color: var(--mud-palette-text-secondary);
+}
+
+/* 加载态：骨架占位容器 */
+.home-pending-slot__skeleton {
+    grid-area: number;
+}
+
+/* === 响应式：中屏仍保持两列；窄屏堆叠 === */
+@media (max-width: 600px) {
+    .home-pending-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .home-pending-slot {
+        min-height: 80px;
+        padding: var(--spacing-md);
+    }
+
+    .home-pending-slot__number {
+        font-size: 2rem;
+    }
+}
+
+/* === 无障碍：减少动画偏好 === */
+@media (prefers-reduced-motion: reduce) {
+    .home-pending-slot,
+    .home-pending-slot__arrow {
+        transition: none;
+    }
+
+    .home-pending-slot:hover,
+    .home-pending-slot:focus-visible {
+        transform: none;
+    }
+
+    .home-pending-slot:hover .home-pending-slot__arrow,
+    .home-pending-slot:focus-visible .home-pending-slot__arrow {
+        transform: none;
+    }
+}

@@ -1,0 +1,126 @@
+/* ==============================================
+   标签页面专用样式
+   标签管理和标签详情页面的特定样式
+   ============================================== */
+
+/* 排序按钮选中态 */
+.tags-sort-btn-active {
+    background-color: var(--mud-palette-primary-hover) !important;
+    color: var(--mud-palette-primary) !important;
+}
+
+/* 工具栏布局 */
+.tags-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+    flex-wrap: wrap;
+}
+
+.tags-toolbar-search {
+    flex: 1;
+    min-width: 180px;
+}
+
+.tags-toolbar-controls {
+    flex-shrink: 0;
+}
+
+/* 可编辑字段样式 */
+.tag-name-field .mud-input-root {
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.05);
+    border-radius: 8px;
+    transition: all var(--transition-fast);
+}
+
+.tag-name-field .mud-input-root:hover {
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.08);
+}
+
+.tag-name-field .mud-input-root.mud-input-root-focused {
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.1);
+    box-shadow: 0 0 0 2px rgba(var(--mud-palette-primary-rgb), 0.2);
+}
+
+/* 标签描述字段样式 */
+.tag-description-field .mud-input-root {
+    background-color: rgba(var(--mud-palette-info-rgb), 0.03);
+    border-radius: 8px;
+    transition: all var(--transition-fast);
+}
+
+.tag-description-field .mud-input-root:hover {
+    background-color: rgba(var(--mud-palette-info-rgb), 0.06);
+}
+
+.tag-description-field .mud-input-root.mud-input-root-focused {
+    background-color: rgba(var(--mud-palette-info-rgb), 0.08);
+    box-shadow: 0 0 0 2px rgba(var(--mud-palette-info-rgb), 0.2);
+}
+
+/* 映射页批量操作按钮响应式 */
+.tags-mapping-batch-actions {
+    flex-wrap: wrap;
+}
+
+/* ============================================
+   响应式设计
+   ============================================ */
+
+/* 平板及以下 */
+@media (max-width: 960px) {
+    /* 工具栏：搜索占满一行，控件换行 */
+    .tags-toolbar {
+        gap: var(--spacing-sm);
+    }
+
+    .tags-toolbar-search {
+        flex-basis: 100%;
+        min-width: unset;
+    }
+
+    .tags-toolbar-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    /* 映射页：隐藏优先级和描述列 */
+    .tags-mapping-table .mud-table-cell:nth-child(4),
+    .tags-mapping-table .mud-table-head .mud-table-cell:nth-child(4),
+    .tags-mapping-table .mud-table-cell:nth-child(8),
+    .tags-mapping-table .mud-table-head .mud-table-cell:nth-child(8) {
+        display: none;
+    }
+}
+
+/* 手机 */
+@media (max-width: 600px) {
+    /* 排序按钮隐藏文字，只显示图标 */
+    .tags-sort-label {
+        display: none;
+    }
+
+    /* 标签名称字段全宽 */
+    .tag-name-field {
+        width: 100%;
+    }
+
+    /* 顶层标签标题栏间距缩小 */
+    .tags-toolbar {
+        padding-left: var(--spacing-sm) !important;
+        padding-right: var(--spacing-sm) !important;
+    }
+
+    /* 映射页：额外隐藏命中次数和最后命中列 */
+    .tags-mapping-table .mud-table-cell:nth-child(6),
+    .tags-mapping-table .mud-table-head .mud-table-cell:nth-child(6),
+    .tags-mapping-table .mud-table-cell:nth-child(7),
+    .tags-mapping-table .mud-table-head .mud-table-cell:nth-child(7) {
+        display: none;
+    }
+
+    /* 映射页表格动态高度 */
+    .tags-mapping-table .mud-table-container {
+        max-height: max(250px, calc(100vh - 580px));
+    }
+}

@@ -1,0 +1,48 @@
+@typeparam T where T : NineKgTools.Core.Models.Media.Creator
+@using NineKgTools.Core.Models.Media
+
+@if (Creators != null && Creators.Count > 0)
+{
+    <div class="d-flex align-start mb-4">
+        <MudIcon Icon="@Icon" Color="@Color" Class="mr-2 mt-1" />
+        
+        <div class="flex-grow-1">
+            <!-- 使用MudChip美化标题显示 -->
+            <MudChip Color="@Color" Size="Size.Small" Variant="Variant.Filled" Class="mb-2 creator-title-chip" T="string">
+                @Title
+            </MudChip>
+            
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                @foreach (var creator in Creators)
+                {
+                    <MudLink Href="@creator.GetCreatorLink()"
+                            Typo="Typo.body1"
+                            Class="d-inline-flex align-center creator-link pa-2">
+                        @if (creator.Avatar != null)
+                        {
+                            <MudAvatar Size="Size.Small" Class="mr-2">
+                                <MudImage Src="@creator.Avatar.GetImageUrl()" Alt="@creator.Name" />
+                            </MudAvatar>
+                        }
+                        else
+                        {
+                            <MudAvatar Color="@Color" Size="Size.Small" Class="mr-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                            </MudAvatar>
+                        }
+                        @creator.Name
+                    </MudLink>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@* 所有样式已迁移到 /css/components/medias.css *@
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Icon { get; set; } = Icons.Material.Filled.Person;
+    [Parameter] public Color Color { get; set; } = Color.Primary;
+    [Parameter] public List<T>? Creators { get; set; }
+}

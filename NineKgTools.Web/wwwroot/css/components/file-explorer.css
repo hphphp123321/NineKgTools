@@ -1,0 +1,138 @@
+/*
+ * file-explorer.css — Components/FileExplorer 下组件的样式
+ * 对应 FileExplorer 对话框和 DirectoryTreeView
+ */
+
+/* ========= DirectoryTreeView ========= */
+.tree-item {
+    border-radius: var(--radius-sm, 4px);
+}
+
+.tree-item-selected {
+    background-color: rgba(var(--mud-palette-primary-rgb), 0.12) !important;
+    border-radius: var(--radius-sm, 4px);
+}
+
+.tree-item-highlighted {
+    background-color: rgba(var(--mud-palette-success-rgb), 0.06);
+    border-radius: var(--radius-sm, 4px);
+}
+
+.tree-item-highlighted:hover {
+    background-color: rgba(var(--mud-palette-success-rgb), 0.12) !important;
+}
+
+/* ========= FileExplorer 对话框 ========= */
+
+/* 工具栏上的路径输入框占据剩余空间 */
+.file-explorer-path-field {
+    flex: 1 1 auto;
+    margin: 0 var(--spacing-sm, 8px);
+}
+
+/* 工具栏上的搜索框固定宽度 */
+.file-explorer-search-field {
+    flex: 0 0 180px;
+}
+
+/* "排序:" 标签颜色，替代 color: var(--mud-palette-text-secondary) 内联 style */
+.file-explorer-sort-label {
+    color: var(--mud-palette-text-secondary);
+}
+
+/*
+ * 左右两侧内容面板（系统文件夹/最近访问 和 文件列表）
+ * 桌面：固定 400px 避免 Dialog 尺寸随内容剧烈跳动
+ * 短屏 / 手机：按视口比例收缩，不然两个 400px 面板堆叠 +
+ *   toolbar + footer 会远超 iPhone SE / 小笔电的 viewport
+ */
+.file-explorer-panel {
+    height: 400px;
+    overflow-y: auto;
+}
+
+/* 手机竖屏（xs 断点 < 600px）：侧边栏收缩，文件列表保持可操作 */
+@media (max-width: 600px) {
+    .file-explorer-panel--sidebar {
+        /* 侧边栏是辅助导航（系统文件夹 + 最近），给较小高度 */
+        height: min(180px, 25vh);
+    }
+
+    .file-explorer-panel--main {
+        /* 文件列表是主要交互区，占更大比例 */
+        height: min(320px, 45vh);
+    }
+}
+
+/* 短屏桌面/小笔电（viewport 高度 ≤ 700px） */
+@media (max-height: 700px) {
+    .file-explorer-panel {
+        height: min(400px, 55vh);
+    }
+}
+
+/* 文件夹名称/路径的文本截断；min-width: 0 允许 flex 收缩 */
+.file-explorer-sidebar-text {
+    min-width: 0;
+    max-width: 150px;
+}
+
+/* 窄屏下侧边栏占满宽度时，文本截断宽度也跟着放宽 */
+@media (max-width: 600px) {
+    .file-explorer-sidebar-text {
+        max-width: 100%;
+    }
+}
+
+/*
+ * 统计 chip：替代原来的 `height: 20px; font-size: 10px;` 硬编码
+ * 10px 低于 WCAG 可读下限，改用 token 化字号 + auto 高度
+ */
+.file-explorer-stats-chip {
+    font-size: var(--font-size-xs, 0.75rem);
+    height: auto;
+    padding: 2px var(--spacing-xs);
+    line-height: 1.4;
+}
+
+/* 窄屏堆叠：搜索框在窄屏下换行到路径框下方 */
+@media (max-width: 600px) {
+    .file-explorer-search-field {
+        flex: 1 1 100%;
+        margin-top: var(--spacing-sm);
+    }
+}
+
+/* 触屏设备：惯性滚动 + 去 hover 粘滞 */
+@media (hover: none) {
+    .file-explorer-panel {
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/*
+ * 触屏下把工具栏的 Size.Small 按钮触目标扩到 WCAG 推荐的 44×44。
+ * 用 ::before 伪元素构造透明 hit area，视觉尺寸不变以保持工具栏紧凑。
+ * 这与 Common/Tip 的做法一致，是项目内已沉淀的"小按钮触屏扩展"模式。
+ */
+@media (pointer: coarse) {
+    .file-explorer-toolbar-nav-btn {
+        position: relative;
+    }
+
+    .file-explorer-toolbar-nav-btn::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 44px;
+        height: 44px;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* 工具栏在窄屏允许换行，避免排序按钮和 chip 被挤到溢出 */
+.file-explorer-sort-toolbar {
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}

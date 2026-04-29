@@ -1,0 +1,71 @@
+@using NineKgTools.Core.Models.Tasks
+
+<div class="task-log-viewer @Class" style="@Style">
+    @* 工具栏 *@
+    <div class="task-log-toolbar d-flex align-center gap-2 pa-2">
+        <MudSelect T="TaskLogLevel?" @bind-Value="SelectedLevel" Label="日志级别" Dense="true"
+                   Margin="Margin.Dense" Style="max-width: 150px;" Clearable="true">
+            <MudSelectItem T="TaskLogLevel?" Value="null">全部</MudSelectItem>
+            <MudSelectItem T="TaskLogLevel?" Value="TaskLogLevel.Debug">Debug</MudSelectItem>
+            <MudSelectItem T="TaskLogLevel?" Value="TaskLogLevel.Info">Info</MudSelectItem>
+            <MudSelectItem T="TaskLogLevel?" Value="TaskLogLevel.Warning">Warning</MudSelectItem>
+            <MudSelectItem T="TaskLogLevel?" Value="TaskLogLevel.Error">Error</MudSelectItem>
+            <MudSelectItem T="TaskLogLevel?" Value="TaskLogLevel.Success">Success</MudSelectItem>
+        </MudSelect>
+
+        <MudSpacer/>
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            @FilteredLogs.Count / @LogEntries.Count 条日志
+        </MudText>
+
+        <MudTooltip Text="@(AutoScroll ? "自动滚动: 开" : "自动滚动: 关")">
+            <MudIconButton Icon="@(AutoScroll ? Icons.Material.Filled.VerticalAlignBottom : Icons.Material.Outlined.VerticalAlignBottom)"
+                          Color="@(AutoScroll ? Color.Primary : Color.Default)"
+                          Size="Size.Small"
+                          OnClick="ToggleAutoScroll"/>
+        </MudTooltip>
+
+        <MudTooltip Text="清除筛选">
+            <MudIconButton Icon="@Icons.Material.Filled.FilterAltOff"
+                          Size="Size.Small"
+                          OnClick="ClearFilter"
+                          Disabled="@(!SelectedLevel.HasValue)"/>
+        </MudTooltip>
+    </div>
+
+    <MudDivider/>
+
+    @* 日志内容区域 *@
+    <div class="task-log-content" @ref="_logContainerRef">
+        @if (!LogEntries.Any())
+        {
+            <div class="task-log-empty d-flex flex-column align-center justify-center py-8">
+                <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Large" Color="Color.Secondary"/>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">暂无日志</MudText>
+            </div>
+        }
+        else if (!FilteredLogs.Any())
+        {
+            <div class="task-log-empty d-flex flex-column align-center justify-center py-8">
+                <MudIcon Icon="@Icons.Material.Filled.FilterAlt" Size="Size.Large" Color="Color.Secondary"/>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">无匹配日志</MudText>
+            </div>
+        }
+        else
+        {
+            @foreach (var log in FilteredLogs)
+            {
+                <div class="task-log-entry task-log-@log.Level.ToString().ToLower()">
+                    <span class="task-log-timestamp">@log.Timestamp.ToString("HH:mm:ss.fff")</span>
+                    <span class="task-log-level task-log-level-@log.Level.ToString().ToLower()">@GetLevelText(log.Level)</span>
+                    @if (!string.IsNullOrEmpty(log.CurrentItem))
+                    {
+                        <span class="task-log-item">[@log.CurrentItem]</span>
+                    }
+                    <span class="task-log-message">@log.Message</span>
+                </div>
+            }
+        }
+    </div>
+</div>

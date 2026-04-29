@@ -1,0 +1,245 @@
+@using NineKgTools.Core.Models.Media
+@using NineKgTools.Core.Models.Categories
+@using NineKgTools.Utils
+@using Microsoft.AspNetCore.Components.Web
+
+<MudDialog>
+    <DialogContent>
+        <!-- 搜索框 -->
+        <MudTextField T="string"
+                      @bind-Value="_searchTerm"
+                      Label="搜索媒体"
+                      Variant="Variant.Outlined"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      AdornmentColor="Color.Primary"
+                      Placeholder="例如：最终幻想、千与千寻"
+                      Clearable="true"
+                      Immediate="true"
+                      DebounceInterval="300"
+                      OnDebounceIntervalElapsed="HandleSearchTermChanged"
+                      AutoFocus="true"
+                      Class="mb-3" />
+
+        <!-- 分类筛选栏 -->
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            @{
+                var allCount = GetCategoryCount(null);
+                var videoCount = GetCategoryCount(TopCategory.Video);
+                var audioCount = GetCategoryCount(TopCategory.Audio);
+                var pictureCount = GetCategoryCount(TopCategory.Picture);
+                var textCount = GetCategoryCount(TopCategory.Text);
+                var gameCount = GetCategoryCount(TopCategory.Game);
+            }
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Color="@(_selectedCategory == null ? Color.Primary : Color.Default)"
+                     Variant="@(_selectedCategory == null ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => SelectCategory(null))"
+                     Class="cursor-pointer">
+                全部@(allCount > 0 ? $" ({allCount})" : "")
+            </MudChip>
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Color="@(_selectedCategory == TopCategory.Video ? MediaUIHelper.GetMediaColor(TopCategory.Video) : Color.Default)"
+                     Variant="@(_selectedCategory == TopCategory.Video ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => SelectCategory(TopCategory.Video))"
+                     Disabled="@(videoCount == 0 && _searchResults.Count > 0)"
+                     Class="cursor-pointer">
+                <MudIcon Icon="@MediaUIHelper.GetCategoryIcon(TopCategory.Video)" Size="Size.Small" Class="mr-1" />
+                视频@(videoCount > 0 ? $" ({videoCount})" : "")
+            </MudChip>
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Color="@(_selectedCategory == TopCategory.Audio ? MediaUIHelper.GetMediaColor(TopCategory.Audio) : Color.Default)"
+                     Variant="@(_selectedCategory == TopCategory.Audio ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => SelectCategory(TopCategory.Audio))"
+                     Disabled="@(audioCount == 0 && _searchResults.Count > 0)"
+                     Class="cursor-pointer">
+                <MudIcon Icon="@MediaUIHelper.GetCategoryIcon(TopCategory.Audio)" Size="Size.Small" Class="mr-1" />
+                音频@(audioCount > 0 ? $" ({audioCount})" : "")
+            </MudChip>
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Color="@(_selectedCategory == TopCategory.Picture ? MediaUIHelper.GetMediaColor(TopCategory.Picture) : Color.Default)"
+                     Variant="@(_selectedCategory == TopCategory.Picture ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => SelectCategory(TopCategory.Picture))"
+                     Disabled="@(pictureCount == 0 && _searchResults.Count > 0)"
+                     Class="cursor-pointer">
+                <MudIcon Icon="@MediaUIHelper.GetCategoryIcon(TopCategory.Picture)" Size="Size.Small" Class="mr-1" />
+                图片@(pictureCount > 0 ? $" ({pictureCount})" : "")
+            </MudChip>
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Color="@(_selectedCategory == TopCategory.Text ? MediaUIHelper.GetMediaColor(TopCategory.Text) : Color.Default)"
+                     Variant="@(_selectedCategory == TopCategory.Text ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => SelectCategory(TopCategory.Text))"
+                     Disabled="@(textCount == 0 && _searchResults.Count > 0)"
+                     Class="cursor-pointer">
+                <MudIcon Icon="@MediaUIHelper.GetCategoryIcon(TopCategory.Text)" Size="Size.Small" Class="mr-1" />
+                文本@(textCount > 0 ? $" ({textCount})" : "")
+            </MudChip>
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Color="@(_selectedCategory == TopCategory.Game ? MediaUIHelper.GetMediaColor(TopCategory.Game) : Color.Default)"
+                     Variant="@(_selectedCategory == TopCategory.Game ? Variant.Filled : Variant.Outlined)"
+                     OnClick="@(() => SelectCategory(TopCategory.Game))"
+                     Disabled="@(gameCount == 0 && _searchResults.Count > 0)"
+                     Class="cursor-pointer">
+                <MudIcon Icon="@MediaUIHelper.GetCategoryIcon(TopCategory.Game)" Size="Size.Small" Class="mr-1" />
+                游戏@(gameCount > 0 ? $" ({gameCount})" : "")
+            </MudChip>
+
+            <MudSpacer />
+
+            <!-- 视图切换 -->
+            <MudTooltip Text="@(_isGridView ? "切换到列表视图" : "切换到网格视图")" Duration="0">
+                <MudToggleIconButton Toggled="_isGridView"
+                                     Icon="@Icons.Material.Filled.ViewModule"
+                                     ToggledIcon="@Icons.Material.Filled.ViewList"
+                                     Color="Color.Primary"
+                                     ToggledColor="Color.Secondary"
+                                     Size="Size.Small"
+                                     ToggledChanged="OnViewModeToggled" />
+            </MudTooltip>
+        </div>
+
+        <!-- 加载状态 -->
+        @if (_isLoading)
+        {
+            <div class="d-flex justify-center py-4">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            </div>
+        }
+        else if (string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            <!-- 未输入搜索词时的提示 -->
+            <div class="d-flex flex-column align-center justify-center py-6">
+                <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Large" Color="Color.Default" Class="mb-2" />
+                <MudText Typo="Typo.body1" Color="Color.Secondary">请输入关键词搜索媒体</MudText>
+            </div>
+        }
+        else if (_filteredResults.Count > 0)
+        {
+            <!-- 搜索结果 -->
+            <MudText Typo="Typo.subtitle2" Class="mb-2">找到 @_filteredResults.Count 项</MudText>
+
+            @if (_isGridView)
+            {
+                <!-- 网格视图 -->
+                <div class="media-selector-grid" style="max-height: 350px; overflow-y: auto;">
+                    @foreach (var media in _filteredResults)
+                    {
+                        var isSelected = IsMediaSelected(media);
+                        var mediaLocal = media;
+                        <div class="@GetGridItemClass(isSelected)"
+                             role="button"
+                             tabindex="0"
+                             aria-pressed="@(isSelected ? "true" : "false")"
+                             aria-label="@GetMediaAriaLabel(media, isSelected)"
+                             @onclick="() => ToggleMedia(mediaLocal)"
+                             @onkeydown="@((KeyboardEventArgs e) => OnMediaKeyDown(e, mediaLocal))">
+                            <SimpleMediaCard Media="@media" />
+                            @if (isSelected)
+                            {
+                                <div class="media-selector-check">
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                             Size="Size.Medium"
+                                             Color="Color.Primary" />
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <!-- 列表视图 -->
+                <MudList T="string" Dense="true" Class="pa-0" Style="max-height: 350px; overflow-y: auto;">
+                    @foreach (var media in _filteredResults)
+                    {
+                        var isSelected = IsMediaSelected(media);
+                        <MudListItem T="string"
+                                     Class="@GetListItemClass(isSelected)"
+                                     OnClick="@(() => ToggleMedia(media))">
+                            <div class="d-flex align-center gap-3">
+                                <!-- 缩略图 -->
+                                <MudImage Src="@(media.Poster?.GetImageUrl() ?? StaticStrings.ImageNotFound)"
+                                          Alt="@media.Title"
+                                          ObjectFit="ObjectFit.Cover"
+                                          Height="50"
+                                          Width="50"
+                                          Class="rounded" />
+
+                                <!-- 媒体信息 -->
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-center gap-2 mb-1">
+                                        <MudChip T="string"
+                                                 Size="Size.Small"
+                                                 Color="@MediaUIHelper.GetMediaColor(media.Category?.TopCategory ?? TopCategory.Game)"
+                                                 Variant="Variant.Filled"
+                                                 Class="ma-0 media-selector-category-badge">
+                                            @(media.Category?.Name ?? "未知")
+                                        </MudChip>
+                                        <MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 280px;">
+                                            @media.Title
+                                        </MudText>
+                                    </div>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @(media.ReleaseDate?.ToString("yyyy-MM-dd") ?? "未知日期")
+                                    </MudText>
+                                </div>
+
+                                <!-- 选中状态 -->
+                                @if (isSelected)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                                             Color="Color.Primary"
+                                             Size="Size.Small" />
+                                }
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+        }
+        else
+        {
+            <!-- 无搜索结果 -->
+            <div class="d-flex flex-column align-center justify-center py-6">
+                <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Default" Class="mb-2" />
+                <MudText Typo="Typo.body1" Color="Color.Secondary">没有找到匹配的媒体</MudText>
+            </div>
+        }
+
+        <!-- 已选择的媒体预览 -->
+        @if (_tempSelectedMedias.Count > 0)
+        {
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.subtitle2" Class="mb-2">已选择 @_tempSelectedMedias.Count 项</MudText>
+            <div class="d-flex flex-wrap gap-2">
+                @foreach (var media in _tempSelectedMedias)
+                {
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="Color.Primary"
+                             Variant="Variant.Filled"
+                             OnClose="() => ToggleMedia(media)"
+                             CloseIcon="@Icons.Material.Filled.Close">
+                        @media.Title
+                    </MudChip>
+                }
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Default" OnClick="Cancel">取消</MudButton>
+        <MudButton Color="Color.Primary"
+                   OnClick="Confirm"
+                   Variant="Variant.Filled">
+            @GetConfirmLabel()
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@* 所有样式已迁移到 /css/components/medias.css *@

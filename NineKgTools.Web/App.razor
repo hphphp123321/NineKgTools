@@ -1,0 +1,85 @@
+@using System.Reflection
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <base href="/"/>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet"/>
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet"/>
+    
+    <!-- CSS 变量系统 -->
+    <link href="css/variables.css" rel="stylesheet"/>
+    
+    <!-- CSS 工具类 -->
+    <link href="css/utilities.css" rel="stylesheet"/>
+    
+    <!-- 组件样式 -->
+    <link href="css/components/cards.css" rel="stylesheet"/>
+    <link href="css/components/animations.css" rel="stylesheet"/>
+    <link href="css/components/forms.css" rel="stylesheet"/>
+    <link href="css/components/common.css" rel="stylesheet"/>
+    <link href="css/components/dialogs.css" rel="stylesheet"/>
+    <link href="css/components/creators.css" rel="stylesheet"/>
+    <link href="css/components/medias.css" rel="stylesheet"/>
+    <link href="css/components/file-explorer.css" rel="stylesheet"/>
+    <link href="css/components/photo-wall.css" rel="stylesheet"/>
+    <link href="css/components/search.css" rel="stylesheet"/>
+    <link href="css/components/media-grid.css" rel="stylesheet"/>
+    <link href="css/components/media-list.css" rel="stylesheet"/>
+    <link href="css/components/tasks.css" rel="stylesheet"/>
+    <link href="css/components/diagnostics.css" rel="stylesheet"/>
+    <link href="css/components/appbar.css" rel="stylesheet"/>
+    <link href="css/components/home-pending-card.css" rel="stylesheet"/>
+    <link href="css/components/media-pager-bar.css" rel="stylesheet"/>
+
+    
+    <!-- 页面样式 -->
+    <link href="css/pages/media.css" rel="stylesheet"/>
+    <link href="css/pages/home.css" rel="stylesheet"/>
+    <link href="css/pages/settings.css" rel="stylesheet"/>
+    <link href="css/pages/tags.css" rel="stylesheet"/>
+    <link href="css/pages/login.css" rel="stylesheet"/>
+    <link href="css/pages/creators.css" rel="stylesheet"/>
+    <link href="css/pages/favorites.css" rel="stylesheet"/>
+    <link href="css/pages/search-result.css" rel="stylesheet"/>
+    <link href="css/pages/sources.css" rel="stylesheet"/>
+    <link href="css/pages/websites.css" rel="stylesheet"/>
+
+    <!-- 全局样式 -->
+    <link href="css/global.css" rel="stylesheet"/>
+    
+    <!-- Blazor 生成的作用域样式 -->
+    <link href="NineKgTools.styles.css" rel="stylesheet"/>
+
+    <!-- Favicon 全套（多尺寸 + iOS / Android / PWA）-->
+    <link rel="icon" type="image/x-icon" href="favicon.ico"/>
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png"/>
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"/>
+    <link rel="manifest" href="site.webmanifest"/>
+    <meta name="theme-color" content="#8B7FFF"/>
+    <HeadOutlet @rendermode="InteractiveServer"/>
+</head>
+
+<body>
+<Routes @rendermode="InteractiveServer"/>
+<script
+    src="_content/MudBlazor/MudBlazor.min.js?v=@(Assembly.GetAssembly(typeof(MudBlazor.AbstractLocalizationInterceptor))?.GetName().Version?.ToString())">
+</script>
+<script src="js/photo-wall.js"></script>
+<script src="js/auth.js?v=@(Assembly.GetExecutingAssembly().GetName().Version?.ToString())"></script>
+<script src="js/settings.js"></script>
+<script src="_framework/blazor.server.js" autostart="false"></script>
+<script>
+    Blazor.start().then(() => {
+        Blazor.defaultReconnectionHandler._reconnectCallback = function (d) {
+            document.location.reload();
+        }
+    });
+</script>
+
+</body>
+
+</html>

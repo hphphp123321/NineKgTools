@@ -1,0 +1,425 @@
+@page "/website"
+<PageTitle>网站管理</PageTitle>
+
+@inject ISnackbar Snackbar
+@inject IJSRuntime JsRuntime
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <MudGrid>
+        <!-- 页面标题 -->
+        <MudItem xs="12">
+            <PageHeader Icon="@Icons.Material.Filled.WebAsset"
+                        IconColor="Color.Primary"
+                        Title="站点管理"
+                        Subtitle="配置和管理媒体识别网站">
+                <Actions>
+                    <MudButton Disabled="@_saveProcessing" OnClick="_saveConfig"
+                               StartIcon="@(!_saveProcessing ? Icons.Material.Filled.Save : null)"
+                               Color="Color.Primary"
+                               Variant="Variant.Filled"
+                               Size="Size.Medium"
+                               aria-label="保存网站配置">
+                        @if (_saveProcessing)
+                        {
+                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                            <MudText Class="ms-2">保存中</MudText>
+                        }
+                        else
+                        {
+                            <MudText>保存配置</MudText>
+                        }
+                    </MudButton>
+                </Actions>
+            </PageHeader>
+        </MudItem>
+
+        <!-- 网站列表 -->
+        <MudItem xs="12">
+            <SectionCard Icon="@Icons.Material.Filled.Web"
+                         IconColor="Color.Primary"
+                         Title="网站列表"
+                         Subtitle="启用或禁用用于查询媒体信息的网站"
+                         Class="mt-4">
+                <MudGrid Spacing="3">
+                    <!-- DLsite -->
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard Elevation="3" Class="website-card website-card-primary">
+                            <div class="website-card-logo website-card-logo-primary">
+                                <MudImage Src="data/images/logo-dlsite.webp"
+                                          Alt="DLsite Logo"
+                                          ObjectFit="ObjectFit.Contain"
+                                          Class="website-card-logo-img"/>
+                            </div>
+                            <MudCardContent Class="pa-4">
+                                <div class="d-flex align-center mb-2">
+                                    <MudLink Typo="Typo.h6" Href="https://www.dlsite.com/maniax/" Target="_blank" Class="mr-2">
+                                        <b>DLsite</b>
+                                    </MudLink>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                                             Color="@(_websiteConfig.DLsite.Enable ? Color.Success : Color.Error)" Class="ml-auto"
+                                             aria-label="@(_websiteConfig.DLsite.Enable ? "DLsite已启用" : "DLsite已禁用")">
+                                        @(_websiteConfig.DLsite.Enable ? "已启用" : "已禁用")
+                                    </MudChip>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-1 mt-2">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" Icon="@Icons.Material.Filled.SmartDisplay">视频</MudChip>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Secondary" Icon="@Icons.Material.Filled.HeadsetMic">音频</MudChip>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning" Icon="@Icons.Material.Filled.PhotoLibrary">图片</MudChip>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info" Icon="@Icons.Material.Filled.SportsEsports">游戏</MudChip>
+                                </div>
+
+                                <MudText Typo="Typo.body2" Class="mt-3 mud-text-secondary">
+                                    DLsite是一家专注于数字内容分发的平台，提供包括游戏、漫画、音声、动画等多种类型的优质作品，致力于为用户提供便捷的下载和购买服务。
+                                </MudText>
+                            </MudCardContent>
+                            <MudDivider/>
+                            <MudCardActions Class="d-flex justify-space-between align-center pa-3">
+                                <MudSwitch T="bool" @bind-Value="@_websiteConfig.DLsite.Enable"
+                                           Label="@(_websiteConfig.DLsite.Enable ? "启用" : "禁用")"
+                                           Color="Color.Primary" UncheckedColor="Color.Error"
+                                           LabelPosition="LabelPosition.Start"/>
+                                <MudTooltip Text="网站设置" Arrow="true" Placement="Placement.Top">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Settings"
+                                                   Color="Color.Primary" Size="Size.Medium"
+                                                   Class="pa-2 mud-elevation-1"
+                                                   aria-label="DLsite设置"
+                                                   OnClick="() => _dlsiteSettingsVisible = true"/>
+                                </MudTooltip>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudItem>
+
+                    <!-- Steam -->
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard Elevation="3" Class="website-card website-card-info">
+                            <div class="website-card-logo website-card-logo-info">
+                                <MudImage Src="https://store.akamai.steamstatic.com/public/shared/images/header/logo_steam.svg"
+                                          Alt="Steam Logo"
+                                          ObjectFit="ObjectFit.Contain"
+                                          Class="website-card-logo-img"/>
+                            </div>
+                            <MudCardContent Class="pa-4">
+                                <div class="d-flex align-center mb-2">
+                                    <MudLink Typo="Typo.h6" Href="https://store.steampowered.com/" Target="_blank" Class="mr-2">
+                                        <b>Steam</b>
+                                    </MudLink>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                                             Color="@(_websiteConfig.Steam.Enable ? Color.Success : Color.Error)" Class="ml-auto"
+                                             aria-label="@(_websiteConfig.Steam.Enable ? "Steam已启用" : "Steam已禁用")">
+                                        @(_websiteConfig.Steam.Enable ? "已启用" : "已禁用")
+                                    </MudChip>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-1 mt-2">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info" Icon="@Icons.Material.Filled.SportsEsports">游戏</MudChip>
+                                </div>
+
+                                <MudText Typo="Typo.body2" Class="mt-3 mud-text-secondary">
+                                    Steam 是 Valve 旗下的全球最大 PC 游戏数字发行平台，提供海量游戏的元数据、截图、评分及社区内容。默认通过公开 Storefront API 抓取，无需密钥。
+                                </MudText>
+                            </MudCardContent>
+                            <MudDivider/>
+                            <MudCardActions Class="d-flex justify-space-between align-center pa-3">
+                                <MudSwitch T="bool" @bind-Value="@_websiteConfig.Steam.Enable"
+                                           Label="@(_websiteConfig.Steam.Enable ? "启用" : "禁用")"
+                                           Color="Color.Info" UncheckedColor="Color.Error"
+                                           LabelPosition="LabelPosition.Start"/>
+                                <MudTooltip Text="网站设置" Arrow="true" Placement="Placement.Top">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Settings"
+                                                   Color="Color.Info" Size="Size.Medium"
+                                                   Class="pa-2 mud-elevation-1"
+                                                   aria-label="Steam设置"
+                                                   OnClick="() => _steamSettingsVisible = true"/>
+                                </MudTooltip>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudItem>
+
+                    <!-- Bangumi -->
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudCard Elevation="3" Class="website-card website-card-secondary">
+                            <div class="website-card-logo website-card-logo-secondary">
+                                <MudImage Src="data/images/logo-bangumi.png"
+                                          Alt="Bangumi Logo"
+                                          ObjectFit="ObjectFit.Contain"
+                                          Class="website-card-logo-img"/>
+                            </div>
+                            <MudCardContent Class="pa-4">
+                                <div class="d-flex align-center mb-2">
+                                    <MudLink Typo="Typo.h6" Href="https://bangumi.tv/" Target="_blank" Class="mr-2">
+                                        <b>Bangumi</b>
+                                    </MudLink>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled"
+                                             Color="@(_websiteConfig.Bangumi.Enable ? Color.Success : Color.Error)" Class="ml-auto"
+                                             aria-label="@(_websiteConfig.Bangumi.Enable ? "Bangumi已启用" : "Bangumi已禁用")">
+                                        @(_websiteConfig.Bangumi.Enable ? "已启用" : "已禁用")
+                                    </MudChip>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-1 mt-2">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" Icon="@Icons.Material.Filled.SmartDisplay">视频</MudChip>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning" Icon="@Icons.Material.Filled.PhotoLibrary">图片</MudChip>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Tertiary" Icon="@Icons.Material.Filled.MenuBook">文字</MudChip>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info" Icon="@Icons.Material.Filled.SportsEsports">游戏</MudChip>
+                                </div>
+
+                                <MudText Typo="Typo.body2" Class="mt-3 mud-text-secondary">
+                                    Bangumi是由Sai于桂林发起的ACG分享与交流项目，设有动画、游戏、书籍、音乐和三次元五大分区，致力于让阿宅们在欣赏ACG作品之余拥有轻松便捷独特的交流环境。
+                                </MudText>
+                            </MudCardContent>
+                            <MudDivider/>
+                            <MudCardActions Class="d-flex justify-space-between align-center pa-3">
+                                <MudSwitch T="bool" @bind-Value="@_websiteConfig.Bangumi.Enable"
+                                           Label="@(_websiteConfig.Bangumi.Enable ? "启用" : "禁用")"
+                                           Color="Color.Secondary" UncheckedColor="Color.Error"
+                                           LabelPosition="LabelPosition.Start"/>
+                                <MudTooltip Text="网站设置" Arrow="true" Placement="Placement.Top">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Settings"
+                                                   Color="Color.Secondary" Size="Size.Medium"
+                                                   Class="pa-2 mud-elevation-1"
+                                                   aria-label="Bangumi设置"
+                                                   OnClick="() => _bangumiSettingsVisible = true"/>
+                                </MudTooltip>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudItem>
+                </MudGrid>
+            </SectionCard>
+        </MudItem>
+
+        <!-- 网站优先级设置 -->
+        <MudItem xs="12">
+            <SectionCard Icon="@Icons.Material.Filled.PriorityHigh"
+                         IconColor="Color.Secondary"
+                         Title="网站优先级设置"
+                         Subtitle="同一分类有多个网站时，排在前面的优先使用"
+                         Class="mt-4 mb-4">
+                <MudDropContainer T="SiteDropItem" Items="_sitesItems" @ref="_dragContainer"
+                                  ItemsSelector="@((item, dropzone) => item.Identifier == dropzone)"
+                                  ItemDropped="ItemUpdated"
+                                  CanDropClass="mud-border-success"
+                                  NoDropClass="mud-border-error">
+                    <ChildContent>
+                        <MudGrid>
+                            <MudItem xs="12" md="9">
+                                @foreach (var zone in CategoryZones)
+                                {
+                                    <MudPaper Elevation="2" Class="@($"d-flex flex-wrap align-center py-3 px-4 mb-4 rounded-lg website-priority-row {zone.BorderClass}")"
+                                              aria-label="@($"{zone.Label}分类优先级区域，可拖放网站到此处")">
+                                        <MudIcon Icon="@zone.Icon" Color="@zone.Color" Size="Size.Medium" Class="mr-3"/>
+                                        <MudText Typo="Typo.subtitle1" Color="@zone.Color" Class="mr-3 font-weight-bold">@zone.Label：</MudText>
+                                        <MudDropZone T="SiteDropItem" Identifier="@zone.Identifier"
+                                                     Class="d-flex flex-wrap gap-2 flex-grow-1 website-drop-zone-category"
+                                                     CanDrop="item => CanSiteDrop(item, zone.Category, zone.Identifier)"
+                                                     AllowReorder="true">
+                                        </MudDropZone>
+                                    </MudPaper>
+                                }
+                            </MudItem>
+
+                            <MudItem xs="12" md="3">
+                                <MudPaper Elevation="2" Class="rounded-lg pa-4 h-100 card-bordered-primary">
+                                    <div class="d-flex align-center mb-3">
+                                        <MudIcon Icon="@Icons.Material.Filled.DragIndicator" Color="Color.Primary" Class="mr-2 website-drag-hint"/>
+                                        <MudText Typo="Typo.h6" Color="Color.Primary" Class="font-weight-bold">可拖动的网站</MudText>
+                                    </div>
+                                    <MudDivider Class="mb-4"/>
+                                    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+                                        拖放到左侧分类排序，靠前的优先级更高
+                                    </MudText>
+                                    <MudDropZone T="SiteDropItem" Identifier="@SitesIdentifier"
+                                                 Class="d-flex flex-wrap gap-2 py-3 px-2 website-drop-zone"
+                                                 AllowReorder="true"
+                                                 CanDrop="item => item.Identifier == SitesIdentifier">
+                                    </MudDropZone>
+                                </MudPaper>
+                            </MudItem>
+                        </MudGrid>
+                    </ChildContent>
+
+                    <ItemRenderer>
+                        @if (context.Identifier != SitesIdentifier)
+                        {
+                            <MudChip T="string" Color="@context.Color" Size="Size.Medium" Variant="Variant.Filled"
+                                     OnClose="_ => OnSiteChipClose(context)" Class="mud-elevation-1"
+                                     Style="border-radius: var(--radius-2xl);"
+                                     aria-label="@($"{context.Name}，点击关闭按钮移除")">
+                                <MudIcon Icon="@Icons.Material.Filled.Web" Size="Size.Small" Class="mr-1"/>
+                                @context.Name
+                            </MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Color="@context.Color" Size="Size.Medium" Variant="Variant.Outlined"
+                                     Style="border-radius: var(--radius-2xl);"
+                                     aria-label="@($"{context.Name}，拖动到左侧分类区域")">
+                                <MudIcon Icon="@Icons.Material.Filled.Web" Size="Size.Small" Class="mr-1"/>
+                                @context.Name
+                            </MudChip>
+                        }
+                    </ItemRenderer>
+                </MudDropContainer>
+            </SectionCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+<!-- DLsite 设置对话框 -->
+<MudDialog @bind-Visible="_dlsiteSettingsVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true }">
+    <TitleContent>
+        <div class="d-flex align-center">
+            <MudAvatar Color="Color.Primary" Class="mr-3">
+                <MudIcon Icon="@Icons.Material.Filled.Settings"/>
+            </MudAvatar>
+            <MudText Typo="Typo.h6">DLsite相关设置</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="pa-4">
+            <MudSwitch T="bool" @bind-Value="_websiteConfig.DLsite.UseSeleniumForRating"
+                       Label="使用浏览器模拟获取评分"
+                       Color="Color.Primary"
+                       Disabled="@(!_websiteConfig.DLsite.Enable)"/>
+            @if (!_websiteConfig.DLsite.Enable)
+            {
+                <MudText Typo="Typo.caption" Class="ml-12 mt-n1" Color="Color.Warning">
+                    <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Class="mr-1 mb-n1"/>
+                    请先启用DLsite后再配置此选项
+                </MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.caption" Class="ml-12 mt-n1" Color="Color.Info">
+                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1 mb-n1"/>
+                    开启后获取速度会明显变慢，仅在需要评分数据时启用
+                </MudText>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default"
+                   OnClick="() => _dlsiteSettingsVisible = false">
+            关闭
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Steam 设置对话框 -->
+<MudDialog @bind-Visible="_steamSettingsVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true }">
+    <TitleContent>
+        <div class="d-flex align-center">
+            <MudAvatar Color="Color.Info" Class="mr-3">
+                <MudIcon Icon="@Icons.Material.Filled.SportsEsports"/>
+            </MudAvatar>
+            <MudText Typo="Typo.h6">Steam 相关设置</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="pa-4">
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="6">
+                    <MudSelect T="string" @bind-Value="_websiteConfig.Steam.Language"
+                               Label="请求语言" Variant="Variant.Outlined"
+                               Disabled="@(!_websiteConfig.Steam.Enable)"
+                               HelperText="影响游戏名称和简介的本地化语言"
+                               Margin="Margin.Dense">
+                        <MudSelectItem T="string" Value="@("schinese")">简体中文 (schinese)</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("tchinese")">繁体中文 (tchinese)</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("english")">English</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("japanese")">日本語 (japanese)</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSelect T="string" @bind-Value="_websiteConfig.Steam.CountryCode"
+                               Label="国家代码" Variant="Variant.Outlined"
+                               Disabled="@(!_websiteConfig.Steam.Enable)"
+                               HelperText="禁用 cn — 部分游戏对 CN 区屏蔽。推荐 us 覆盖最全。"
+                               Margin="Margin.Dense">
+                        <MudSelectItem T="string" Value="@("us")">美国 (us) - 推荐</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("jp")">日本 (jp)</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("hk")">香港 (hk)</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("tw")">台湾 (tw)</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+            @if (!_websiteConfig.Steam.Enable)
+            {
+                <MudText Typo="Typo.caption" Class="mt-3" Color="Color.Warning">
+                    <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Class="mr-1 mb-n1"/>
+                    请先启用 Steam 后再配置参数
+                </MudText>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Class="mt-3" Dense="true" Variant="Variant.Outlined">
+                    Steam Storefront API 限流约 200 次 / 5 分钟 / IP。识别失败时检查 country_code 与代理设置。
+                </MudAlert>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default"
+                   OnClick="() => _steamSettingsVisible = false">
+            关闭
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Bangumi 设置对话框 -->
+<MudDialog @bind-Visible="_bangumiSettingsVisible" Options="new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseOnEscapeKey = true }">
+    <TitleContent>
+        <div class="d-flex align-center">
+            <MudAvatar Color="Color.Secondary" Class="mr-3">
+                <MudIcon Icon="@Icons.Material.Filled.Settings"/>
+            </MudAvatar>
+            <MudText Typo="Typo.h6">Bangumi相关设置</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <div class="pa-4">
+            <MudTextField T="string" @bind-Value="_websiteConfig.Bangumi.ApiKey"
+                          Margin="Margin.Dense"
+                          Typo="Typo.body1" Label="Bangumi API Key" Variant="Variant.Outlined"
+                          InputType="@InputType.Text" Disabled="@(!_websiteConfig.Bangumi.Enable)"
+                          Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Cloud"
+                          AdornmentColor="Color.Secondary" OnAdornmentClick="ApplyForBangumiApiKey"
+                          HelperText="用于调用Bangumi接口查询媒体，点击右侧图标前往申请"
+                          HelperTextOnFocus="true"/>
+            @if (!_websiteConfig.Bangumi.Enable)
+            {
+                <MudText Typo="Typo.caption" Class="mt-1" Color="Color.Warning">
+                    <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Class="mr-1 mb-n1"/>
+                    请先启用Bangumi后再配置API Key
+                </MudText>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default"
+                   OnClick="() => _bangumiSettingsVisible = false">
+            关闭
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    bool _saveProcessing;
+    bool _dlsiteSettingsVisible;
+    bool _bangumiSettingsVisible;
+    bool _steamSettingsVisible;
+
+    private MudDropContainer<SiteDropItem>? _dragContainer;
+
+    private async Task ApplyForBangumiApiKey()
+    {
+        await JsRuntime.InvokeVoidAsync("open", "https://next.bgm.tv/demo/access-token", "_blank");
+    }
+
+    private void RefreshDragContainer()
+    {
+        _sitesItems.Sort((x, y) => x.Order.CompareTo(y.Order));
+        StateHasChanged();
+        _dragContainer?.Refresh();
+    }
+}

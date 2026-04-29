@@ -1,0 +1,274 @@
+@using NineKgTools.Core.Models.Tasks
+@using NineKgTools.Core.Services.Progress
+@using NineKgTools.Utils
+
+@* 父任务（Level=0）使用完整样式，子任务使用紧凑样式 *@
+@if (Level == 0)
+{
+    <!-- 父任务/根任务样式 -->
+    <MudPaper Class="@GetPaperClass()" Elevation="@(TaskProgress.IsParentTask ? 2 : 0)">
+        <!-- 任务头部 -->
+        <div class="d-flex align-center mb-2">
+            <!-- 父任务标识和展开/收起按钮 -->
+            @if (TaskProgress.IsParentTask && TaskProgress.ChildTasks.Any())
+            {
+                <MudButton Variant="Variant.Filled"
+                          Color="Color.Primary"
+                          Size="Size.Small"
+                          StartIcon="@(_isExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                          OnClick="@ToggleExpand"
+                          Class="mr-3">
+                    @(_isExpanded ? "收起" : "展开")
+                </MudButton>
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled" Class="mr-2">
+                    父任务
+                </MudChip>
+            }
+
+            <!-- 任务图标 -->
+            <MudIcon Icon="@TaskUIHelper.GetStatusIcon(TaskProgress.Status)"
+                    Size="Size.Small"
+                    Color="@TaskUIHelper.GetStatusColor(TaskProgress.Status)"
+                    Class="mr-2"/>
+
+            <!-- 任务名称 -->
+            <div class="flex-grow-1">
+                <MudText Typo="Typo.body1" Class="font-weight-bold">
+                    @TaskProgress.TaskName
+                </MudText>
+                @if (TaskProgress.IsParentTask)
+                {
+                    <div class="d-flex align-center flex-wrap gap-2 mt-1">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            子任务进度: @TaskProgress.ChildrenStats.SucceededCount / @TaskProgress.ChildrenStats.TotalCount
+                        </MudText>
+                        @if (TaskProgress.ChildrenStats.RunningCount > 0)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="task-chip-compact">
+                                @TaskProgress.ChildrenStats.RunningCount 运行中
+                            </MudChip>
+                        }
+                        @if (TaskProgress.ChildrenStats.PendingCount > 0)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="task-chip-compact">
+                                @TaskProgress.ChildrenStats.PendingCount 待处理
+                            </MudChip>
+                        }
+                        @if (TaskProgress.ChildrenStats.HasFailures)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error" Class="task-chip-compact">
+                                @TaskProgress.ChildrenStats.FailedCount 失败
+                            </MudChip>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- 状态标签 -->
+            <MudChip T="string" Size="Size.Small" Color="@TaskUIHelper.GetStatusColor(TaskProgress.Status)">
+                @TaskUIHelper.GetStatusText(TaskProgress.Status, TaskProgress.RetryInfo)
+            </MudChip>
+        </div>
+
+        <!-- 进度条（运行中任务） -->
+        @if (TaskProgress.Status == TaskExecutionStatus.Running || TaskProgress.Status == TaskExecutionStatus.Retrying)
+        {
+            <MudProgressLinear Value="@(TaskProgress.IsParentTask ? TaskProgress.AggregatedProgressPercentage : TaskProgress.ProgressPercentage)"
+                              Color="@TaskUIHelper.GetStatusColor(TaskProgress.Status)"
+                              Size="Size.Medium"
+                              Rounded="true"
+                              Class="mb-2"/>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                @((TaskProgress.IsParentTask ? TaskProgress.AggregatedProgressPercentage : TaskProgress.ProgressPercentage).ToString("F1"))%
+                @if (!string.IsNullOrEmpty(TaskProgress.CurrentMessage))
+                {
+                    <span> - @TaskProgress.CurrentMessage</span>
+                }
+            </MudText>
+        }
+
+        <!-- 统计信息 -->
+        @if (TaskProgress.TotalItems > 0 || TaskProgress.FailedItems > 0 || TaskProgress.EstimatedTimeRemaining.HasValue || TaskProgress.StartTime.HasValue)
+        {
+            <div class="d-flex flex-wrap gap-4 mt-2">
+                @if (TaskProgress.TotalItems > 0)
+                {
+                    <div>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">已处理</MudText>
+                        <MudText Typo="Typo.body2">@TaskProgress.ProcessedItems / @TaskProgress.TotalItems</MudText>
+                    </div>
+                }
+                @if (TaskProgress.FailedItems > 0)
+                {
+                    <div>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">失败数</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Error">@TaskProgress.FailedItems</MudText>
+                    </div>
+                }
+                @if (TaskProgress.EstimatedTimeRemaining.HasValue && TaskProgress.Status == TaskExecutionStatus.Running)
+                {
+                    <div>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">预计剩余</MudText>
+                        <MudText Typo="Typo.body2">@TaskUIHelper.FormatTimeSpan(TaskProgress.EstimatedTimeRemaining)</MudText>
+                    </div>
+                }
+                @if (TaskProgress.StartTime.HasValue)
+                {
+                    <div>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">开始时间</MudText>
+                        <MudText Typo="Typo.body2">@TaskProgress.StartTime.Value.ToLocalTime().ToString("HH:mm:ss")</MudText>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- 操作按钮 -->
+        <div class="d-flex justify-end mt-2 gap-1">
+            <MudIconButton Icon="@Icons.Material.Filled.Info"
+                          Size="Size.Small"
+                          Color="Color.Info"
+                          Title="查看详情"
+                          OnClick="@ShowDetails"/>
+            @if (TaskProgress.Status == TaskExecutionStatus.Running ||
+                 TaskProgress.Status == TaskExecutionStatus.Pending ||
+                 TaskProgress.Status == TaskExecutionStatus.Retrying)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Cancel"
+                              Size="Size.Small"
+                              Color="Color.Warning"
+                              Title="取消任务"
+                              OnClick="@CancelTask"/>
+            }
+        </div>
+    </MudPaper>
+
+    <!-- 子任务区域（使用 MudCollapse 实现展开/收缩） -->
+    @if (TaskProgress.IsParentTask && TaskProgress.ChildTasks.Any())
+    {
+        <MudCollapse Expanded="_isExpanded">
+            <MudPaper Class="ml-4 mt-2 pa-3 task-children-container" Elevation="0">
+                <div class="d-flex align-center mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Small" Color="Color.Secondary" Class="mr-2"/>
+                    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">子任务列表</MudText>
+                    <MudSpacer/>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        共 @TaskProgress.ChildTasks.Count 个子任务
+                    </MudText>
+                </div>
+                <MudDivider Class="mb-3"/>
+                @foreach (var child in TaskProgress.ChildTasks)
+                {
+                    <TaskTreeNode TaskProgress="@child"
+                                 Level="@(Level + 1)"
+                                 OnCancelTask="@OnCancelTask"
+                                 OnShowDetails="@OnShowDetails"/>
+                }
+            </MudPaper>
+        </MudCollapse>
+    }
+}
+else
+{
+    <!-- 子任务样式（紧凑） -->
+    <div class="d-flex align-center py-2 px-3 mb-1 task-child-row" style="border-left-color: @TaskUIHelper.GetBorderColor(TaskProgress.Status);">
+        <!-- 任务图标 -->
+        <MudIcon Icon="@TaskUIHelper.GetStatusIcon(TaskProgress.Status)"
+                Size="Size.Small"
+                Color="@TaskUIHelper.GetStatusColor(TaskProgress.Status)"
+                Class="mr-2"/>
+
+        <!-- 任务名称和进度 -->
+        <div class="flex-grow-1">
+            <div class="d-flex align-center">
+                <MudText Typo="Typo.body2">@TaskProgress.TaskName</MudText>
+                @if (TaskProgress.Status == TaskExecutionStatus.Running || TaskProgress.Status == TaskExecutionStatus.Retrying)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Primary" Class="ml-2">
+                        @TaskProgress.ProgressPercentage.ToString("F0")%
+                    </MudText>
+                }
+            </div>
+            @if ((TaskProgress.Status == TaskExecutionStatus.Running || TaskProgress.Status == TaskExecutionStatus.Retrying) && !string.IsNullOrEmpty(TaskProgress.CurrentMessage))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="task-text-compact">
+                    @TaskProgress.CurrentMessage
+                </MudText>
+            }
+            @if (TaskProgress.TotalItems > 0)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="task-text-compact">
+                    已处理: @TaskProgress.ProcessedItems / @TaskProgress.TotalItems
+                    @if (TaskProgress.FailedItems > 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Error" Class="d-inline"> | 失败: @TaskProgress.FailedItems</MudText>
+                    }
+                </MudText>
+            }
+        </div>
+
+        <!-- 进度条（紧凑） -->
+        @if (TaskProgress.Status == TaskExecutionStatus.Running || TaskProgress.Status == TaskExecutionStatus.Retrying)
+        {
+            <div class="mx-2 task-progress-compact">
+                <MudProgressLinear Value="@TaskProgress.ProgressPercentage"
+                                  Color="@TaskUIHelper.GetStatusColor(TaskProgress.Status)"
+                                  Size="Size.Small"
+                                  Rounded="true"/>
+            </div>
+        }
+
+        <!-- 状态标签 -->
+        <MudChip T="string" Size="Size.Small" Color="@TaskUIHelper.GetStatusColor(TaskProgress.Status)" Class="task-chip-status">
+            @TaskUIHelper.GetStatusText(TaskProgress.Status, TaskProgress.RetryInfo)
+        </MudChip>
+
+        <!-- 操作按钮 -->
+        <MudIconButton Icon="@Icons.Material.Filled.Info"
+                      Size="Size.Small"
+                      Color="Color.Info"
+                      Title="查看详情"
+                      OnClick="@ShowDetails"
+                      Class="ml-1"/>
+        @if (TaskProgress.Status == TaskExecutionStatus.Running ||
+             TaskProgress.Status == TaskExecutionStatus.Pending ||
+             TaskProgress.Status == TaskExecutionStatus.Retrying)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Cancel"
+                          Size="Size.Small"
+                          Color="Color.Warning"
+                          Title="取消任务"
+                          OnClick="@CancelTask"/>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public TaskProgress TaskProgress { get; set; } = null!;
+    [Parameter] public int Level { get; set; } = 0;
+    [Parameter] public EventCallback<string> OnCancelTask { get; set; }
+    [Parameter] public EventCallback<string> OnShowDetails { get; set; }
+
+    private bool _isExpanded = true;
+
+    private string GetPaperClass()
+    {
+        if (TaskProgress.IsParentTask)
+            return "pa-4 mb-3 task-node-parent";
+        return "pa-3 mb-2 task-node-single";
+    }
+
+    private void ToggleExpand()
+    {
+        _isExpanded = !_isExpanded;
+    }
+
+    private async Task CancelTask()
+    {
+        await OnCancelTask.InvokeAsync(TaskProgress.TaskId);
+    }
+
+    private async Task ShowDetails()
+    {
+        await OnShowDetails.InvokeAsync(TaskProgress.TaskId);
+    }
+}

@@ -1,0 +1,46 @@
+@using MudBlazor
+
+<MudDialog DisableSidePadding="true">
+    <DialogContent>
+        <MudContainer Class="d-flex flex-column align-center justify-center pa-8"
+                      role="status"
+                      aria-live="polite"
+                      aria-busy="true">
+            <MudProgressCircular Size="Size.Large" Indeterminate="true" Color="@Color" aria-hidden="true" />
+            <MudText Typo="Typo.body1" Class="mt-4" Align="Align.Center">@ContentText</MudText>
+            @if (ShowCancelButton)
+            {
+                <MudButton OnClick="HandleCancel"
+                           Variant="Variant.Outlined"
+                           Color="Color.Error"
+                           Class="mt-4"
+                           StartIcon="@Icons.Material.Filled.Cancel"
+                           aria-label="取消当前操作">
+                    取消
+                </MudButton>
+            }
+        </MudContainer>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    /// <summary>
+    /// 进度描述。调用方应传入具体动词短语（如"正在识别媒体"、"正在保存标签"），
+    /// 以便用户明确当前等待的是什么。默认文案仅作为兜底。
+    /// </summary>
+    [Parameter] public string ContentText { get; set; } = "处理中，请稍候…";
+    [Parameter] public Color Color { get; set; } = Color.Primary;
+    [Parameter] public bool ShowCancelButton { get; set; } = false;
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private async Task HandleCancel()
+    {
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+        MudDialog.Close();
+    }
+} 

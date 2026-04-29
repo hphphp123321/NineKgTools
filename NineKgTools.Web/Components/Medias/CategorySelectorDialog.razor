@@ -1,0 +1,323 @@
+@using NineKgTools.Core.Models.Categories
+@using NineKgTools.Utils
+@using NineKgTools.Components.Medias
+@using Microsoft.AspNetCore.Components.Web
+
+<MudDialog>
+    <DialogContent>
+        <div class="d-flex flex-column">
+            <!-- 顶层分类选择 -->
+            <div class="d-flex align-center mb-2">
+                <MudText Typo="Typo.subtitle1">选择媒体类型</MudText>
+                <MudSpacer />
+                @if (_onlyTopCategory)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
+                        仅按类型筛选
+                    </MudChip>
+                }
+            </div>
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                @foreach (var topCategory in Enum.GetValues<TopCategory>())
+                {
+                    @if (topCategory != TopCategory.Unknown && (FilterTopCategory == TopCategory.Unknown || topCategory == FilterTopCategory))
+                    {
+                        <MudChip T="string"
+                                Variant="@(_selectedTopCategory == topCategory ? Variant.Filled : Variant.Outlined)"
+                                Color="@MediaUIHelper.GetMediaColor(topCategory)"
+                                OnClick="@(() => SelectTopCategory(topCategory))"
+                                Size="Size.Medium"
+                                Label="true">
+                            @GetMediaTypeName(topCategory)
+                        </MudChip>
+                    }
+                }
+            </div>
+
+            <MudDivider Class="mb-3" />
+
+            <!-- 筛选模式切换 -->
+            @if (_selectedTopCategory != TopCategory.Unknown)
+            {
+                <div class="d-flex align-center mb-3">
+                    <MudSwitch T="bool" @bind-Value="_onlyTopCategory" Color="Color.Primary" Label="仅按媒体类型筛选" />
+                    <MudTooltip Text="开启后将筛选该类型下的所有媒体，不限制具体分类">
+                        <MudIcon Icon="@Icons.Material.Filled.HelpOutline" Size="Size.Small" Class="ml-1" Color="Color.Secondary" />
+                    </MudTooltip>
+                </div>
+            }
+
+            <!-- 子分类列表（多选） -->
+            @if (!_onlyTopCategory)
+            {
+                <div class="d-flex align-center mb-2">
+                    <MudText Typo="Typo.subtitle1">选择具体分类</MudText>
+                    @if (_selectedCategories.Count > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-2">
+                            已选 @_selectedCategories.Count 个
+                        </MudChip>
+                    }
+                    <MudSpacer />
+                    @if (_categoriesByTopCategory.Count > 0)
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="SelectAllCategories">
+                            全选
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="DeselectAllCategories">
+                            全不选
+                        </MudButton>
+                    }
+                </div>
+
+                @if (_selectedTopCategory != TopCategory.Unknown)
+                {
+                    <div class="d-flex flex-column gap-2" style="max-height: 300px; overflow-y: auto;">
+                        @foreach (var category in _categoriesByTopCategory)
+                        {
+                            var isSelected = IsCategorySelected(category);
+                            var categoryClass = isSelected ? "pa-3 rounded-lg category-item selected-category" : "pa-3 rounded-lg category-item";
+                            var colorClass = GetColorClass(category.TopCategory);
+                            var borderStyle = $"border-left: 3px solid var(--mud-palette-{colorClass});";
+
+                            <MudPaper Elevation="0"
+                                     Outlined="@isSelected"
+                                     Class="@categoryClass"
+                                     Style="@borderStyle"
+                                     role="button"
+                                     tabindex="0"
+                                     aria-pressed="@(isSelected ? "true" : "false")"
+                                     aria-label="@($"{category.Name}{(isSelected ? "，已选中" : string.Empty)}")"
+                                     @onclick="@(() => ToggleCategory(category))"
+                                     @onkeydown="@((KeyboardEventArgs e) => OnCategoryKeyDown(e, category))">
+                                <div class="d-flex align-center">
+                                    <MudCheckBox T="bool" Value="@isSelected" Color="Color.Primary" Size="Size.Small" Class="mr-1" ReadOnly="true" />
+                                    <MudIcon Icon="@MediaUIHelper.GetCategoryIcon(category.TopCategory)"
+                                            Size="Size.Small"
+                                            Color="@MediaUIHelper.GetMediaColor(category.TopCategory)"
+                                            Class="mr-2" />
+                                    <MudText>@category.Name</MudText>
+                                </div>
+                            </MudPaper>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        请先选择媒体类型
+                    </MudAlert>
+                }
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-2" />
+                    将筛选 <strong>@GetMediaTypeName(_selectedTopCategory)</strong> 类型下的所有媒体
+                </MudAlert>
+            }
+        </div>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Clear"
+                   StartIcon="@Icons.Material.Filled.ClearAll"
+                   Variant="Variant.Text"
+                   Color="Color.Default">
+            清除选择
+        </MudButton>
+        <MudSpacer />
+        <MudButton OnClick="Cancel"
+                   Variant="Variant.Text"
+                   Color="Color.Default">
+            取消
+        </MudButton>
+        <MudButton OnClick="Confirm"
+                   StartIcon="@Icons.Material.Filled.Check"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@(!CanConfirm())">
+            确认
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@* 所有样式已迁移到 /css/components/medias.css *@
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    /// <summary>
+    /// 过滤的顶级分类（如果设置，只显示该顶级分类下的子分类）
+    /// </summary>
+    [Parameter]
+    public TopCategory FilterTopCategory { get; set; } = TopCategory.Unknown;
+
+    /// <summary>
+    /// 初始选中的顶级分类（仅按类型筛选时使用）
+    /// </summary>
+    [Parameter]
+    public TopCategory? InitialSelectedTopCategory { get; set; }
+
+    /// <summary>
+    /// 初始选中的分类列表（多选）
+    /// </summary>
+    [Parameter]
+    public List<Category>? InitialSelectedCategories { get; set; }
+
+    /// <summary>
+    /// 初始是否仅按顶级分类筛选
+    /// </summary>
+    [Parameter]
+    public bool InitialOnlyTopCategory { get; set; }
+
+    private TopCategory _selectedTopCategory = TopCategory.Unknown;
+    private List<Category> _selectedCategories = new();
+    // O(1) 选中判定索引，和 _selectedCategories 同步维护
+    private readonly HashSet<int> _selectedCategoryIds = new();
+    private List<Category> _categoriesByTopCategory = new();
+    private bool _onlyTopCategory;
+
+    protected override void OnParametersSet()
+    {
+        // 初始化选中状态
+        _onlyTopCategory = InitialOnlyTopCategory;
+
+        if (InitialSelectedTopCategory.HasValue && InitialSelectedTopCategory.Value != TopCategory.Unknown)
+        {
+            _selectedTopCategory = InitialSelectedTopCategory.Value;
+        }
+        else if (InitialSelectedCategories != null && InitialSelectedCategories.Count > 0)
+        {
+            _selectedTopCategory = InitialSelectedCategories[0].TopCategory;
+            _selectedCategories = new List<Category>(InitialSelectedCategories);
+        }
+        else if (FilterTopCategory != TopCategory.Unknown)
+        {
+            _selectedTopCategory = FilterTopCategory;
+        }
+
+        RebuildSelectedIds();
+        FilterCategoriesByTopCategory();
+    }
+
+    private void RebuildSelectedIds()
+    {
+        _selectedCategoryIds.Clear();
+        foreach (var category in _selectedCategories)
+        {
+            _selectedCategoryIds.Add(category.Id);
+        }
+    }
+
+    private bool IsCategorySelected(Category category) => _selectedCategoryIds.Contains(category.Id);
+
+    private void SelectTopCategory(TopCategory topCategory)
+    {
+        if (_selectedTopCategory != topCategory)
+        {
+            _selectedTopCategory = topCategory;
+            // 切换顶级分类时清除已选子分类
+            _selectedCategories.Clear();
+            _selectedCategoryIds.Clear();
+            FilterCategoriesByTopCategory();
+        }
+    }
+
+    private void FilterCategoriesByTopCategory()
+    {
+        _categoriesByTopCategory = StaticCategories.CategoryList
+            .Where(c => c.TopCategory == _selectedTopCategory && c.TopCategory != TopCategory.Unknown)
+            .ToList();
+    }
+
+    private void ToggleCategory(Category category)
+    {
+        if (_selectedCategoryIds.Remove(category.Id))
+        {
+            _selectedCategories.RemoveAll(c => c.Id == category.Id);
+        }
+        else
+        {
+            _selectedCategories.Add(category);
+            _selectedCategoryIds.Add(category.Id);
+        }
+    }
+
+    // WAI-ARIA button 模式：Enter / Space 等同 click
+    private void OnCategoryKeyDown(KeyboardEventArgs e, Category category)
+    {
+        if (e.Key == "Enter" || e.Key == " " || e.Key == "Spacebar")
+        {
+            ToggleCategory(category);
+        }
+    }
+
+    private void SelectAllCategories()
+    {
+        _selectedCategories = new List<Category>(_categoriesByTopCategory);
+        RebuildSelectedIds();
+    }
+
+    private void DeselectAllCategories()
+    {
+        _selectedCategories.Clear();
+        _selectedCategoryIds.Clear();
+    }
+
+    private bool CanConfirm()
+    {
+        if (_onlyTopCategory)
+        {
+            return _selectedTopCategory != TopCategory.Unknown;
+        }
+        return _selectedCategories.Count > 0;
+    }
+
+    private void Confirm()
+    {
+        var result = new CategoryFilterResult
+        {
+            OnlyTopCategory = _onlyTopCategory,
+            SelectedTopCategory = _onlyTopCategory ? _selectedTopCategory : TopCategory.Unknown,
+            SelectedCategories = _onlyTopCategory ? new List<Category>() : new List<Category>(_selectedCategories)
+        };
+        MudDialog.Close(DialogResult.Ok(result));
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void Clear()
+    {
+        var result = new CategoryFilterResult
+        {
+            OnlyTopCategory = false,
+            SelectedTopCategory = TopCategory.Unknown,
+            SelectedCategories = new List<Category>()
+        };
+        MudDialog.Close(DialogResult.Ok(result));
+    }
+
+    private string GetMediaTypeName(TopCategory category) => category switch
+    {
+        TopCategory.Video => "视频",
+        TopCategory.Audio => "音频",
+        TopCategory.Picture => "图片",
+        TopCategory.Text => "文本",
+        TopCategory.Game => "游戏",
+        _ => "未知"
+    };
+
+    private string GetColorClass(TopCategory category) => category switch
+    {
+        TopCategory.Video => "secondary",
+        TopCategory.Audio => "primary",
+        TopCategory.Picture => "info",
+        TopCategory.Text => "warning",
+        TopCategory.Game => "success",
+        _ => "default"
+    };
+}

@@ -1,0 +1,379 @@
+@page "/source/{Id:int}"
+@using NineKgTools.Components.FileExplorer
+@using NineKgTools.Core.Models.Categories
+
+<PageTitle>媒体源详情</PageTitle>
+
+@if (_isLoading)
+{
+    <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="80px" Class="mb-4"/>
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="300px" Class="mb-4"/>
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="150px"/>
+            </MudItem>
+            <MudItem xs="12" md="8">
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="400px" Class="mb-4"/>
+                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="150px"/>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
+}
+else if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
+        <MudAlert Severity="Severity.Error" Class="mb-4">
+            @_errorMessage
+        </MudAlert>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   Href="/source/pending">
+            返回待处理列表
+        </MudButton>
+    </MudContainer>
+}
+else if (_source != null)
+{
+    <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+        <!-- 页头卡片 -->
+        <PageHeader Icon="@GetCategoryIcon(_source.PossibleTopCategory)"
+                    IconColor="@GetCategoryColor(_source.PossibleTopCategory)"
+                    Title="@_source.GetFileName()">
+            <SubtitleContent>
+                <div class="d-flex align-center gap-2 flex-wrap">
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="@GetCategoryColor(_source.PossibleTopCategory)"
+                             Variant="Variant.Filled">
+                        @GetCategoryName(_source.PossibleTopCategory)
+                    </MudChip>
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="@(_source.IsFolder ? Color.Warning : Color.Info)"
+                             Variant="Variant.Outlined">
+                        @(_source.IsFolder ? "文件夹" : "文件")
+                    </MudChip>
+                    @if (_source.InDatabase)
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="Color.Success"
+                                 Variant="Variant.Outlined">
+                            已入库
+                        </MudChip>
+                    }
+                    else if (_source.Identified)
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="Color.Info"
+                                 Variant="Variant.Outlined">
+                            待入库
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="Color.Warning"
+                                 Variant="Variant.Outlined">
+                            未识别
+                        </MudChip>
+                    }
+                </div>
+            </SubtitleContent>
+            <Actions>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Search"
+                           Size="Size.Medium"
+                           OnClick="HandleReidentifyAsync">
+                    重新识别
+                </MudButton>
+                @if (!IsRemoteAccess)
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Info"
+                               StartIcon="@Icons.Material.Filled.FolderOpen"
+                               Size="Size.Medium"
+                               OnClick="HandleOpenLocationAsync">
+                        打开位置
+                    </MudButton>
+                }
+            </Actions>
+        </PageHeader>
+
+        <MudGrid>
+            <!-- 左侧：基本信息和操作 -->
+            <MudItem xs="12" md="4">
+                <!-- 基本信息卡片 -->
+                <MudCard Class="card-base card-bordered-info mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Info"/>
+                                <MudText Typo="Typo.h6">基本信息</MudText>
+                            </div>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <!-- 路径 -->
+                        <MudPaper Elevation="0" Class="source-detail-path-box mb-3">
+                            <div class="d-flex align-center mb-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Color="Color.Info" Class="mr-2"/>
+                                <MudText Typo="Typo.subtitle2">路径</MudText>
+                            </div>
+                            <MudText Typo="Typo.body2" Class="source-detail-fullpath">
+                                @_source.FullPath
+                            </MudText>
+                        </MudPaper>
+
+                        <!-- 类型选择器 -->
+                        <div class="source-detail-field">
+                            <MudSelect T="TopCategory"
+                                       Value="@_source.PossibleTopCategory"
+                                       ValueChanged="HandleChangeCategoryAsync"
+                                       Label="媒体类型"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       AnchorOrigin="Origin.BottomCenter">
+                                @foreach (var category in Enum.GetValues<TopCategory>())
+                                {
+                                    <MudSelectItem Value="@category">
+                                        <div class="d-flex align-center gap-2">
+                                            <MudIcon Icon="@GetCategoryIcon(category)"
+                                                     Color="@GetCategoryColor(category)"
+                                                     Size="Size.Small"/>
+                                            @GetCategoryName(category)
+                                        </div>
+                                    </MudSelectItem>
+                                }
+                            </MudSelect>
+                        </div>
+
+                        <MudDivider Class="my-3"/>
+
+                        <!-- 大小 -->
+                        <div class="d-flex align-center mb-3">
+                            <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Small" Color="Color.Info" Class="mr-2"/>
+                            <MudText Typo="Typo.subtitle2" Class="mr-2">大小</MudText>
+                            <MudSpacer/>
+                            <MudText Typo="Typo.body2" Class="source-detail-value-num">@FormatFileSize(_source.GetSize())</MudText>
+                        </div>
+
+                        <!-- 文件数量 -->
+                        @if (_source.IsFolder)
+                        {
+                            <div class="d-flex align-center mb-3">
+                                <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Color="Color.Info" Class="mr-2"/>
+                                <MudText Typo="Typo.subtitle2" Class="mr-2">文件</MudText>
+                                <MudSpacer/>
+                                <MudText Typo="Typo.body2" Class="source-detail-value-num">@_source.GetFileCount() 个</MudText>
+                            </div>
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@GetCategoryIcon(_source.PossibleTopCategory)" Size="Size.Small" Color="@GetCategoryColor(_source.PossibleTopCategory)" Class="mr-2"/>
+                                <MudText Typo="Typo.subtitle2" Class="mr-2">@GetCategoryName(_source.PossibleTopCategory) 文件</MudText>
+                                <MudSpacer/>
+                                <MudText Typo="Typo.body2" Class="source-detail-value-num">@_relevantFiles.Count 个</MudText>
+                            </div>
+                        }
+                    </MudCardContent>
+                </MudCard>
+                
+                <!-- 关联媒体信息卡片 -->
+                @if (_source.MediaBase != null)
+                {
+                    <MudCard Class="card-base card-bordered-tertiary">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <div class="d-flex align-center gap-2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Link" Color="Color.Tertiary"/>
+                                    <MudText Typo="Typo.h6">关联媒体</MudText>
+                                </div>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <div class="d-flex gap-4 source-detail-media-row">
+                                <!-- 封面图 -->
+                                @if (_source.MediaBase.Poster != null)
+                                {
+                                    <MudImage Src="@_source.MediaBase.Poster.GetImageUrl()"
+                                              Width="120"
+                                              Height="160"
+                                              ObjectFit="ObjectFit.Cover"
+                                              Class="rounded"
+                                              Alt="封面"/>
+                                }
+
+                                <!-- 媒体信息 -->
+                                <div class="flex-grow-1">
+                                    <MudText Typo="Typo.h6" Class="mb-2">
+                                        @_source.MediaBase.Title
+                                    </MudText>
+                                    @if (!string.IsNullOrEmpty(_source.MediaBase.Summary))
+                                    {
+                                        <MudText Typo="Typo.body2" Class="mud-text-secondary mb-2 source-detail-summary">
+                                            @_source.MediaBase.Summary
+                                        </MudText>
+                                    }
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               StartIcon="@Icons.Material.Filled.OpenInNew"
+                                               Href="@_source.MediaBase.GetMediaLink()">
+                                        查看媒体详情
+                                    </MudButton>
+                                </div>
+                            </div>
+                        </MudCardContent>
+                    </MudCard>
+                }
+                else
+                {
+                    <MudCard Class="card-base card-bordered-default">
+                        <MudCardContent Class="text-center pa-4">
+                            <MudIcon Icon="@Icons.Material.Filled.LinkOff"
+                                     Size="Size.Large"
+                                     Color="Color.Default"
+                                     Class="mb-2"/>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary mb-3">
+                                尚未关联媒体信息
+                            </MudText>
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Search"
+                                       OnClick="HandleReidentifyAsync">
+                                立即识别
+                            </MudButton>
+                        </MudCardContent>
+                    </MudCard>
+                }
+            </MudItem>
+
+            <!-- 右侧：目录结构和关联信息 -->
+            <MudItem xs="12" md="8">
+                <!-- 目录结构与入口文件卡片 -->
+                <MudCard Class="card-base card-bordered-primary mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.AccountTree" Color="Color.Primary"/>
+                                <MudText Typo="Typo.h6">@(_source.IsFolder ? "目录结构" : "文件信息")</MudText>
+                            </div>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            @if (!string.IsNullOrEmpty(_selectedEntryFile))
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled"
+                                         Icon="@Icons.Material.Filled.PlayCircle">
+                                    @Path.GetFileName(_selectedEntryFile)
+                                </MudChip>
+                            }
+                        </CardHeaderActions>
+                    </MudCardHeader>
+
+                    @if (_source.IsFolder)
+                    {
+                        <MudCardContent Class="pa-0 overflow-y-auto source-detail-tree-scroll">
+                            <DirectoryTreeView RootPath="@_source.FullPath"
+                                               HighlightCategory="@_source.PossibleTopCategory"
+                                               SelectedFilePath="@_selectedEntryFile"
+                                               OnFileSelected="HandleSelectEntryFileAsync"/>
+                        </MudCardContent>
+                    }
+                    else
+                    {
+                        <!-- 单个文件信息展示 -->
+                        <MudCardContent Class="pa-4">
+                            <div class="d-flex align-center gap-4">
+                                <!-- 文件图标 -->
+                                <MudAvatar Size="Size.Large" Color="@GetCategoryColor(_source.PossibleTopCategory)" Variant="Variant.Outlined">
+                                    <MudIcon Icon="@GetFileTypeIcon(_source.FullPath)" Size="Size.Medium"/>
+                                </MudAvatar>
+
+                                <!-- 文件详情 -->
+                                <div class="flex-grow-1">
+                                    <MudText Typo="Typo.subtitle1" Class="font-weight-medium mb-1">
+                                        @Path.GetFileName(_source.FullPath)
+                                    </MudText>
+                                    <div class="d-flex align-center gap-3 flex-wrap">
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined"
+                                                 Icon="@Icons.Material.Filled.Extension">
+                                            @Path.GetExtension(_source.FullPath).ToUpperInvariant()
+                                        </MudChip>
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined"
+                                                 Icon="@Icons.Material.Filled.Storage">
+                                            @FormatFileSize(_source.GetSize())
+                                        </MudChip>
+                                        @if (_fileExists)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined"
+                                                     Icon="@Icons.Material.Filled.CheckCircle">
+                                                文件存在
+                                            </MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Outlined"
+                                                     Icon="@Icons.Material.Filled.Error">
+                                                文件丢失
+                                            </MudChip>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </MudCardContent>
+                    }
+
+                    <!-- 入口文件操作栏 -->
+                    <MudPaper Elevation="0" Class="pa-3 d-flex align-center gap-3 flex-wrap source-detail-entry-bar">
+                        @if (_relevantFiles.Count == 0)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Color="Color.Warning"/>
+                            <MudText Typo="Typo.body2" Color="Color.Warning">
+                                未找到 @GetCategoryName(_source.PossibleTopCategory) 类型的文件
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" Color="Color.Success"/>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                入口文件:
+                            </MudText>
+                            <MudTooltip Text="@_selectedEntryFile" Placement="Placement.Top">
+                                <MudText Typo="Typo.body2" Class="font-weight-medium source-detail-entry-path">
+                                    @(string.IsNullOrEmpty(_selectedEntryFile) ? "点击目录树中的文件选择" : GetRelativePath(_selectedEntryFile))
+                                </MudText>
+                            </MudTooltip>
+                            <MudSpacer/>
+                            <MudButtonGroup Variant="Variant.Filled" Size="Size.Small" OverrideStyles="false">
+                                <MudButton Color="Color.Success"
+                                           StartIcon="@(_source.PossibleTopCategory == TopCategory.Game ? Icons.Material.Filled.PlayArrow : Icons.Material.Filled.OpenInNew)"
+                                           OnClick="HandleOpenEntryFileAsync"
+                                           Disabled="@(string.IsNullOrEmpty(_selectedEntryFile) || IsRemoteAccess)">
+                                    @(_source.PossibleTopCategory == TopCategory.Game ? "启动" : "打开")
+                                </MudButton>
+                                <MudButton Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Save"
+                                           OnClick="@(() => HandleSelectEntryFileAsync(_selectedEntryFile!))"
+                                           Disabled="@string.IsNullOrEmpty(_selectedEntryFile)">
+                                    保存
+                                </MudButton>
+                            </MudButtonGroup>
+                        }
+                    </MudPaper>
+
+                    @if (IsRemoteAccess && _relevantFiles.Count > 0)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Class="rounded-0" Variant="Variant.Filled">
+                            远程访问时无法打开本地文件
+                        </MudAlert>
+                    }
+                </MudCard>
+                
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
+}

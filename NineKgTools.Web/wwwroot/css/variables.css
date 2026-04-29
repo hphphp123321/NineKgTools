@@ -1,0 +1,112 @@
+/* ==============================================
+   CSS 变量系统 - 设计令牌
+   定义项目中使用的所有主要设计变量
+   ============================================== */
+
+:root {
+    /* 间距系统 */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 12px;
+    --spacing-lg: 16px;
+    --spacing-xl: 20px;
+    --spacing-2xl: 24px;
+    --spacing-3xl: 32px;
+    --spacing-4xl: 48px;
+
+    /* 圆角系统 */
+    --radius-xs: 2px;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --radius-2xl: 16px;
+    --radius-full: 9999px;
+
+    /* 阴影系统 */
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.25), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 8px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 10px 20px -3px rgba(0, 0, 0, 0.35), 0 4px 8px -4px rgba(0, 0, 0, 0.2);
+    --shadow-xl: 0 20px 30px -5px rgba(0, 0, 0, 0.4), 0 8px 12px -6px rgba(0, 0, 0, 0.25);
+    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
+
+    /* 发光效果阴影 */
+    --glow-primary: 0 0 10px rgba(var(--mud-palette-primary-rgb), 0.3);
+    --glow-success: 0 0 10px rgba(var(--mud-palette-success-rgb), 0.3);
+    --glow-warning: 0 0 10px rgba(var(--mud-palette-warning-rgb), 0.3);
+    --glow-error: 0 0 10px rgba(var(--mud-palette-error-rgb), 0.3);
+    --glow-info: 0 0 10px rgba(var(--mud-palette-info-rgb), 0.3);
+
+    /* 过渡动画 */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.2s ease;
+    --transition-slow: 0.3s ease;
+    --transition-slower: 0.5s ease;
+
+    /* 缓动函数 */
+    --ease-in-out-back: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --ease-out-back: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* 透明度 */
+    --opacity-disabled: 0.38;
+    --opacity-secondary: 0.6;
+    --opacity-hover: 0.8;
+
+    /* Z-index层级 */
+    --z-dropdown: 1000;
+    --z-sticky: 1020;
+    --z-fixed: 1030;
+    --z-modal-backdrop: 1040;
+    --z-modal: 1050;
+    --z-popover: 1060;
+    --z-tooltip: 1070;
+
+    /* 字体系统 */
+    --font-size-xs: 0.75rem;    /* 12px */
+    --font-size-sm: 0.875rem;   /* 14px */
+    --font-size-base: 1rem;     /* 16px */
+    --font-size-lg: 1.125rem;   /* 18px */
+    --font-size-xl: 1.25rem;    /* 20px */
+    --font-size-2xl: 1.5rem;    /* 24px */
+    --font-size-3xl: 1.875rem;  /* 30px */
+    --font-size-4xl: 2.25rem;   /* 36px */
+
+    /* 字重 */
+    --font-weight-light: 300;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    /* 行高 */
+    --line-height-tight: 1.25;
+    --line-height-snug: 1.375;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.625;
+    --line-height-loose: 2;
+
+    /* 边框宽度 */
+    --border-width-thin: 1px;
+    --border-width-medium: 2px;
+    --border-width-thick: 4px;
+
+    /* 模糊效果 */
+    --blur-sm: 4px;
+    --blur-md: 8px;
+    --blur-lg: 16px;
+    --blur-xl: 24px;
+
+    /* 渐变背景 */
+    --gradient-primary: linear-gradient(135deg, rgba(var(--mud-palette-primary-rgb), 0.1) 0%, rgba(var(--mud-palette-primary-rgb), 0.05) 100%);
+    --gradient-success: linear-gradient(135deg, rgba(var(--mud-palette-success-rgb), 0.1) 0%, rgba(var(--mud-palette-success-rgb), 0.05) 100%);
+    --gradient-warning: linear-gradient(135deg, rgba(var(--mud-palette-warning-rgb), 0.1) 0%, rgba(var(--mud-palette-warning-rgb), 0.05) 100%);
+    --gradient-info: linear-gradient(135deg, rgba(var(--mud-palette-info-rgb), 0.1) 0%, rgba(var(--mud-palette-info-rgb), 0.05) 100%);
+    --gradient-surface: linear-gradient(135deg, rgba(var(--mud-palette-surface-rgb), 0.8) 0%, rgba(var(--mud-palette-surface-rgb), 0.4) 100%);
+
+    /* 玻璃形态效果 */
+    --glass-backdrop: blur(var(--blur-lg));
+    --glass-background: rgba(255, 255, 255, 0.1);
+    --glass-border: 1px solid rgba(255, 255, 255, 0.2);
+} 

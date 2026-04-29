@@ -1,0 +1,71 @@
+# EditorConfig - https://editorconfig.org
+# NineKgTools 代码风格统一配置，作用于所有 IDE（Rider / Visual Studio / VS Code）
+
+root = true
+
+# 默认：所有文本文件
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# C# 源码 + Razor
+[*.{cs,razor,razor.cs}]
+indent_size = 4
+# 允许文件作用域 namespace
+csharp_style_namespace_declarations = file_scoped:suggestion
+# var 使用建议（项目现状：类型明确处用 var）
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:silent
+# 表达式体成员：方法体保留块体，属性/索引器允许表达式体
+csharp_style_expression_bodied_methods = false:silent
+csharp_style_expression_bodied_properties = true:silent
+# 新行规则
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+# 缩进规则
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+# 空格
+csharp_space_after_cast = false
+csharp_space_after_keywords_in_control_flow_statements = true
+
+# 解决方案与项目文件
+[*.{sln,csproj,props,targets}]
+indent_size = 2
+
+# YAML
+[*.{yml,yaml}]
+indent_size = 2
+
+# JSON
+[*.{json,jsonc}]
+indent_size = 2
+
+# Markdown（需要保留尾随空格以支持硬换行）
+[*.md]
+trim_trailing_whitespace = false
+indent_size = 2
+
+# Web 资源
+[*.{html,css,scss,js,ts}]
+indent_size = 2
+
+# Shell / PowerShell / Batch
+[*.sh]
+end_of_line = lf
+indent_size = 2
+
+[*.ps1]
+end_of_line = crlf
+indent_size = 4
+
+[*.bat]
+end_of_line = crlf
+indent_size = 2

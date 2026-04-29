@@ -1,0 +1,146 @@
+# 忽略 Visual Studio 临时文件、生成的文件、工具等
+*.csproj.user
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+bin/
+obj/
+TestResults/
+# 点号目录白名单管理：默认忽略开发工具生成的点目录，但放行 .github / .devcontainer 等 CI 必需目录
+.cache/
+.vs/
+.playwright-mcp/
+.run/
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+# 注意：EF Core Migrations 必须进版本控制（团队/CI/部署都依赖），不要忽略 Migrations/
+
+# 样式检查缓存
+StyleCopReport.xml
+
+# Rider 编辑器
+.idea/
+*.sln.iml
+
+data/*
+Database/*
+*.db*
+
+# 文件夹 VS Code
+.vscode/
+
+# Publish 产物（dotnet publish / scripts/publish/build-windows.*）
+publish/
+
+# Windows 图片缓存
+Thumbs.db
+
+# Windows Installer 文件
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows 系统文件
+.DS_Store
+ehthumbs.db
+[Tt]humbs.db
+
+# NCrunch
+ncrunch*
+_NCrunch_*
+.*crunch*.local.xml
+
+# MightyMoose
+*.mm.*
+AutoTest.Net/
+
+# ReSharper
+*_ReSharper.*
+*ReSharper*
+*.DotSettings.user
+
+# TeamCity
+_TeamCity*
+
+# DotCover
+*.dotCover
+
+# NDepend
+_NDepend_out/
+
+# SpecFlow 特定
+*.feature.cs
+*.feature.xlsx
+
+# Visual Studio 2015+ 缓存/选项文件
+.vs/
+# 忽略重建文件夹
+_ReSharper.Caches
+
+# MSTest 测试结果
+[TestR]esult*/
+
+# NUnit
+*.VisualState.xml
+TestResult.xml
+
+# BizTalk 临时文件
+*.BTM.log
+*.BTP.log
+*.XSLT.log
+*.BTDFProj*
+*.btdfproj
+*.SLN
+*.sln
+*.btproj
+*.btproj
+*.Bindings.xml
+*.bindinginfo.xml
+
+# Open Cover UI
+OpenCover/
+
+# Azure DevOps 本地管道缓存
+.azure-pipelines-local/
+
+# MonoDevelop
+.monodevelop/
+.monotouch-32/
+.monotouch-64/
+.xamarin/
+
+# 日志
+*.log
+
+# Mac OS X
+.DS_Store
+
+# Mono 临时文件
+mono_crash.*
+
+# cursor规则
+*.mdc
+
+# claude
+CLAUDE.md
+.claude/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Playwright 截图任务（scripts/screenshots/）
+scripts/screenshots/auth.json
+scripts/screenshots/.runtime-state.json
+scripts/screenshots/test-results/
+scripts/screenshots/playwright-report/
+
+config.yaml

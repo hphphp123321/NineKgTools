@@ -1,0 +1,362 @@
+/* ==============================================
+   现代化图片墙组件样式
+   自适应瀑布流布局，支持原图比例
+   ============================================== */
+
+.photo-wall-container {
+    width: 100%;
+}
+
+/* 控制栏样式 */
+.photo-wall-controls {
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    margin-bottom: var(--spacing-lg) !important;
+}
+
+/* 按钮组选中状态 */
+.photo-wall-controls .selected-button {
+    background-color: var(--mud-palette-info) !important;
+    color: white !important;
+    border-color: var(--mud-palette-info) !important;
+    font-weight: var(--font-weight-bold);
+    box-shadow: var(--shadow-sm);
+}
+
+.photo-wall-controls .mud-button-group .mud-button:not(.selected-button):hover {
+    background-color: rgba(var(--mud-palette-info-rgb), 0.1);
+    border-color: var(--mud-palette-info);
+    transition: all var(--transition-fast);
+}
+
+/* JavaScript驱动的瀑布流布局 */
+.photo-wall-grid {
+    /* 使用相对定位作为绝对定位子元素的容器 */
+    position: relative;
+    width: 100%;
+    margin: 0 auto; /* 居中显示 */
+    /* 添加硬件加速和优化 */
+    will-change: auto;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    /* 优化渲染性能 */
+    contain: layout style paint;
+    /* 容器最小高度，防止内容为空时塌陷 */
+    min-height: 200px;
+}
+
+/* 自动响应式布局 - 这些属性现在由JS控制，但保留用于CSS变量 */
+.photo-wall-grid[data-columns="auto"] {
+    --column-count: 4; /* 默认4列 */
+}
+
+/* 根据指定列数调整布局 */
+.photo-wall-grid[data-columns="2"] {
+    --column-count: 2;
+}
+
+.photo-wall-grid[data-columns="3"] {
+    --column-count: 3;
+}
+
+.photo-wall-grid[data-columns="4"] {
+    --column-count: 4;
+}
+
+.photo-wall-grid[data-columns="5"] {
+    --column-count: 5;
+}
+
+.photo-wall-grid[data-columns="6"] {
+    --column-count: 6;
+}
+
+/* 图片项目 - 使用绝对定位 */
+.photo-wall-item {
+    position: absolute;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    background-color: var(--mud-palette-surface);
+    box-shadow: var(--shadow-sm);
+    /* 过渡动画：包括位置变化 */
+    transition: all var(--transition-slow);
+    /* 防止滚动时的闪烁 */
+    will-change: transform, left, top, width, height;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    /* 优化合成层 */
+    contain: layout paint;
+    /* 初始状态：隐藏，等待JS计算位置 */
+    opacity: 0;
+    box-sizing: border-box;
+}
+
+/* 图片项目准备就绪状态 */
+.photo-wall-item.positioned {
+    opacity: 1;
+}
+
+.photo-wall-item:hover {
+    transform: translateZ(0) translateY(-4px) scale(1.02);
+    box-shadow: var(--shadow-xl);
+    z-index: 10;
+}
+
+/* 图片链接 */
+.photo-wall-link {
+    display: block;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-decoration: none;
+}
+
+/* 图片样式 */
+.photo-wall-image {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover; /* 使用cover保持图片填充容器 */
+    transition: transform var(--transition-slow);
+    border-radius: var(--radius-lg);
+    background-color: var(--mud-palette-background); /* 添加背景色填充空白区域 */
+}
+
+.photo-wall-item:hover .photo-wall-image {
+    transform: scale(1.05);
+}
+
+/* 图片覆盖层 */
+.photo-wall-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+    padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm);
+    transform: translateY(100%);
+    transition: transform var(--transition-slow);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    backdrop-filter: blur(4px); /* 添加模糊背景效果 */
+}
+
+.photo-wall-item:hover .photo-wall-overlay {
+    transform: translateY(0);
+}
+
+/*
+ * 触屏/非 hover 设备：overlay 常驻显示底部窄条
+ * 用能力查询 (hover: none) 而非视口宽度，精确覆盖手机 / 平板 / 触屏笔记本
+ */
+@media (hover: none) {
+    .photo-wall-overlay {
+        transform: translateY(0);
+        background: linear-gradient(
+            transparent 40%,
+            rgba(0, 0, 0, 0.55) 70%,
+            rgba(0, 0, 0, 0.75)
+        );
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    /* 触屏没有 hover，禁用 hover 带来的放大/位移，避免 tap 后的粘滞效果 */
+    .photo-wall-item:hover {
+        transform: translateZ(0);
+    }
+
+    .photo-wall-item:hover .photo-wall-image {
+        transform: none;
+    }
+}
+
+/* 图片信息 */
+.photo-wall-info {
+    color: white;
+}
+
+.photo-wall-title {
+    color: white !important;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: var(--spacing-xs);
+}
+
+/* 骨架屏样式 */
+.photo-wall-skeleton {
+    animation: photoWallPulse 2s ease-in-out infinite, 
+               photoWallSkeletonFadeIn 0.4s ease-out;
+    background-color: rgba(var(--mud-palette-surface-rgb), 0.8);
+}
+
+@keyframes photoWallPulse {
+    0%, 100% {
+        opacity: 0.8;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1.01);
+    }
+}
+
+@keyframes photoWallSkeletonFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 0.8;
+        transform: translateY(0);
+    }
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+    .photo-wall-grid[data-columns="auto"] {
+        --column-count: 3; /* 中等屏幕3列 */
+    }
+}
+
+@media (max-width: 768px) {
+    .photo-wall-grid[data-columns="auto"] {
+        --column-count: 2; /* 小屏幕2列 */
+    }
+    
+    .photo-wall-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-sm);
+    }
+    
+    .photo-wall-controls .mud-button-group {
+        margin: 0 !important;
+        align-self: center;
+    }
+    
+    /* 在移动端简化悬停效果 */
+    .photo-wall-overlay {
+        transform: translateY(0);
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+    }
+    
+    .photo-wall-item:hover .photo-wall-image {
+        transform: none;
+    }
+    
+    .photo-wall-item:hover {
+        transform: none;
+    }
+}
+
+/* 为固定列数的布局保持响应式 */
+@media (max-width: 1200px) {
+    .photo-wall-grid[data-columns="4"],
+    .photo-wall-grid[data-columns="5"],
+    .photo-wall-grid[data-columns="6"] {
+        --column-count: 3;
+    }
+}
+
+@media (max-width: 768px) {
+    .photo-wall-grid[data-columns="3"],
+    .photo-wall-grid[data-columns="4"],
+    .photo-wall-grid[data-columns="5"],
+    .photo-wall-grid[data-columns="6"] {
+        --column-count: 2;
+    }
+}
+
+@media (max-width: 480px) {
+    .photo-wall-grid[data-columns="auto"],
+    .photo-wall-grid[data-columns="2"],
+    .photo-wall-grid[data-columns="3"],
+    .photo-wall-grid[data-columns="4"],
+    .photo-wall-grid[data-columns="5"],
+    .photo-wall-grid[data-columns="6"] {
+        --column-count: 1; /* 移动端单列 */
+    }
+    
+    .photo-wall-image {
+        min-height: 200px;
+        max-height: 300px;
+    }
+}
+
+/* 空状态样式 */
+.empty-state {
+    padding: var(--spacing-3xl);
+    opacity: var(--opacity-secondary);
+}
+
+/* 平滑加载动画 */
+.photo-wall-item {
+    animation: photoWallItemSlideInHorizontal 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes photoWallItemSlideInHorizontal {
+    0% {
+        opacity: 0;
+        transform: translateX(-50px) scale(0.8);
+    }
+    70% {
+        opacity: 0.9;
+        transform: translateX(5px) scale(1.02);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+/* 加载中的图片项目淡入效果 */
+.photo-wall-item.loading {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+    animation: none;
+}
+
+.photo-wall-item.loaded {
+    animation: photoWallItemSlideIn 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes photoWallItemSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* 统一的响应式布局 - 不区分图片数量 */
+.photo-wall-grid {
+    --column-count: 4; /* 默认4列（大屏幕） */
+}
+
+/* 中等屏幕：3列 */
+@media (max-width: 1200px) {
+    .photo-wall-grid {
+        --column-count: 3;
+    }
+}
+
+/* 小屏幕：2列 */
+@media (max-width: 768px) {
+    .photo-wall-grid {
+        --column-count: 2;
+    }
+}
+
+/* 移动端：1列 */
+@media (max-width: 480px) {
+    .photo-wall-grid {
+        --column-count: 1;
+    }
+}

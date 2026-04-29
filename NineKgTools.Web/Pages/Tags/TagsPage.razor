@@ -1,0 +1,349 @@
+﻿@page "/tags"
+<PageTitle>标签管理</PageTitle>
+
+@inject IDialogService DialogService
+@inject ISnackbar SnackBar
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <MudGrid>
+        <!-- 页面标题 -->
+        <MudItem xs="12">
+            <PageHeader Icon="@Icons.Material.Filled.LocalOffer"
+                        IconColor="Color.Primary"
+                        Title="标签管理"
+                        Subtitle="管理和组织媒体标签分类">
+                <Actions>
+                    <MudButton Color="Color.Info"
+                               Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Filled.SwapHoriz"
+                               Size="Size.Medium"
+                               Href="/tags/mappings">
+                        标签映射
+                    </MudButton>
+                    <MudButton Color="Color.Success"
+                               Variant="Variant.Filled"
+                               StartIcon="@Icons.Material.Filled.AddCircleOutline"
+                               Size="Size.Medium"
+                               OnClick="AddTopTag">
+                        添加顶层标签
+                    </MudButton>
+                </Actions>
+            </PageHeader>
+        </MudItem>
+
+        <!-- 主要内容区域 -->
+        <MudItem xs="12">
+            <MudCard Elevation="3" Class="rounded-lg">
+                <!-- 工具栏 -->
+                <div class="tags-toolbar px-4 py-2">
+                    <MudTextField @bind-Value="_tagNameFilter"
+                                Placeholder="搜索标签..."
+                                Clearable="true"
+                                Immediate="true"
+                                DebounceInterval="300"
+                                OnDebounceIntervalElapsed="OnFilterDebounced"
+                                OnClearButtonClick="ClearAllTags"
+                                OnKeyUp="OnFilterKeyUp"
+                                Class="tags-toolbar-search"
+                                Dense="true"
+                                Margin="Margin.Dense"
+                                Disabled="@(_isLoading || _shownTopTags.Count == 0)"
+                                Variant="Variant.Outlined"
+                                Adornment="Adornment.Start"
+                                AdornmentIcon="@Icons.Material.Filled.Search"
+                                AdornmentColor="Color.Primary"/>
+
+                    <div class="d-flex align-center gap-2 tags-toolbar-controls">
+                        <MudButtonGroup Color="Color.Primary" Variant="Variant.Outlined" OverrideStyles="false" Size="Size.Small">
+                            <MudButton
+                                Class="@($"px-3 {(SortMode is TagSortMode.IdAsc or TagSortMode.IdDesc ? "tags-sort-btn-active" : "")}")"
+                                StartIcon="@Icons.Material.Filled.Numbers"
+                                EndIcon="@(_idSortAsc ? Icons.Material.Filled.KeyboardArrowUp : Icons.Material.Filled.KeyboardArrowDown)"
+                                OnClick="OnIdSortClick"
+                                Disabled="@(_isLoading || _shownTopTags.Count == 0)">
+                                <span class="tags-sort-label">编号</span>
+                            </MudButton>
+
+                            <MudButton
+                                Class="@($"px-3 {(SortMode is TagSortMode.NameAsc or TagSortMode.NameDesc ? "tags-sort-btn-active" : "")}")"
+                                StartIcon="@Icons.Material.Filled.Sort"
+                                EndIcon="@(_nameSortAsc ? Icons.Material.Filled.KeyboardArrowUp : Icons.Material.Filled.KeyboardArrowDown)"
+                                OnClick="OnNameSortClick"
+                                Disabled="@(_isLoading || _shownTopTags.Count == 0)">
+                                <span class="tags-sort-label">名称</span>
+                            </MudButton>
+
+                            <MudButton
+                                Class="@($"px-3 {(SortMode is TagSortMode.CountAsc or TagSortMode.CountDesc ? "tags-sort-btn-active" : "")}")"
+                                StartIcon="@Icons.Material.Filled.Numbers"
+                                EndIcon="@(_countSortAsc ? Icons.Material.Filled.KeyboardArrowUp : Icons.Material.Filled.KeyboardArrowDown)"
+                                OnClick="OnCountSortClick"
+                                Disabled="@(_isLoading || _shownTopTags.Count == 0)">
+                                <span class="tags-sort-label">数量</span>
+                            </MudButton>
+                        </MudButtonGroup>
+
+                        <MudTooltip Text="@(_isEditMode ? "退出编辑模式" : "进入编辑模式")" Duration="0">
+                            <MudToggleIconButton
+                                @bind-Toggled="_isEditMode"
+                                Icon="@Icons.Material.Filled.Edit"
+                                ToggledIcon="@Icons.Material.Filled.EditOff"
+                                Color="Color.Default"
+                                ToggledColor="Color.Warning"
+                                Size="Size.Small"/>
+                        </MudTooltip>
+
+                        <MudTooltip Text="刷新标签" Duration="0">
+                            <MudIconButton
+                                Icon="@Icons.Material.Filled.Refresh"
+                                Color="Color.Primary"
+                                Size="Size.Small"
+                                OnClick="() => LoadAllTags(_tagNameFilter)"
+                                Disabled="@_isLoading"/>
+                        </MudTooltip>
+                    </div>
+                </div>
+
+                <MudDivider/>
+
+                <!-- 加载进度条 -->
+                @if (_totalTagCount > 0 && _loadedTagCount < _totalTagCount)
+                {
+                    <MudProgressLinear Color="Color.Primary"
+                                      Value="@((_loadedTagCount * 100.0) / _totalTagCount)"
+                                      Class="my-0"/>
+                }
+
+                <!-- 标签内容区域 -->
+                <MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
+                    <MudGrid Spacing="2">
+                        @if (_shownTopTags.Count == 0)
+                        {
+                            @for (int i = 0; i < 3; i++)
+                            {
+                                <MudItem xs="12">
+                                    <MudPaper Elevation="0" Class="pa-4 rounded-lg border-1 mud-border">
+                                        <div class="d-flex align-center gap-4">
+                                            <MudSkeleton Width="20%" Height="32px"/>
+                                            <MudSkeleton Width="40px" Height="40px" Class="ml-auto"/>
+                                        </div>
+                                        <MudDivider Class="my-4"/>
+                                        <MudSkeleton Width="100%" Height="100px"/>
+                                    </MudPaper>
+                                </MudItem>
+                            }
+                        }
+                        else
+                        {
+                            var visibleTopTags = _shownTopTags.Where(t => t.Tags.Any()).ToList();
+                            
+                            @if (!visibleTopTags.Any() && !string.IsNullOrEmpty(_tagNameFilter))
+                            {
+                                <MudItem xs="12">
+                                    <MudPaper Elevation="0" Class="pa-6 rounded-lg border-1 mud-border">
+                                        <MudStack AlignItems="AlignItems.Center" Spacing="4">
+                                            <MudIcon Icon="@Icons.Material.Filled.SearchOff" 
+                                                    Color="Color.Default" 
+                                                    Size="Size.Large"/>
+                                            <MudText Typo="Typo.h6" Color="Color.Default" Align="Align.Center">
+                                                未找到匹配的标签
+                                            </MudText>
+                                            <MudButton Color="Color.Primary" 
+                                                      Variant="Variant.Text"
+                                                      StartIcon="@Icons.Material.Filled.Clear"
+                                                      OnClick="ClearAllTags">
+                                                清除搜索
+                                            </MudButton>
+                                        </MudStack>
+                                    </MudPaper>
+                                </MudItem>
+                            }
+                            else
+                            {
+                                @foreach (var topTag in visibleTopTags)
+                                {
+                                    <MudItem xs="12">
+                                        <MudPaper Elevation="0" Class="pa-3 rounded-lg border-1 mud-border">
+                                            <!-- 顶层标签标题栏 -->
+                                            <div class="d-flex align-center gap-4">
+                                                <MudIconButton Size="Size.Small"
+                                                             Color="Color.Default"
+                                                             OnClick="() => ToggleTopTagExpanded(topTag.Id)"
+                                                             Icon="@(IsTopTagExpanded(topTag.Id) ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"/>
+
+                                                <MudText Typo="Typo.h6" Color="Color.Primary">@topTag.Name</MudText>
+
+                                                <MudTooltip Text="编辑顶层标签" Duration="0">
+                                                    <MudIconButton Size="Size.Small"
+                                                                 Color="Color.Primary"
+                                                                 OnClick="() => EditTopTag(topTag)"
+                                                                 Icon="@Icons.Material.Filled.Edit"/>
+                                                </MudTooltip>
+
+                                                <MudTooltip Text="添加子标签" Duration="0">
+                                                    <MudIconButton Size="Size.Small"
+                                                                 Color="Color.Success"
+                                                                 OnClick="() => AddTag(topTag)"
+                                                                 Icon="@Icons.Material.Filled.AddCircleOutline"/>
+                                                </MudTooltip>
+
+                                                <MudSpacer/>
+
+                                                @if (_isEditMode)
+                                                {
+                                                    <MudTooltip Text="删除顶层标签" Duration="0">
+                                                        <MudIconButton Size="Size.Small"
+                                                                     Color="Color.Error"
+                                                                     OnClick="() => RemoveTopTag(topTag)"
+                                                                     Icon="@Icons.Material.Filled.Delete"/>
+                                                    </MudTooltip>
+                                                }
+                                            </div>
+
+                                            <MudCollapse Expanded="@IsTopTagExpanded(topTag.Id)">
+                                                <MudDivider Class="my-2"/>
+
+                                                <!-- 子标签列表 -->
+                                                <MudPaper Elevation="0" Class="pa-2">
+                                                    @if (!topTag.Tags.Any())
+                                                    {
+                                                        <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap"
+                                                                  AlignItems="AlignItems.Center">
+                                                            @for (int i = 0; i < 5; i++)
+                                                            {
+                                                                <MudSkeleton Width="100px" Height="32px" Class="ma-1 rounded-pill"/>
+                                                            }
+                                                        </MudStack>
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap"
+                                                                  AlignItems="AlignItems.Center">
+                                                            @foreach (var tag in topTag.Tags)
+                                                            {
+                                                                <div class="d-inline-flex align-center">
+                                                                    <MudTooltip Text="@tag.Description" Placement="Placement.Top"
+                                                                                Duration="0">
+                                                                        <MudChip T="string" Color="@TagColorByCount(tag.Count)"
+                                                                                Variant="Variant.Filled"
+                                                                                Label="true"
+                                                                                OnClick="() => EditTag(tag)"
+                                                                                OnClose="@GetChipCloseHandler(tag)"
+                                                                                Disabled="@(_loadingTagIds.Contains(tag.Id))"
+                                                                                CloseIcon="@(_loadingTagIds.Contains(tag.Id) ? Icons.Material.Filled.Sync : Icons.Material.Filled.Close)">
+                                                                            @tag.Name
+                                                                            @if (_loadingTagIds.Contains(tag.Id))
+                                                                            {
+                                                                                <MudProgressCircular Class="ml-2" Size="Size.Small" Indeterminate="true" />
+                                                                            }
+                                                                        </MudChip>
+                                                                    </MudTooltip>
+                                                                    <MudText Typo="Typo.caption"
+                                                                            Color="Color.Default"
+                                                                            Class="ml-1">
+                                                                        @tag.Count
+                                                                    </MudText>
+                                                                </div>
+                                                            }
+                                                        </MudStack>
+                                                    }
+                                                </MudPaper>
+                                            </MudCollapse>
+                                        </MudPaper>
+                                    </MudItem>
+                                }
+                            }
+                        }
+                    </MudGrid>
+                </MudContainer>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    bool _isLoading = false;
+
+    string _tagNameFilter = "";
+
+    Color TagColorByCount(int count)
+    {
+        return count switch
+        {
+            0 => Color.Default,
+            < 10 => Color.Primary,
+            < 20 => Color.Info,
+            < 30 => Color.Success,
+            < 40 => Color.Tertiary,
+            < 50 => Color.Warning,
+            < 60 => Color.Secondary,
+            _ => Color.Error,
+        };
+    }
+
+    TagSortMode _sortMode = TagSortMode.IdAsc;
+
+    TagSortMode SortMode
+    {
+        get => _sortMode;
+        set
+        {
+            _sortMode = value;
+            _ = LoadAllTags(_tagNameFilter);
+        }
+    }
+
+    bool _idSortAsc = true;
+    bool _nameSortAsc = true;
+    bool _countSortAsc = true;
+
+    void OnIdSortClick()
+    {
+        if (SortMode is TagSortMode.IdAsc or TagSortMode.IdDesc)
+        {
+            _idSortAsc = !_idSortAsc;
+        }
+
+        SortMode = _idSortAsc ? TagSortMode.IdAsc : TagSortMode.IdDesc;
+    }
+
+    void OnNameSortClick()
+    {
+        if (SortMode is TagSortMode.NameAsc or TagSortMode.NameDesc)
+        {
+            _nameSortAsc = !_nameSortAsc;
+        }
+
+        SortMode = _nameSortAsc ? TagSortMode.NameAsc : TagSortMode.NameDesc;
+    }
+
+    void OnCountSortClick()
+    {
+        if (SortMode is TagSortMode.CountAsc or TagSortMode.CountDesc)
+        {
+            _countSortAsc = !_countSortAsc;
+        }
+
+        SortMode = _countSortAsc ? TagSortMode.CountAsc : TagSortMode.CountDesc;
+    }
+
+    EventCallback<MudChip<string>> GetChipCloseHandler(NineKgTools.Core.Models.Tags.Tag tag)
+    {
+        return _isEditMode
+            ? EventCallback.Factory.Create(this, (MudChip<string> _) => RemoveTag(tag))
+            : default;
+    }
+
+    private async Task OnFilterDebounced(string _)
+    {
+        await LoadAllTags(_tagNameFilter);
+    }
+
+    private async Task OnFilterKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await LoadAllTags(_tagNameFilter);
+        }
+    }
+}

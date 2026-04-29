@@ -1,0 +1,58 @@
+﻿@using NineKgTools.Core.Models.Tags
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6" Color="Color.Primary">
+            <MudIcon Icon="@Icons.Material.Filled.NewLabel" Class="mr-3 mb-n1"></MudIcon>
+            为@(TopTag.Name)加标签分类
+        </MudText>
+    </TitleContent>
+
+    <DialogContent>
+        <MudStack Row="false" Spacing="5">
+            <MudTextField @bind-Value="@_tagName" Label="标签名字"
+                          Required="true" Variant="Variant.Filled"/>
+
+            <MudTextField @bind-Value="@_tagDescription" Label="标签描述"
+                          Variant="Variant.Filled"/>
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel">取消</MudButton>
+        <MudButton Color="Color.Info" OnClick="ReturnTag">添加</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    string _tagName;
+    string _tagDescription;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void ReturnTag()
+    {
+        if (string.IsNullOrWhiteSpace(_tagName))
+        {
+            Snackbar.Add("标签名字不能为空", Severity.Warning);
+            return;
+        }
+
+        if (TagNameList.Contains(_tagName))
+        {
+            Snackbar.Add("标签名字已存在", Severity.Warning);
+            return;
+        }
+
+        var newTag = new Tag
+        {
+            Name = _tagName,
+            Description = _tagDescription,
+            TopTag = TopTag,
+        };
+
+        MudDialog.Close(DialogResult.Ok(newTag, typeof(Tag)));
+    }
+
+}

@@ -1,0 +1,202 @@
+/* ==============================================
+   CSS 工具类 - 原子化样式
+   提供常用的原子化CSS类，减少重复样式
+   ============================================== */
+
+/* 间距工具类 */
+.p-xs { padding: var(--spacing-xs) !important; }
+.p-sm { padding: var(--spacing-sm) !important; }
+.p-md { padding: var(--spacing-md) !important; }
+.p-lg { padding: var(--spacing-lg) !important; }
+.p-xl { padding: var(--spacing-xl) !important; }
+.p-2xl { padding: var(--spacing-2xl) !important; }
+.p-3xl { padding: var(--spacing-3xl) !important; }
+
+.m-xs { margin: var(--spacing-xs) !important; }
+.m-sm { margin: var(--spacing-sm) !important; }
+.m-md { margin: var(--spacing-md) !important; }
+.m-lg { margin: var(--spacing-lg) !important; }
+.m-xl { margin: var(--spacing-xl) !important; }
+.m-2xl { margin: var(--spacing-2xl) !important; }
+.m-3xl { margin: var(--spacing-3xl) !important; }
+
+.mt-xs { margin-top: var(--spacing-xs) !important; }
+.mt-sm { margin-top: var(--spacing-sm) !important; }
+.mt-md { margin-top: var(--spacing-md) !important; }
+.mt-lg { margin-top: var(--spacing-lg) !important; }
+
+.mb-xs { margin-bottom: var(--spacing-xs) !important; }
+.mb-sm { margin-bottom: var(--spacing-sm) !important; }
+.mb-md { margin-bottom: var(--spacing-md) !important; }
+.mb-lg { margin-bottom: var(--spacing-lg) !important; }
+
+/* 阴影工具类 */
+.shadow-xs { box-shadow: var(--shadow-xs) !important; }
+.shadow-sm { box-shadow: var(--shadow-sm) !important; }
+.shadow-md { box-shadow: var(--shadow-md) !important; }
+.shadow-lg { box-shadow: var(--shadow-lg) !important; }
+.shadow-xl { box-shadow: var(--shadow-xl) !important; }
+.shadow-2xl { box-shadow: var(--shadow-2xl) !important; }
+.shadow-none { box-shadow: none !important; }
+
+/* 发光效果工具类 */
+.glow-primary { box-shadow: var(--glow-primary) !important; }
+.glow-success { box-shadow: var(--glow-success) !important; }
+.glow-warning { box-shadow: var(--glow-warning) !important; }
+.glow-error { box-shadow: var(--glow-error) !important; }
+.glow-info { box-shadow: var(--glow-info) !important; }
+
+/* 圆角工具类 */
+.rounded-xs { border-radius: var(--radius-xs) !important; }
+.rounded-sm { border-radius: var(--radius-sm) !important; }
+.rounded-md { border-radius: var(--radius-md) !important; }
+.rounded-lg { border-radius: var(--radius-lg) !important; }
+.rounded-xl { border-radius: var(--radius-xl) !important; }
+.rounded-2xl { border-radius: var(--radius-2xl) !important; }
+.rounded-full { border-radius: var(--radius-full) !important; }
+
+/* 过渡动画工具类 */
+.transition-fast { transition: all var(--transition-fast) !important; }
+.transition-normal { transition: all var(--transition-normal) !important; }
+.transition-slow { transition: all var(--transition-slow) !important; }
+.transition-slower { transition: all var(--transition-slower) !important; }
+
+/* 缓动函数工具类 */
+.ease-back { transition-timing-function: var(--ease-in-out-back) !important; }
+.ease-out-back { transition-timing-function: var(--ease-out-back) !important; }
+.ease-smooth { transition-timing-function: var(--ease-smooth) !important; }
+
+/* 透明度工具类 */
+.opacity-disabled { opacity: var(--opacity-disabled) !important; }
+.opacity-secondary { opacity: var(--opacity-secondary) !important; }
+.opacity-hover { opacity: var(--opacity-hover) !important; }
+
+/* Z-index工具类 */
+.z-dropdown { z-index: var(--z-dropdown) !important; }
+.z-sticky { z-index: var(--z-sticky) !important; }
+.z-fixed { z-index: var(--z-fixed) !important; }
+.z-modal { z-index: var(--z-modal) !important; }
+
+/* 字体工具类 */
+.text-xs { font-size: var(--font-size-xs) !important; }
+.text-sm { font-size: var(--font-size-sm) !important; }
+.text-base { font-size: var(--font-size-base) !important; }
+.text-lg { font-size: var(--font-size-lg) !important; }
+.text-xl { font-size: var(--font-size-xl) !important; }
+.text-2xl { font-size: var(--font-size-2xl) !important; }
+.text-3xl { font-size: var(--font-size-3xl) !important; }
+.text-4xl { font-size: var(--font-size-4xl) !important; }
+
+.font-light { font-weight: var(--font-weight-light) !important; }
+.font-normal { font-weight: var(--font-weight-normal) !important; }
+.font-medium { font-weight: var(--font-weight-medium) !important; }
+.font-semibold { font-weight: var(--font-weight-semibold) !important; }
+.font-bold { font-weight: var(--font-weight-bold) !important; }
+
+.leading-tight { line-height: var(--line-height-tight) !important; }
+.leading-snug { line-height: var(--line-height-snug) !important; }
+.leading-normal { line-height: var(--line-height-normal) !important; }
+.leading-relaxed { line-height: var(--line-height-relaxed) !important; }
+.leading-loose { line-height: var(--line-height-loose) !important; }
+
+/* 边框工具类 */
+.border-thin { border-width: var(--border-width-thin) !important; }
+.border-medium { border-width: var(--border-width-medium) !important; }
+.border-thick { border-width: var(--border-width-thick) !important; }
+
+/* 模糊效果工具类 */
+.blur-sm { backdrop-filter: blur(var(--blur-sm)) !important; }
+.blur-md { backdrop-filter: blur(var(--blur-md)) !important; }
+.blur-lg { backdrop-filter: blur(var(--blur-lg)) !important; }
+.blur-xl { backdrop-filter: blur(var(--blur-xl)) !important; }
+
+/* 渐变背景工具类 */
+.bg-gradient-primary { background: var(--gradient-primary) !important; }
+.bg-gradient-success { background: var(--gradient-success) !important; }
+.bg-gradient-warning { background: var(--gradient-warning) !important; }
+.bg-gradient-info { background: var(--gradient-info) !important; }
+.bg-gradient-surface { background: var(--gradient-surface) !important; }
+
+/* 玻璃形态工具类 */
+.glass {
+    backdrop-filter: var(--glass-backdrop) !important;
+    background: var(--glass-background) !important;
+    border: var(--glass-border) !important;
+}
+
+/* 响应式工具类 */
+.responsive-hide-mobile {
+    display: block;
+}
+
+.responsive-show-mobile {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .responsive-hide-mobile {
+        display: none !important;
+    }
+    
+    .responsive-show-mobile {
+        display: block !important;
+    }
+}
+
+/* 位置工具类 */
+.relative { position: relative !important; }
+.absolute { position: absolute !important; }
+.fixed { position: fixed !important; }
+.sticky { position: sticky !important; }
+
+/* 溢出工具类 */
+.overflow-hidden { overflow: hidden !important; }
+.overflow-auto { overflow: auto !important; }
+.overflow-scroll { overflow: scroll !important; }
+
+/* 尺寸约束工具类 */
+.min-w-0 { min-width: 0 !important; }
+
+/* 显示工具类 */
+.hidden { display: none !important; }
+.block { display: block !important; }
+.inline { display: inline !important; }
+.inline-block { display: inline-block !important; }
+.flex { display: flex !important; }
+.inline-flex { display: inline-flex !important; }
+.grid { display: grid !important; }
+
+/* Flex工具类 */
+.flex-col { flex-direction: column !important; }
+.flex-row { flex-direction: row !important; }
+.flex-wrap { flex-wrap: wrap !important; }
+.flex-nowrap { flex-wrap: nowrap !important; }
+
+.justify-start { justify-content: flex-start !important; }
+.justify-center { justify-content: center !important; }
+.justify-end { justify-content: flex-end !important; }
+.justify-between { justify-content: space-between !important; }
+.justify-around { justify-content: space-around !important; }
+.justify-evenly { justify-content: space-evenly !important; }
+
+.items-start { align-items: flex-start !important; }
+.items-center { align-items: center !important; }
+.items-end { align-items: flex-end !important; }
+.items-stretch { align-items: stretch !important; }
+.items-baseline { align-items: baseline !important; }
+
+/* 文本对齐工具类 */
+.text-left { text-align: left !important; }
+.text-center { text-align: center !important; }
+.text-right { text-align: right !important; }
+.text-justify { text-align: justify !important; }
+
+/* 光标工具类 */
+.cursor-pointer { cursor: pointer !important; }
+.cursor-default { cursor: default !important; }
+.cursor-not-allowed { cursor: not-allowed !important; }
+
+/* 用户选择工具类 */
+.select-none { user-select: none !important; }
+.select-text { user-select: text !important; }
+.select-all { user-select: all !important; } 

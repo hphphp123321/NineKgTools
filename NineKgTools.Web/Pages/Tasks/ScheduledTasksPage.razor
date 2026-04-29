@@ -1,0 +1,202 @@
+@page "/tasks/scheduled"
+<PageTitle>定时任务配置</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <MudStack Spacing="4">
+        <!-- 页面标题卡片 -->
+        <PageHeader Icon="@Icons.Material.Filled.Schedule"
+                    IconColor="Color.Warning"
+                    Title="定时任务配置"
+                    Subtitle="管理和配置系统定时任务，支持手动触发执行">
+            <Actions>
+                <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
+                          Color="Color.Secondary"
+                          Variant="Variant.Outlined"
+                          Size="Size.Medium"
+                          Href="/tasks">
+                    返回任务管理
+                </MudButton>
+                <MudButton StartIcon="@Icons.Material.Filled.Refresh"
+                          Color="Color.Secondary"
+                          Variant="Variant.Outlined"
+                          Size="Size.Medium"
+                          OnClick="LoadTasksAsync">
+                    刷新
+                </MudButton>
+                <MudButton StartIcon="@(_isSaving ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.Save)"
+                          Color="Color.Primary"
+                          Variant="Variant.Filled"
+                          Size="Size.Medium"
+                          Disabled="@_isSaving"
+                          OnClick="SaveConfigAsync">
+                    @(_isSaving ? "保存中..." : "保存配置")
+                </MudButton>
+            </Actions>
+        </PageHeader>
+
+        <!-- 任务列表 -->
+        @if (_isLoading)
+        {
+            <MudPaper Class="card-base pa-8" Elevation="3">
+                <div class="d-flex flex-column align-center justify-center">
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large"/>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-4">正在加载定时任务...</MudText>
+                </div>
+            </MudPaper>
+        }
+        else if (_taskConfigs == null || !_taskConfigs.Any())
+        {
+            <MudPaper Class="card-base card-bordered-warning pa-8" Elevation="3">
+                <div class="d-flex flex-column align-center justify-center py-8">
+                    <MudIcon Icon="@Icons.Material.Filled.EventBusy" Size="Size.Large" Color="Color.Warning"/>
+                    <MudText Typo="Typo.h5" Class="mt-4">暂无定时任务</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-2 text-center">
+                        系统尚未注册任何定时任务
+                    </MudText>
+                </div>
+            </MudPaper>
+        }
+        else
+        {
+            <MudStack Spacing="3">
+                @foreach (var task in _taskConfigs)
+                {
+                    var metadata = _taskMetadata.GetValueOrDefault(task.Type);
+                    var isExecuting = _executingTasks.Contains(task.Type);
+
+                    <MudPaper Class="@GetTaskCardClass(task.Enabled)" Elevation="3">
+                        <div class="d-flex flex-column pa-4">
+                            <!-- 任务头部：名称、描述、开关、执行按钮 -->
+                            <div class="d-flex align-center justify-space-between flex-wrap gap-2 mb-3">
+                                <div class="d-flex align-center" style="min-width: 0; flex: 1;">
+                                    <MudSwitch T="bool" @bind-Value="task.Enabled"
+                                               Color="Color.Success"
+                                               Class="mr-3 flex-shrink-0"/>
+                                    <div style="min-width: 0;">
+                                        <div class="d-flex align-center gap-2">
+                                            <MudIcon Icon="@GetTaskIcon(task.Type)"
+                                                    Color="@(task.Enabled ? Color.Primary : Color.Default)"
+                                                    Size="Size.Small"
+                                                    Class="flex-shrink-0"/>
+                                            <MudText Typo="Typo.h6"
+                                                    Class="@(task.Enabled ? "" : "mud-text-disabled")"
+                                                    Style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                @task.Name
+                                            </MudText>
+                                        </div>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">
+                                            @(task.Description ?? metadata?.DisplayName ?? "暂无描述")
+                                        </MudText>
+                                    </div>
+                                </div>
+                                <MudButton Color="Color.Primary"
+                                          Variant="Variant.Filled"
+                                          Size="Size.Small"
+                                          StartIcon="@(isExecuting ? Icons.Material.Filled.HourglassEmpty : Icons.Material.Filled.PlayArrow)"
+                                          Disabled="@(!task.Enabled || isExecuting)"
+                                          Class="flex-shrink-0"
+                                          OnClick="@(() => ExecuteTaskAsync(task.Type))">
+                                    @(isExecuting ? "执行中..." : "立即执行")
+                                </MudButton>
+                            </div>
+
+                            <MudDivider Class="mb-3"/>
+
+                            <!-- Cron 配置 -->
+                            <MudGrid Spacing="3">
+                                <MudItem xs="12" md="6">
+                                    <MudTextField T="string" @bind-Value="task.CronExpression"
+                                                  Label="Cron 表达式"
+                                                  Variant="Variant.Outlined"
+                                                  Disabled="@(!task.Enabled)"
+                                                  Required="true"
+                                                  Validation="@((string? value) => GetCronValidationError(value))"
+                                                  Adornment="Adornment.End"
+                                                  OnAdornmentClick="@(() => _showCronHelp = true)"
+                                                  AdornmentIcon="@Icons.Material.Filled.Help"
+                                                  AdornmentColor="Color.Info"
+                                                  HelperText="@GetCronHelperText(task.CronExpression)"
+                                                  Margin="Margin.Dense"/>
+                                </MudItem>
+                                <MudItem xs="12" md="6">
+                                    <div class="d-flex flex-column gap-2">
+                                        <div class="d-flex align-center gap-2">
+                                            <MudIcon Icon="@Icons.Material.Filled.NextPlan" Size="Size.Small" Color="Color.Info"/>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">下次执行</MudText>
+                                            <MudText Typo="Typo.body2" Class="font-weight-medium">
+                                                @(task.Enabled ? GetNextExecutionTime(task.CronExpression) : "已禁用")
+                                            </MudText>
+                                        </div>
+                                        <div class="d-flex align-center gap-2">
+                                            <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" Color="Color.Secondary"/>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">上次执行</MudText>
+                                            <MudText Typo="Typo.body2">
+                                                @(GetLastExecutionTime(task.Type) ?? "从未执行")
+                                            </MudText>
+                                        </div>
+                                    </div>
+                                </MudItem>
+                            </MudGrid>
+                        </div>
+                    </MudPaper>
+                }
+            </MudStack>
+        }
+    </MudStack>
+</MudContainer>
+
+<!-- Cron 帮助对话框 -->
+<MudDialog @bind-Visible="_showCronHelp" Options="new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium }">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Schedule" Class="mr-2"/> Cron 表达式格式说明
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="my-2">
+            <b>Cron 表达式格式：</b> 分 时 日 月 周
+        </MudText>
+        <MudPaper Outlined="true" Class="pa-3">
+            <div class="d-flex flex-column gap-2">
+                @foreach (var (icon, text) in CronFields)
+                {
+                    <div class="d-flex gap-2 align-center">
+                        <MudIcon Icon="@icon" Size="Size.Small"/>
+                        <MudText>@text</MudText>
+                    </div>
+                }
+            </div>
+        </MudPaper>
+
+        <MudDivider Class="my-3"/>
+        <MudText Typo="Typo.body1" Class="mb-2"><b>常用符号说明：</b></MudText>
+        <MudPaper Outlined="true" Class="pa-3">
+            <div class="d-flex flex-column gap-2">
+                @foreach (var (icon, text) in CronSymbols)
+                {
+                    <div class="d-flex gap-2 align-center">
+                        <MudIcon Icon="@icon" Size="Size.Small"/>
+                        <MudText>@text</MudText>
+                    </div>
+                }
+            </div>
+        </MudPaper>
+
+        <MudDivider Class="my-3"/>
+        <MudText Typo="Typo.body1" Class="mb-2"><b>常用示例：</b></MudText>
+        <MudPaper Outlined="true" Class="pa-3">
+            <div class="d-flex flex-column gap-2">
+                @foreach (var (icon, text) in CronExamples)
+                {
+                    <div class="d-flex gap-2 align-center">
+                        <MudIcon Icon="@icon" Size="Size.Small"/>
+                        <MudText>@text</MudText>
+                    </div>
+                }
+            </div>
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" OnClick="@(() => _showCronHelp = false)">关闭</MudButton>
+    </DialogActions>
+</MudDialog>

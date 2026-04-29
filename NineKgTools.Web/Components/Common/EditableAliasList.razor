@@ -1,0 +1,185 @@
+@using MudBlazor
+
+<div class="editable-aliases-container">
+    @if (Aliases != null && Aliases.Count > 0)
+    {
+        <div class="aliases-display">
+            @foreach (var (alias, index) in Aliases.Select((value, i) => (value, i)))
+            {
+                var isLast = index == Aliases.Count - 1;
+                <span class="alias-item">
+                    @if (_editingIndex == index)
+                    {
+                        <MudTextField @bind-Value="_editingValue"
+                                      Variant="Variant.Text"
+                                      Margin="Margin.None"
+                                      Class="inline-edit-field"
+                                      OnKeyUp="@((KeyboardEventArgs e) => OnKeyPress(e, index))"
+                                      OnBlur="@(() => SaveEdit(index))"
+                                      Immediate="true"/>
+                    }
+                    else if (IsEditable)
+                    {
+                        <span class="alias-text alias-text-editable"
+                              role="button"
+                              tabindex="0"
+                              aria-label="@($"编辑别名 {alias}")"
+                              title="点击编辑"
+                              @onclick="@(() => StartEdit(index))"
+                              @onkeydown="@((KeyboardEventArgs e) => OnAliasKeyDown(e, index))">
+                            @alias
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="alias-text">@alias</span>
+                    }
+
+                    @if (IsEditable)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       Class="delete-alias-button"
+                                       aria-label="@($"删除别名 {alias}")"
+                                       OnClick="@(() => RemoveAlias(index))"/>
+                    }
+
+                    @if (!isLast)
+                    {
+                        <span class="alias-separator"> / </span>
+                    }
+                </span>
+            }
+        </div>
+    }
+    else
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="no-aliases-text">
+            暂无别名
+        </MudText>
+    }
+    
+    @if (_isAddingNew)
+    {
+        <span class="alias-separator"> / </span>
+        <MudTextField @bind-Value="_newAliasValue"
+                      Variant="Variant.Text"
+                      Margin="Margin.None"
+                      Class="inline-edit-field inline-edit-field--new"
+                      Placeholder="输入新别名"
+                      OnKeyDown="OnAddKeyPress"
+                      OnBlur="OnAddBlur"
+                      Immediate="true"/>
+    }
+    else if (IsEditable)
+    {
+        <MudIconButton Icon="@Icons.Material.Filled.Add"
+                       Size="Size.Small"
+                       Color="Color.Primary"
+                       Class="add-alias-button"
+                       aria-label="添加别名"
+                       OnClick="StartAdd"/>
+    }
+</div>
+
+@* 所有样式已迁移到 /css/components/forms.css *@
+
+@code {
+    [Parameter] public List<string> Aliases { get; set; } = new();
+    [Parameter] public EventCallback<List<string>> AliasesChanged { get; set; }
+    [Parameter] public bool IsEditable { get; set; } = true;
+    
+    private int _editingIndex = -1;
+    private string _editingValue = string.Empty;
+    private bool _isAddingNew = false;
+    private string _newAliasValue = string.Empty;
+    
+    private void StartEdit(int index)
+    {
+        _editingIndex = index;
+        _editingValue = Aliases[index];
+        StateHasChanged();
+    }
+    
+    private async Task SaveEdit(int index)
+    {
+        if (_editingIndex == index && !string.IsNullOrWhiteSpace(_editingValue))
+        {
+            Aliases[index] = _editingValue.Trim();
+            await AliasesChanged.InvokeAsync(Aliases);
+        }
+        _editingIndex = -1;
+        _editingValue = string.Empty;
+    }
+    
+    private async Task OnKeyPress(KeyboardEventArgs e, int index)
+    {
+        if (e.Key == "Enter")
+        {
+            await SaveEdit(index);
+        }
+        else if (e.Key == "Escape")
+        {
+            _editingIndex = -1;
+            _editingValue = string.Empty;
+        }
+    }
+
+    private void OnAliasKeyDown(KeyboardEventArgs e, int index)
+    {
+        if (e.Key == "Enter" || e.Key == " " || e.Key == "Spacebar")
+        {
+            StartEdit(index);
+        }
+    }
+
+    private async Task RemoveAlias(int index)
+    {
+        if (index < 0 || index >= Aliases.Count) return;
+        Aliases.RemoveAt(index);
+        await AliasesChanged.InvokeAsync(Aliases);
+    }
+
+    private void StartAdd()
+    {
+        _isAddingNew = true;
+        _newAliasValue = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task AddNewAlias()
+    {
+        var value = _newAliasValue?.Trim();
+        if (!string.IsNullOrEmpty(value))
+        {
+            Aliases.Add(value);
+            await AliasesChanged.InvokeAsync(Aliases);
+        }
+        CancelAdd();
+    }
+
+    private void CancelAdd()
+    {
+        _isAddingNew = false;
+        _newAliasValue = string.Empty;
+    }
+
+    private async Task OnAddBlur()
+    {
+        // Blur 时按用户输入保存，避免丢失刚输入的内容（与 SaveEdit 语义一致）
+        await AddNewAlias();
+    }
+
+    private async Task OnAddKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await AddNewAlias();
+        }
+        else if (e.Key == "Escape")
+        {
+            CancelAdd();
+        }
+    }
+} 

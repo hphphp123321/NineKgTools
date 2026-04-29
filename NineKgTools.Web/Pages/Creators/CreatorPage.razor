@@ -1,0 +1,285 @@
+﻿@page "/creator/{id:int}"
+<PageTitle>人物：@_name</PageTitle>
+
+@using NineKgTools.Components.Common
+@using NineKgTools.Components.Medias
+@using NineKgTools.Utils
+@using NineKgTools.Core.Services.AI
+@using NineKgTools.Core.Services.Configs
+@using NineKgTools.Core.Models.Media
+
+
+
+@if (_isLoading)
+{
+    <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+        <MudPaper Elevation="3" Class="pa-6 rounded-lg">
+            <MudGrid>
+                <!-- 左侧图片 -->
+                <MudItem xs="12" md="3">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="400px" Class="rounded-lg"/>
+                </MudItem>
+
+                <!-- 右侧详情 -->
+                <MudItem xs="12" md="9">
+                    <MudSkeleton Width="60%" Height="40px"/>
+                    <MudSkeleton Width="40%" Class="mt-2"/>
+                    <MudSkeleton Width="30%" Class="mt-4"/>
+                    <MudSkeleton Width="100%" Height="100px" Class="mt-4"/>
+                    <MudSkeleton Width="100%" Height="80px" Class="mt-4"/>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </MudContainer>
+}
+else if (string.IsNullOrEmpty(_name))
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="d-flex flex-column justify-center align-center" Style="height: 70vh">
+        <MudIcon Icon="@Icons.Material.Filled.PersonOff" Color="Color.Error" Size="Size.Large" Class="mb-4"/>
+        <MudText Typo="Typo.h5" Color="Color.Error">未找到人物信息</MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-2">请检查ID是否正确或创建新人物</MudText>
+        <MudButton Href="/" Color="Color.Primary" Variant="Variant.Outlined" Class="mt-4">返回首页</MudButton>
+    </MudContainer>
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4 fade-in">
+        <!-- 页面标题 -->
+        <MudGrid>
+            <MudItem xs="12">
+                <PageHeader Icon="@Icons.Material.Filled.Person"
+                            IconColor="Color.Success"
+                            Title="人物详情"
+                            Subtitle="@_name">
+                    <Actions>
+                        <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
+                                   Color="Color.Secondary"
+                                   Variant="Variant.Outlined"
+                                   Size="Size.Medium"
+                                   Href="/creators">
+                            返回创作者
+                        </MudButton>
+                        <MudButton Disabled="@_saveProcessing" OnClick="SaveCreator"
+                                   StartIcon="@(!_saveProcessing ? Icons.Material.Filled.Save : null)"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Filled"
+                                   Size="Size.Medium">
+                            @if (_saveProcessing)
+                            {
+                                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                                <MudText Class="ms-2">保存中</MudText>
+                            }
+                            else
+                            {
+                                <MudText>保存修改</MudText>
+                            }
+                        </MudButton>
+                    </Actions>
+                </PageHeader>
+            </MudItem>
+        </MudGrid>
+
+        <!-- 人物详情 -->
+        <MudGrid Class="mt-4">
+            <!-- 左侧人物头像 -->
+            <MudItem xs="12" md="3" Class="creator-sidebar">
+                <MudCard Elevation="3" Class="rounded-lg left-sidebar">
+                    <!-- 人物头像 -->
+                    <div class="avatar-container position-relative" style="height: 400px; background-color: transparent;">
+                        <MudImage Src="@GetAvatarUrl()"
+                                  ObjectFit="ObjectFit.Contain"
+                                  Class="avatar-image"
+                                  Height="400"
+                                  Style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%"/>
+
+                        <!-- 悬停时显示的更新头像按钮 -->
+                        <div class="avatar-overlay">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.CloudUpload"
+                                       OnClick="OpenUploadDialog"
+                                       Class="upload-avatar-button">
+                                更新头像
+                            </MudButton>
+                        </div>
+                    </div>
+
+                    <MudDivider/>
+                </MudCard>
+            </MudItem>
+
+            <!-- 右侧人物详情 -->
+            <MudItem xs="12" md="9">
+                <!-- 人物标题和基本信息 -->
+                <MudPaper Elevation="3" Class="pa-4 rounded-lg creator-main-card">
+                    <MudText Typo="Typo.h4" Class="mb-2 mud-primary-text creator-title">@_name</MudText>
+
+                    <div class="mb-3 alias-section">
+                        <div class="d-flex align-center mb-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Tag" Size="Size.Small" Class="mr-2" Color="Color.Secondary"/>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">别名</MudText>
+                            @if (AppConfig.Ai.UseAi)
+                            {
+                                <MudSpacer/>
+                                <MudTooltip Text="使用AI翻译姓名并添加为别名">
+                                    <MudIconButton Icon="@Icons.Material.Filled.AutoAwesome"
+                                                   Color="Color.Info" Size="Size.Small"
+                                                   Disabled="@_translatingName"
+                                                   OnClick="TranslateName">
+                                    </MudIconButton>
+                                </MudTooltip>
+                                @if (_translatingName)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+                                }
+                            }
+                        </div>
+                        <EditableAliasList Aliases="_aliasNames" AliasesChanged="OnAliasNamesChanged" />
+                    </div>
+
+                    <!-- 人物类型标签 -->
+                    <div class="d-flex flex-wrap gap-2 mt-4 mb-4 align-center types-container">
+                        @if (_types.Count == 0)
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1">暂无类型，</MudText>
+                        }
+                        @foreach (var type in _types)
+                        {
+                            <MudChip T="string"
+                                     Color="GetCreatorTypeColor(type)"
+                                     Size="Size.Medium"
+                                     Icon="@GetCreatorTypeIcon(type)"
+                                     Variant="Variant.Filled"
+                                     OnClose="() => RemoveType(type)"
+                                     CloseIcon="@Icons.Material.Filled.Close"
+                                     Class="type-chip">
+                                @GetCreatorTypeDisplayName(type)
+                            </MudChip>
+                        }
+                        @if (GetAvailableTypes().Any())
+                        {
+                            <MudMenu Icon="@Icons.Material.Filled.Add"
+                                     Color="Color.Primary"
+                                     Size="Size.Small"
+                                     Label="添加类型"
+                                     Variant="Variant.Text">
+                                @foreach (var type in GetAvailableTypes())
+                                {
+                                    var capturedType = type;
+                                    <MudMenuItem OnClick="() => AddType(capturedType)">
+                                        <div class="d-flex align-center gap-2">
+                                            <MudIcon Icon="@GetCreatorTypeIcon(capturedType)" Size="Size.Small" Color="GetCreatorTypeColor(capturedType)"/>
+                                            <MudText>@GetCreatorTypeDisplayName(capturedType)</MudText>
+                                        </div>
+                                    </MudMenuItem>
+                                }
+                            </MudMenu>
+                        }
+                    </div>
+                </MudPaper>
+
+                <!-- 描述信息 -->
+                <MudPaper Elevation="3" Class="pa-4 rounded-lg mt-4 creator-description-card">
+                    <div class="d-flex align-center mb-4">
+                        <MudIcon Icon="@Icons.Material.Filled.Description" Class="mr-2" Color="Color.Success"/>
+                        <MudText Typo="Typo.h6" Color="Color.Success">人物描述</MudText>
+
+                        @if (string.IsNullOrEmpty(_descriptionTranslated))
+                        {
+                            <MudSpacer/>
+                            <MudTooltip Duration="0" Text="翻译描述">
+                                <MudIconButton Icon="@Icons.Material.Filled.Translate"
+                                               Size="Size.Small"
+                                               Color="Color.Success"
+                                               OnClick="TranslateDescription"
+                                               Class="ml-auto"
+                                               Disabled="@_translating"/>
+                            </MudTooltip>
+                            @if (_translating)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+                            }
+                        }
+                    </div>
+
+                    @if (string.IsNullOrEmpty(_description))
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined">
+                            <MudText Typo="Typo.body2">暂无人物描述</MudText>
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <div class="description-container rounded-lg">
+                            @if (!string.IsNullOrEmpty(_description) && !string.IsNullOrEmpty(_descriptionTranslated))
+                            {
+                                <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3">
+                                    <MudTabPanel Text="原文" Icon="@Icons.Material.Filled.Language">
+                                        <MudTextField @bind-Value="_description"
+                                                      Class="py-2"
+                                                      AutoGrow="true"
+                                                      Typo="Typo.body1"
+                                                      Variant="Variant.Text"
+                                                      Margin="Margin.Dense"
+                                                      Immediate="true"
+                                                      FullWidth="true"/>
+                                    </MudTabPanel>
+                                    <MudTabPanel Text="翻译" Icon="@Icons.Material.Filled.Translate">
+                                        <MudTextField @bind-Value="_descriptionTranslated"
+                                                      Class="py-2"
+                                                      AutoGrow="true"
+                                                      Typo="Typo.body1"
+                                                      Variant="Variant.Text"
+                                                      Margin="Margin.Dense"
+                                                      Immediate="true"
+                                                      FullWidth="true"/>
+                                    </MudTabPanel>
+                                </MudTabs>
+                            }
+                            else
+                            {
+                                <MudTextField @bind-Value="_description"
+                                              Class="py-2"
+                                              AutoGrow="true"
+                                              Typo="Typo.body1"
+                                              Variant="Variant.Text"
+                                              Margin="Margin.Dense"
+                                              Immediate="true"
+                                              FullWidth="true"/>
+                            }
+                        </div>
+                    }
+                </MudPaper>
+
+                <!-- 关联作品 -->
+                <MediaShownView @ref="_mediaShownView"
+                                InitialQueryParameters="@_initialParams"
+                                Title="关联作品"
+                                TitleIcon="@Icons.Material.Filled.Collections"
+                                TitleColor="Color.Warning"
+                                EmptyTitle="暂无关联作品"
+                                EmptyDescription="该创作者还没有关联任何作品"
+                                EmptyIcon="@Icons.Material.Filled.SentimentDissatisfied"
+                                EmptyStateText="暂无关联作品"
+                                DefaultGridView="true"
+                                Simple="false"
+                                ShowCategoryFilter="true"
+                                ShowTagFilter="true"
+                                ShowFavoriteFilter="true"
+                                ShowRatingFilter="true"
+                                ShowDateFilter="true"
+                                PageSize="20"
+                                Class="mt-4 mb-4">
+                    <TitleActions>
+                        <MudTooltip Text="管理关联作品" Duration="0">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Color="Color.Warning"
+                                           Size="Size.Small"
+                                           OnClick="OpenMediaSelectorDialog"/>
+                        </MudTooltip>
+                    </TitleActions>
+                </MediaShownView>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
+}

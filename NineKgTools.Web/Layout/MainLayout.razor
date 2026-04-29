@@ -1,0 +1,120 @@
+@inherits LayoutComponentBase
+@using System.Text.RegularExpressions
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
+@using NineKgTools.Components.Search
+
+<MudThemeProvider Theme="@CurrentTheme" IsDarkMode="@IsDarkMode"/>
+<MudPopoverProvider/>
+<MudDialogProvider/>
+<MudSnackbarProvider/>
+
+<!-- Add Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+      crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+<!-- 搜索功能JavaScript -->
+<script src="~/js/search.js"></script>
+
+<MudLayout>
+    <MudAppBar Dense="false" Elevation="4" Class="frosted-glass rounded-0" Style="@AppBarBackgroundStyle">
+        <MudImage Src="data/images/logo-9kgtools-transparent.png" Width="200" Class="ms-1 app-logo">
+        </MudImage>
+        <MudSpacer/>
+
+        <!-- 全局搜索组件 -->
+        <GlobalSearchBox />
+
+        <div class="d-none d-md-flex" style="flex-grow: 1;"></div>
+
+        <!-- 任务管理Badge按钮 -->
+        <MudBadge Content="@_activeTaskCount"
+                 Color="Color.Primary"
+                 Overlap="true"
+                 Visible="@(_activeTaskCount > 0)"
+                 Class="mr-3">
+            <MudIconButton Icon="@Icons.Material.Filled.TaskAlt"
+                          Color="Color.Inherit"
+                          OnClick="@ShowTaskQuickViewAsync"
+                          Class="d-none d-sm-flex"/>
+        </MudBadge>
+
+        <!-- 主题循环切换按钮（移动端） -->
+        <MudIconButton Icon="@ThemeModeIcon" Color="Color.Inherit" OnClick="@CycleTheme" Class="d-none d-sm-flex d-md-none"/>
+
+        <!-- 更多菜单 -->
+        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                 Color="Color.Inherit"
+                 AnchorOrigin="Origin.BottomRight"
+                 TransformOrigin="Origin.TopRight"
+                 Dense="true"
+                 Class="d-none d-sm-flex">
+
+            <!-- 当前主题信息头部 -->
+            <div class="appbar-menu-header">
+                <div class="appbar-menu-header-icon-wrap">
+                    <MudIcon Icon="@ThemeModeIcon" Size="Size.Small" Color="Color.Primary"/>
+                </div>
+                <div>
+                    <div class="appbar-menu-header-label">外观</div>
+                    <div class="appbar-menu-header-current">@GetThemeModeName()</div>
+                </div>
+            </div>
+
+            <MudDivider Class="mb-1"/>
+
+            <MudMenuItem Icon="@Icons.Material.Filled.DarkMode"
+                        IconColor="@(_currentTheme == ThemeMode.Dark ? Color.Primary : Color.Default)"
+                        OnClick="@(() => SetTheme(ThemeMode.Dark))"
+                        Class="@(_currentTheme == ThemeMode.Dark ? "appbar-menu-theme-item appbar-menu-theme-item--active" : "appbar-menu-theme-item")">
+                深色
+            </MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.AutoAwesome"
+                        IconColor="@(_currentTheme == ThemeMode.Purple ? Color.Secondary : Color.Default)"
+                        OnClick="@(() => SetTheme(ThemeMode.Purple))"
+                        Class="@(_currentTheme == ThemeMode.Purple ? "appbar-menu-theme-item appbar-menu-theme-item--active appbar-menu-theme-item--purple" : "appbar-menu-theme-item")">
+                紫色
+            </MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.WbSunny"
+                        IconColor="@(_currentTheme == ThemeMode.Light ? Color.Warning : Color.Default)"
+                        OnClick="@(() => SetTheme(ThemeMode.Light))"
+                        Class="@(_currentTheme == ThemeMode.Light ? "appbar-menu-theme-item appbar-menu-theme-item--active appbar-menu-theme-item--light" : "appbar-menu-theme-item")">
+                浅色
+            </MudMenuItem>
+            <AuthorizeView>
+                <Authorized>
+                    <MudDivider Class="my-1" />
+                    <MudMenuItem Icon="@Icons.Material.Filled.Logout"
+                                IconColor="Color.Error"
+                                OnClick="HandleLogout"
+                                Class="appbar-menu-logout-item">
+                        登出
+                    </MudMenuItem>
+                </Authorized>
+            </AuthorizeView>
+        </MudMenu>
+    </MudAppBar>
+    <MudDrawer Open="true" ClipMode="DrawerClipMode.Always" Elevation="4">
+        <NavMenu/>
+    </MudDrawer>
+    <MudMainContent Class="mt-16 pa-4">
+        <CascadingValue Value="@IsDarkMode"/>
+        <MudScrollToTop>
+            <MudButton Variant="Variant.Filled" Color="Color.Warning"
+                       StartIcon="@Icons.Material.Filled.ArrowCircleUp">
+                返回顶部
+            </MudButton>
+        </MudScrollToTop>
+        <div class="page-enter">
+            @Body
+        </div>
+    </MudMainContent>
+</MudLayout>
+
+
+<div id="blazor-error-ui">
+    一个错误发生了
+    <a href="" class="reload">刷新</a>
+    <a class="dismiss">🗙</a>
+</div>

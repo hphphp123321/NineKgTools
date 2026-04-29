@@ -1,0 +1,257 @@
+@using NineKgTools.Core.Models.Identification
+@using NineKgTools.Components.Common
+@using NineKgTools.Core.Models.Categories
+
+<MudDialog>
+    <DialogContent>
+        <MudExpansionPanels MultiExpansion="true">
+
+            <!-- 面板1：基础选项 -->
+            <MudExpansionPanel IsInitiallyExpanded="true">
+                <TitleContent>
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Settings" Color="Color.Warning" />
+                        <MudText Typo="Typo.h6">基础选项</MudText>
+                    </div>
+                </TitleContent>
+                <ChildContent>
+                    <MudGrid Spacing="3">
+                        <!-- 指定网站 -->
+                        <MudItem xs="12" md="6">
+                            <MudSelect T="string" @bind-Value="_preferredWebsite"
+                                       Label="指定网站" Variant="Variant.Outlined"
+                                       Clearable="true"
+                                       HelperText="指定仅使用此网站进行识别，不查询其他网站（留空则自动选择）"
+                                       Margin="Margin.Dense">
+                                @foreach (var website in _availableWebsites)
+                                {
+                                    <MudSelectItem Value="@website">@website</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+
+                        <!-- 网站ID -->
+                        <MudItem xs="12" md="6">
+                            <MudTextField T="string" @bind-Value="_websiteSpecificId"
+                                          Label="网站ID" Variant="Variant.Outlined"
+                                          Clearable="true"
+                                          HelperText="指定网站特定的媒体ID（如DLsite的RJ号）"
+                                          Margin="Margin.Dense"
+                                          Placeholder="例如：RJ123456" />
+                        </MudItem>
+
+                        <!-- 自定义名称 -->
+                        <MudItem xs="12">
+                            <MudTextField T="string" @bind-Value="_customIdentificationName"
+                                          Label="自定义识别名称" Variant="Variant.Outlined"
+                                          Clearable="true"
+                                          HelperText="自定义识别名称，覆盖默认文件名进行搜索"
+                                          Margin="Margin.Dense"
+                                          Placeholder="留空则使用文件名" />
+                        </MudItem>
+
+                        <!-- 识别策略 -->
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.subtitle2" Class="mb-2">识别策略</MudText>
+                            <MudRadioGroup T="IdentificationStrategy" @bind-Value="_strategy">
+                                @foreach (var strategy in Enum.GetValues<IdentificationStrategy>())
+                                {
+                                    <div class="d-flex align-center gap-2 mb-2">
+                                        <MudRadio T="IdentificationStrategy" Value="@strategy" Color="Color.Warning">
+                                            @strategy.ToString()
+                                        </MudRadio>
+                                        <Tip Text="@GetStrategyDescription(strategy)"
+                                             Placement="Placement.Right"
+                                             IconColor="Color.Info" />
+                                    </div>
+                                }
+                            </MudRadioGroup>
+                        </MudItem>
+
+                        <!-- 媒体类型提示 -->
+                        <MudItem xs="12" md="6">
+                            <MudSelect T="TopCategory?" @bind-Value="_suggestedCategory"
+                                       Label="媒体类型提示（可选）" Variant="Variant.Outlined"
+                                       Clearable="true"
+                                       HelperText="提示媒体类型以优化识别"
+                                       Margin="Margin.Dense">
+                                @foreach (var category in Enum.GetValues<TopCategory>())
+                                {
+                                    <MudSelectItem T="TopCategory?" Value="@category">@category.GetCnName()</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                    </MudGrid>
+                </ChildContent>
+            </MudExpansionPanel>
+
+            <!-- 面板2：多网站ID映射 -->
+            <MudExpansionPanel>
+                <TitleContent>
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Map" Color="Color.Warning" />
+                        <MudText Typo="Typo.h6">多网站ID映射</MudText>
+                        @if (_websiteIds.Count > 0)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info">@_websiteIds.Count</MudChip>
+                        }
+                    </div>
+                </TitleContent>
+                <ChildContent>
+                    <!-- 现有映射列表 -->
+                    @if (_websiteIds.Count > 0)
+                    {
+                        <MudList T="string" Dense="true" Class="mb-3">
+                            @foreach (var kvp in _websiteIds)
+                            {
+                                <MudListItem T="string">
+                                    <div class="d-flex align-center justify-space-between w-100">
+                                        <div class="d-flex align-center gap-2">
+                                            <MudIcon Icon="@Icons.Material.Filled.Link" Size="Size.Small" />
+                                            <MudText>
+                                                <strong>@kvp.Key:</strong> @kvp.Value
+                                            </MudText>
+                                        </div>
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Size="Size.Small"
+                                                       Color="Color.Error"
+                                                       aria-label="@($"删除 {kvp.Key} 映射")"
+                                                       OnClick="@(() => RemoveWebsiteId(kvp.Key))" />
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                            暂无网站ID映射，可在下方添加
+                        </MudAlert>
+                    }
+
+                    <!-- 添加新映射 -->
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="5">
+                            <MudSelect T="string" @bind-Value="_newWebsiteName"
+                                       Label="网站名称" Variant="Variant.Outlined"
+                                       Margin="Margin.Dense">
+                                @foreach (var website in _availableWebsites)
+                                {
+                                    <MudSelectItem Value="@website">@website</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" sm="5">
+                            <MudTextField T="string" @bind-Value="_newWebsiteId"
+                                          Label="网站ID" Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          Placeholder="例如：RJ123456" />
+                        </MudItem>
+                        <MudItem xs="12" sm="2" Class="d-flex align-center">
+                            <MudButton OnClick="AddWebsiteId"
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       Color="Color.Success"
+                                       Variant="Variant.Filled"
+                                       FullWidth="true">
+                                添加
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </ChildContent>
+            </MudExpansionPanel>
+
+            <!-- 面板3：高级选项 -->
+            <MudExpansionPanel>
+                <TitleContent>
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Tune" Color="Color.Warning" />
+                        <MudText Typo="Typo.h6">高级选项</MudText>
+                    </div>
+                </TitleContent>
+                <ChildContent>
+                    <MudGrid Spacing="3">
+                        <!-- 跳过缓存 -->
+                        <MudItem xs="12" md="6">
+                            <div class="d-flex align-center gap-2">
+                                <MudSwitch T="bool" @bind-Value="_skipCache"
+                                           Color="Color.Warning"
+                                           Label="跳过缓存"
+                                           LabelPosition="LabelPosition.End" />
+                                <Tip Text="强制从网络重新识别，忽略本地缓存。适用于需要获取最新数据的场景。"
+                                     Placement="Placement.Right"
+                                     IconColor="Color.Info" />
+                            </div>
+                        </MudItem>
+
+                        <!-- 超时时间 -->
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.subtitle2" Class="mb-1">
+                                超时时间: @_timeoutSeconds 秒
+                            </MudText>
+                            <MudSlider T="int" @bind-Value="_timeoutSeconds"
+                                       Min="5" Max="120" Step="5"
+                                       Color="Color.Warning"
+                                       HelperText="单个网站的识别超时时间" />
+                        </MudItem>
+
+                    </MudGrid>
+                </ChildContent>
+            </MudExpansionPanel>
+
+            <!-- 面板4：网站优先级 -->
+            <MudExpansionPanel>
+                <TitleContent>
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Speed" Color="Color.Warning" />
+                        <MudText Typo="Typo.h6">网站优先级</MudText>
+                    </div>
+                </TitleContent>
+                <ChildContent>
+                    <MudGrid Spacing="3">
+                        <!-- 网站优先级覆盖 -->
+                        <MudItem xs="12">
+                            <MudSelect T="string" @bind-SelectedValues="_websitePriorityOverride"
+                                       Label="网站优先级覆盖（可选）" Variant="Variant.Outlined"
+                                       MultiSelection="true"
+                                       Clearable="true"
+                                       HelperText="按顺序指定网站优先级，留空则使用默认优先级"
+                                       Margin="Margin.Dense">
+                                @foreach (var website in _availableWebsites)
+                                {
+                                    <MudSelectItem Value="@website">@website</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                    </MudGrid>
+                </ChildContent>
+            </MudExpansionPanel>
+
+        </MudExpansionPanels>
+    </DialogContent>
+
+    <DialogActions>
+        <!-- 左侧：重置按钮 -->
+        <MudButton OnClick="ResetToDefaults"
+                   StartIcon="@Icons.Material.Filled.RestartAlt"
+                   Variant="Variant.Text"
+                   Color="Color.Default">
+            重置为默认
+        </MudButton>
+
+        <MudSpacer />
+
+        <!-- 右侧：取消和确认按钮 -->
+        <MudButton OnClick="Cancel"
+                   Variant="Variant.Text"
+                   Color="Color.Default">
+            取消
+        </MudButton>
+
+        <MudButton OnClick="Confirm"
+                   StartIcon="@Icons.Material.Filled.Check"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary">
+            开始识别
+        </MudButton>
+    </DialogActions>
+</MudDialog>

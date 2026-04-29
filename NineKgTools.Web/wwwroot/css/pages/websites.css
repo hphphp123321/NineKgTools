@@ -1,0 +1,212 @@
+/* ============================================
+   Websites页面专用样式
+   ============================================ */
+
+/* 网站卡片 - 顶部彩色边框 + 四周微边框 */
+.website-card {
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-slow);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: var(--border-width-thick) solid transparent;
+}
+
+.website-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-3px);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.website-card-primary {
+    border-color: rgba(var(--mud-palette-primary-rgb), 0.25);
+    border-top-color: var(--mud-palette-primary);
+}
+
+.website-card-primary:hover {
+    border-color: rgba(var(--mud-palette-primary-rgb), 0.4);
+    border-top-color: var(--mud-palette-primary);
+}
+
+.website-card-secondary {
+    border-color: rgba(var(--mud-palette-secondary-rgb), 0.25);
+    border-top-color: var(--mud-palette-secondary);
+}
+
+.website-card-secondary:hover {
+    border-color: rgba(var(--mud-palette-secondary-rgb), 0.4);
+    border-top-color: var(--mud-palette-secondary);
+}
+
+.website-card-info {
+    border-color: rgba(var(--mud-palette-info-rgb), 0.25);
+    border-top-color: var(--mud-palette-info);
+}
+
+.website-card-info:hover {
+    border-color: rgba(var(--mud-palette-info-rgb), 0.4);
+    border-top-color: var(--mud-palette-info);
+}
+
+/* 网站卡片Logo区域 - 固定高度确保卡片一致 */
+.website-card-logo {
+    height: 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: var(--spacing-lg) var(--spacing-2xl);
+    overflow: hidden;
+}
+
+/* Logo图片统一尺寸 - 覆盖 MudBlazor Fluid 和 MudCardHeader 布局 */
+.website-card-logo .mud-image,
+.website-card-logo img,
+.website-card-logo-img {
+    width: 200px !important;
+    height: 60px !important;
+    max-width: 200px !important;
+    max-height: 60px !important;
+    object-fit: contain !important;
+}
+
+/* 网站卡片Logo背景渐变 */
+.website-card-logo-primary {
+    background: linear-gradient(to bottom, rgba(var(--mud-palette-primary-rgb), 0.05), transparent);
+}
+
+.website-card-logo-secondary {
+    background: linear-gradient(to bottom, rgba(var(--mud-palette-secondary-rgb), 0.05), transparent);
+}
+
+.website-card-logo-info {
+    background: linear-gradient(to bottom, rgba(var(--mud-palette-info-rgb), 0.05), transparent);
+}
+
+/* ============================================
+   网站优先级拖拽区域动画
+   ============================================ */
+
+/* 分类行 — hover 时左边框发光 + 微抬 */
+.website-priority-row {
+    transition: transform var(--transition-normal),
+                box-shadow var(--transition-normal),
+                border-color var(--transition-normal);
+}
+
+.website-priority-row:hover {
+    transform: translateX(2px);
+    box-shadow: var(--shadow-sm);
+}
+
+/* 拖放区域 — CanDrop/NoDrop 状态平滑过渡 */
+.website-drop-zone-category {
+    min-height: 40px;
+    transition: background-color var(--transition-normal),
+                border-color var(--transition-normal),
+                box-shadow var(--transition-normal);
+}
+
+/* MudBlazor CanDropClass/NoDropClass 的动画增强 */
+.website-drop-zone-category.mud-border-success {
+    background-color: rgba(var(--mud-palette-success-rgb), 0.06);
+    box-shadow: inset 0 0 8px rgba(var(--mud-palette-success-rgb), 0.1);
+}
+
+.website-drop-zone-category.mud-border-error {
+    background-color: rgba(var(--mud-palette-error-rgb), 0.04);
+}
+
+/* 可拖放网站的虚线区域（侧栏） */
+.website-drop-zone {
+    min-height: 120px;
+    border: 1px dashed var(--mud-palette-primary);
+    border-radius: var(--radius-sm);
+    transition: border-color var(--transition-normal),
+                background-color var(--transition-normal);
+}
+
+.website-drop-zone.mud-border-success {
+    background-color: rgba(var(--mud-palette-success-rgb), 0.06);
+}
+
+/* 侧栏可拖 Chip — hover 抬起暗示可拖拽 */
+.website-drop-zone .mud-chip {
+    transition: transform var(--transition-normal),
+                box-shadow var(--transition-normal);
+    cursor: grab;
+}
+
+.website-drop-zone .mud-chip:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.website-drop-zone .mud-chip:active {
+    cursor: grabbing;
+    transform: scale(0.96);
+    box-shadow: var(--shadow-xs);
+}
+
+/* 已放置 Chip — hover 反馈 */
+.website-drop-zone-category .mud-chip {
+    transition: transform var(--transition-normal),
+                box-shadow var(--transition-normal);
+}
+
+.website-drop-zone-category .mud-chip:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+/* 拖拽指示器图标 — 轻微左右晃动暗示可拖拽 */
+.website-drag-hint {
+    animation: dragHint 3s ease-in-out infinite;
+}
+
+@keyframes dragHint {
+    0%, 85%, 100% {
+        transform: translateX(0);
+    }
+    90% {
+        transform: translateX(-3px);
+    }
+    95% {
+        transform: translateX(3px);
+    }
+}
+
+/* 空拖拽区域占位提示 */
+.website-drop-zone:empty::after,
+.website-drop-zone-category:empty::after {
+    content: "拖放网站到此处";
+    color: var(--mud-palette-text-disabled);
+    font-size: var(--font-size-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: inherit;
+    pointer-events: none;
+}
+
+/* 运动敏感用户：禁用所有页面动画 */
+@media (prefers-reduced-motion: reduce) {
+    .website-card,
+    .website-priority-row,
+    .website-drop-zone-category,
+    .website-drop-zone,
+    .website-drop-zone .mud-chip,
+    .website-drop-zone-category .mud-chip {
+        transition: none;
+    }
+
+    .website-card:hover,
+    .website-priority-row:hover,
+    .website-drop-zone .mud-chip:hover,
+    .website-drop-zone-category .mud-chip:hover {
+        transform: none;
+    }
+
+    .website-drag-hint {
+        animation: none;
+    }
+}

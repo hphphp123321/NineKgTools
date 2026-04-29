@@ -1,0 +1,41 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using NineKgTools.Components.Auth
+
+<CascadingAuthenticationState>
+    <Router AppAssembly="typeof(Program).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(NineKgTools.Layout.MainLayout)">
+                <NotAuthorized>
+                    @if (context.User.Identity?.IsAuthenticated != true)
+                    {
+                        <RedirectToLogin />
+                    }
+                    else
+                    {
+                        <LayoutView Layout="typeof(NineKgTools.Layout.MainLayout)">
+                            <div class="text-center mt-5">
+                                <h1>访问被拒绝</h1>
+                                <p>您没有权限访问此页面</p>
+                                <a href="/">返回首页</a>
+                            </div>
+                        </LayoutView>
+                    }
+                </NotAuthorized>
+                <Authorizing>
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                </Authorizing>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>未找到页面</PageTitle>
+            <LayoutView Layout="typeof(NineKgTools.Layout.MainLayout)">
+                <div class="text-center mt-5">
+                    <h1>404 - 页面未找到</h1>
+                    <p>请检查 URL 是否正确</p>
+                    <a href="/">返回首页</a>
+                </div>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

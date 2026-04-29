@@ -1,0 +1,22 @@
+/* ==============================================
+   MediaShownView · 分页栏
+   每页数量选择器 + MudPagination 并排居中
+   ============================================== */
+
+.media-pager-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+/* __size 和 __pages 作为 BEM 命名钩子保留，
+   不写额外规则 —— 默认 flex item 行为已经满足并排居中需求。 */
+
+@media (max-width: 768px) {
+    .media-pager-bar {
+        gap: var(--spacing-sm);
+    }
+}

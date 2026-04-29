@@ -1,0 +1,327 @@
+﻿@page "/"
+@using NineKgTools.Components.Common
+@using NineKgTools.Components.Medias
+@using NineKgTools.Utils
+
+<PageTitle>总览</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <MudGrid>
+        <!-- 页面标题区域 -->
+        <MudItem xs="12">
+            <PageHeader Icon="@Icons.Material.Filled.Dashboard"
+                        IconColor="Color.Primary"
+                        Title="媒体总览"
+                        Subtitle="查看媒体库整体数据和最近动态">
+                <Actions>
+                    <MudButton OnClick="RefreshData"
+                               Color="Color.Primary"
+                               Variant="Variant.Outlined"
+                               Size="Size.Medium"
+                               Disabled="@_isLoading">
+                        @if (_isLoading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2"/>
+                            <span>刷新中...</span>
+                        }
+                        else
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.Refresh" Class="mr-2"/>
+                            <span>刷新数据</span>
+                        }
+                    </MudButton>
+                </Actions>
+            </PageHeader>
+        </MudItem>
+
+        <!-- 统计卡片区域 - Row 1：全局统计横幅 -->
+        @if (_hasError)
+        {
+            <MudItem xs="12">
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-0">
+                    部分数据未能加载，显示的内容不完整
+                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="RefreshData" Disabled="@_isLoading" Class="ml-1">重试</MudButton>
+                </MudAlert>
+            </MudItem>
+        }
+        <MudItem xs="12">
+            <MudPaper Elevation="3" Class="card-base card-bordered-primary pa-4">
+                <div class="d-flex align-center mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Primary" Class="mr-2"/>
+                    <MudText Typo="Typo.h6" Color="Color.Primary">媒体库统计</MudText>
+                </div>
+                <div class="home-global-stats-grid">
+                    <!-- 作品总数 -->
+                    <div class="home-stat-chip">
+                        <MudIcon Icon="@Icons.Material.Filled.VideoLibrary" Size="Size.Small" Color="Color.Primary" Class="mb-1"/>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">作品</MudText>
+                        @if (_isLoading)
+                        {
+                            <MudSkeleton Width="60px" Height="28px"/>
+                        }
+                        else
+                        {
+                            <MudLink Href="/media/overview" aria-label="@($"作品：{_totalMediaCount:N0}，前往媒体库")">
+                                <MudText Typo="Typo.h5" Color="Color.Primary" Class="text-bold">@_totalMediaCount.ToString("N0")</MudText>
+                            </MudLink>
+                        }
+                    </div>
+                    <!-- 占用空间 -->
+                    <div class="home-stat-chip">
+                        <MudIcon Icon="@Icons.Material.Filled.FolderOpen" Size="Size.Small" Color="Color.Info" Class="mb-1"/>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">占用空间</MudText>
+                        @if (_isLoading)
+                        {
+                            <MudSkeleton Width="60px" Height="28px"/>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.h5" Color="Color.Info" Class="text-bold">@FormatFileSize(_totalSize)</MudText>
+                        }
+                    </div>
+                    <!-- 创作者数 -->
+                    <div class="home-stat-chip">
+                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Color="Color.Secondary" Class="mb-1"/>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">创作者</MudText>
+                        @if (_isLoading)
+                        {
+                            <MudSkeleton Width="60px" Height="28px"/>
+                        }
+                        else
+                        {
+                            <MudLink Href="/creators" aria-label="@($"创作者总数：{_totalCreatorCount:N0}")">
+                                <MudText Typo="Typo.h5" Color="Color.Secondary" Class="text-bold">@_totalCreatorCount.ToString("N0")</MudText>
+                            </MudLink>
+                        }
+                    </div>
+                    <!-- 社团数 -->
+                    <div class="home-stat-chip">
+                        <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" Color="Color.Tertiary" Class="mb-1"/>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">社团</MudText>
+                        @if (_isLoading)
+                        {
+                            <MudSkeleton Width="60px" Height="28px"/>
+                        }
+                        else
+                        {
+                            <MudLink Href="/circles" aria-label="@($"社团总数：{_totalCircleCount:N0}")">
+                                <MudText Typo="Typo.h5" Color="Color.Tertiary" Class="text-bold">@_totalCircleCount.ToString("N0")</MudText>
+                            </MudLink>
+                        }
+                    </div>
+                    <!-- 标签数 -->
+                    <div class="home-stat-chip">
+                        <MudIcon Icon="@Icons.Material.Filled.Label" Size="Size.Small" Color="Color.Success" Class="mb-1"/>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">标签</MudText>
+                        @if (_isLoading)
+                        {
+                            <MudSkeleton Width="60px" Height="28px"/>
+                        }
+                        else
+                        {
+                            <MudLink Href="/tags" aria-label="@($"标签总数：{_totalTagCount:N0}")">
+                                <MudText Typo="Typo.h5" Color="Color.Success" Class="text-bold">@_totalTagCount.ToString("N0")</MudText>
+                            </MudLink>
+                        }
+                    </div>
+                    <!-- 已收藏 -->
+                    <div class="home-stat-chip">
+                        <MudIcon Icon="@Icons.Material.Filled.Favorite" Size="Size.Small" Color="Color.Error" Class="mb-1"/>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">收藏</MudText>
+                        @if (_isLoading)
+                        {
+                            <MudSkeleton Width="60px" Height="28px"/>
+                        }
+                        else
+                        {
+                            <MudLink Href="/favorites" aria-label="@($"收藏：{_totalFavoriteCount:N0}，前往收藏页")">
+                                <MudText Typo="Typo.h5" Color="Color.Error" Class="text-bold">@_totalFavoriteCount.ToString("N0")</MudText>
+                            </MudLink>
+                        }
+                    </div>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- 统计卡片区域 - Row 2：分类统计 -->
+        <MudItem xs="12">
+            <div class="home-category-grid">
+                @foreach (var categoryEntry in _categoryCounts.OrderByDescending(c => c.Value))
+                {
+                    <MudPaper Elevation="2" Class="card-base card-hover-scale pa-4 category-stat-card">
+                        <MudLink Href="@GetCategoryLink(categoryEntry.Key)" Class="text-decoration-none"
+                                 aria-label="@($"{GetCategoryName(categoryEntry.Key)}：{categoryEntry.Value:N0} 个，前往浏览")"  >
+                            <div class="d-flex flex-column justify-center home-category-card-inner">
+                                <div class="d-flex align-center mb-2">
+                                    <MudAvatar Color="@MediaUIHelper.GetMediaColor(categoryEntry.Key)" Size="Size.Medium" Class="mr-3">
+                                        <MudIcon Icon="@GetCategoryIcon(categoryEntry.Key)" Size="Size.Small"/>
+                                    </MudAvatar>
+                                    <div class="flex-grow-1">
+                                        <MudText Typo="Typo.subtitle1" Class="text-bold">@GetCategoryName(categoryEntry.Key)</MudText>
+                                    </div>
+                                    <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Secondary" Size="Size.Small"/>
+                                </div>
+                                <div class="d-flex align-center justify-center">
+                                    @if (_isLoading)
+                                    {
+                                        <MudSkeleton Width="60px" Height="32px"/>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.h3" Color="@MediaUIHelper.GetMediaColor(categoryEntry.Key)" Class="text-bold">@categoryEntry.Value.ToString("N0")</MudText>
+                                    }
+                                </div>
+                            </div>
+                        </MudLink>
+                    </MudPaper>
+                }
+            </div>
+        </MudItem>
+
+        <!-- 待处理入口：零状态不渲染，半零状态弱化非零列 -->
+        @if (_isLoading)
+        {
+            <MudItem xs="12">
+                <MudPaper Elevation="2" Class="card-base card-bordered-warning pa-4">
+                    <div class="home-pending-header">
+                        <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" Color="Color.Warning"/>
+                        <div class="home-pending-header__title">
+                            <MudText Typo="Typo.h6" Color="Color.Warning">待处理</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">识别队列与入库审阅</MudText>
+                        </div>
+                    </div>
+                    <div class="home-pending-grid">
+                        <div class="home-pending-slot" aria-hidden="true">
+                            <div class="home-pending-slot__icon">
+                                <MudIcon Icon="@Icons.Material.Filled.NoSim" Size="Size.Medium"/>
+                            </div>
+                            <div class="home-pending-slot__label">待识别</div>
+                            <MudSkeleton Class="home-pending-slot__skeleton" Width="72px" Height="42px"/>
+                            <div class="home-pending-slot__hint">尚未识别的媒体源</div>
+                            <div class="home-pending-slot__arrow">
+                                <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Medium"/>
+                            </div>
+                        </div>
+                        <div class="home-pending-slot" aria-hidden="true">
+                            <div class="home-pending-slot__icon">
+                                <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Medium"/>
+                            </div>
+                            <div class="home-pending-slot__label">待入库</div>
+                            <MudSkeleton Class="home-pending-slot__skeleton" Width="72px" Height="42px"/>
+                            <div class="home-pending-slot__hint">等待确认入库的结果</div>
+                            <div class="home-pending-slot__arrow">
+                                <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Medium"/>
+                            </div>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        }
+        else if (HasPendingItems)
+        {
+            <MudItem xs="12">
+                <MudPaper Elevation="2" Class="card-base card-bordered-warning pa-4">
+                    <div class="home-pending-header">
+                        <MudIcon Icon="@Icons.Material.Filled.HourglassBottom" Color="Color.Warning"/>
+                        <div class="home-pending-header__title">
+                            <MudText Typo="Typo.h6" Color="Color.Warning">待处理</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">识别队列与入库审阅</MudText>
+                        </div>
+                    </div>
+                    <div class="home-pending-grid">
+                        <MudLink Href="/source/pending?tab=unidentified"
+                                 Class="@GetPendingSlotClass(_unidentifiedCount)"
+                                 Underline="Underline.None"
+                                 aria-label="@($"待识别 {_unidentifiedCount} 条，前往识别队列")">
+                            <div class="home-pending-slot__icon">
+                                <MudIcon Icon="@Icons.Material.Filled.NoSim" Size="Size.Medium"/>
+                            </div>
+                            <div class="home-pending-slot__label">待识别</div>
+                            <div class="home-pending-slot__number">@_unidentifiedCount.ToString("N0")</div>
+                            <div class="home-pending-slot__hint">尚未识别的媒体源</div>
+                            <div class="home-pending-slot__arrow">
+                                <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Medium"/>
+                            </div>
+                        </MudLink>
+                        <MudLink Href="/source/pending?tab=pending"
+                                 Class="@GetPendingSlotClass(_pendingCount)"
+                                 Underline="Underline.None"
+                                 aria-label="@($"待入库 {_pendingCount} 条，前往入库审阅")">
+                            <div class="home-pending-slot__icon">
+                                <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Medium"/>
+                            </div>
+                            <div class="home-pending-slot__label">待入库</div>
+                            <div class="home-pending-slot__number">@_pendingCount.ToString("N0")</div>
+                            <div class="home-pending-slot__hint">等待确认入库的结果</div>
+                            <div class="home-pending-slot__arrow">
+                                <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Medium"/>
+                            </div>
+                        </MudLink>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        }
+
+        <!-- 最近入库作品 -->
+        <MudItem xs="12" >
+            <MudPaper Elevation="2" Class="card-base card-bordered-success pa-4 content-card">
+                <div class="d-flex align-center mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Success" Class="mr-2"/>
+                    <MudText Typo="Typo.h6" Color="Color.Success">最近添加</MudText>
+                </div>
+                
+                @if (_isLoading)
+                {
+                    <div class="d-flex flex-wrap gap-3">
+                        @for (int i = 0; i < 10; i++)
+                        {
+                            <MudCard Class="media-card-skeleton rounded-lg" Elevation="1" Style="width: 140px; height: 220px;">
+                                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="140px"/>
+                                <MudCardContent Class="pa-2">
+                                    <MudSkeleton Width="100%" Height="32px"/>
+                                    <MudSkeleton Width="80%" Height="16px"/>
+                                </MudCardContent>
+                            </MudCard>
+                        }
+                    </div>
+                }
+                else if (_recentMedia.Any())
+                {
+                    <MediaGrid Medias="@_recentMedia.Take(10)"
+                                  ShowEmptyState="false" />
+                    
+                    @if (_recentMedia.Count > 10)
+                    {
+                        <div class="text-center mt-3">
+                            <MudButton Href="/media/overview"
+                                       Variant="Variant.Text"
+                                       StartIcon="@Icons.Material.Filled.ArrowForward">
+                                查看全部 @_recentMedia.Count 个
+                            </MudButton>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="text-center py-8" role="status" aria-live="polite">
+                        <MudIcon Icon="@Icons.Material.Filled.Inbox" Size="Size.Large" Color="Color.Secondary"/>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">还没有添加任何作品</MudText>
+                    </div>
+                }
+            </MudPaper>
+        </MudItem>
+        
+        <!-- 现代化图片墙 -->
+        <MudItem xs="12">
+            <MudPaper Elevation="2" Class="card-base card-bordered-info pa-4">
+                <PhotoWall Title="随机发现"
+                          Images="@_randomImages"
+                          ImageCount="@_randomImageCount"
+                          IsLoading="@_isLoading"
+                          OnImageCountChanged="ChangeRandomImageCount"
+                          OnRefresh="LoadRandomImages"
+                          EmptyMessage="还没有带图片的作品，添加作品后这里会随机展示" />
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>

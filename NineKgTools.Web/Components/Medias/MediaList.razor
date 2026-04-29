@@ -1,0 +1,57 @@
+@using NineKgTools.Core.Models.Media
+
+@* 媒体列表组件 - 统一的媒体列表布局 *@
+
+@if (MediaIds != null && MediaIds.Any())
+{
+    <MudList T="string" Class="@($"media-list {Class}")">
+        @foreach (var mediaId in MediaIds)
+        {
+            @if (Simple)
+            {
+                <SimpleMediaListItem MediaId="@mediaId" />
+                <MudDivider />
+            }
+            else
+            {
+                <MediaListItem MediaId="@mediaId" HideFavoriteButton="@HideFavoriteButton" />
+                <MudDivider />
+            }
+        }
+    </MudList>
+}
+else if (Medias != null && Medias.Any())
+{
+    <MudList T="string" Class="@($"media-list {Class}")">
+        @foreach (var media in Medias)
+        {
+            @if (Simple)
+            {
+                <SimpleMediaListItem MediaId="@media.Id" />
+                <MudDivider />
+            }
+            else
+            {
+                <MediaListItem MediaId="@media.Id" HideFavoriteButton="@HideFavoriteButton" />
+                <MudDivider />
+            }
+        }
+    </MudList>
+}
+else
+{
+    @* 空状态 *@
+    @if (ShowEmptyState)
+    {
+        <div class="media-list-empty">
+            <MudIcon Icon="@Icons.Material.Filled.FormatListBulleted" 
+                     Color="Color.Default" 
+                     Size="Size.Large" 
+                     Class="mb-3" />
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center">
+                @EmptyStateText
+            </MudText>
+        </div>
+    }
+}
+

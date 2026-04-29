@@ -1,0 +1,378 @@
+/*
+ * diagnostics.css — IdentificationDiagnosticsView 专属样式
+ * 类名前缀：diag-
+ * 设计原则：高信息密度、状态色一目了然、命中那条要 pop。
+ */
+
+/* ===== 根容器 ===== */
+.diag-root {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md, 12px);
+}
+
+.diag-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-2xl, 24px);
+    gap: var(--spacing-sm, 8px);
+}
+
+/* ===== Hero 摘要 ===== */
+.diag-hero {
+    position: relative;
+    padding: var(--spacing-md, 12px) var(--spacing-lg, 16px);
+    border-radius: var(--radius-lg, 10px);
+    border: 1px solid rgba(var(--mud-palette-text-primary-rgb), 0.10);
+    background: linear-gradient(
+        135deg,
+        rgba(var(--diag-accent-rgb, var(--mud-palette-primary-rgb)), 0.16) 0%,
+        rgba(var(--diag-accent-rgb, var(--mud-palette-primary-rgb)), 0.04) 60%,
+        transparent 100%
+    );
+    transition: background 300ms ease;
+}
+
+.diag-hero--success { --diag-accent-rgb: var(--mud-palette-success-rgb); }
+.diag-hero--fail    { --diag-accent-rgb: var(--mud-palette-warning-rgb); }
+
+.diag-hero__row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-md, 12px);
+}
+
+.diag-hero__text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.diag-hero__title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.diag-hero__verdict {
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+.diag-hero__verdict--ok {
+    background: rgba(var(--mud-palette-success-rgb), 0.16);
+    color: var(--mud-palette-success);
+}
+.diag-hero__verdict--fail {
+    background: rgba(var(--mud-palette-warning-rgb), 0.16);
+    color: var(--mud-palette-warning);
+}
+
+.diag-hero__sep { color: var(--mud-palette-text-disabled); margin: 0 2px; }
+
+.diag-hero__chosen { color: var(--mud-palette-primary); font-weight: 600; }
+.diag-hero__result-title {
+    color: var(--mud-palette-text-primary);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 380px;
+}
+
+.diag-hero__score {
+    margin-left: 6px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(var(--mud-palette-success-rgb), 0.18);
+    color: var(--mud-palette-success);
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.diag-hero__meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.78rem;
+}
+
+.diag-hero__path {
+    font-family: var(--font-mono, monospace);
+    color: var(--mud-palette-text-secondary);
+    background: rgba(var(--mud-palette-text-primary-rgb), 0.05);
+    padding: 1px 6px;
+    border-radius: 4px;
+    max-width: 60ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.diag-hero__duration {
+    color: var(--mud-palette-text-disabled);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ===== 区块通用 ===== */
+.diag-section {
+    border-radius: var(--radius-lg, 10px);
+}
+
+/* ===== 关键词解析 ===== */
+.diag-keywords {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-sm, 8px) var(--spacing-md, 12px);
+}
+
+.diag-kv {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+
+.diag-kv__k {
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.75rem;
+    min-width: 80px;
+    flex: 0 0 auto;
+}
+
+.diag-kv__v {
+    color: var(--mud-palette-text-primary);
+    font-size: 0.85rem;
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-width: 0;
+    word-break: break-word;
+}
+.diag-kv__v--strong { font-weight: 600; }
+.diag-kv__v--muted  { color: var(--mud-palette-text-disabled); }
+
+/* ===== 网站尝试列表 ===== */
+.diag-attempts {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm, 8px);
+}
+
+.diag-attempts__header {
+    padding: 0 4px;
+    margin-bottom: 4px;
+}
+
+.diag-attempts__title {
+    color: var(--mud-palette-text-secondary);
+    font-weight: 600;
+}
+
+.diag-attempt {
+    border: 1px solid rgba(var(--mud-palette-text-primary-rgb), 0.08);
+    border-left-width: 4px;
+    border-radius: var(--radius-md, 8px);
+    padding: var(--spacing-sm, 8px) var(--spacing-md, 12px);
+    background: var(--mud-palette-surface);
+    transition: border-color 200ms ease, transform 200ms ease, box-shadow 200ms ease;
+}
+
+.diag-attempt--success   { border-left-color: var(--mud-palette-success); }
+.diag-attempt--cache     { border-left-color: var(--mud-palette-info); }
+.diag-attempt--nomatch   { border-left-color: rgba(var(--mud-palette-text-primary-rgb), 0.20); }
+.diag-attempt--skipped   { border-left-color: rgba(var(--mud-palette-text-primary-rgb), 0.10); opacity: 0.85; }
+.diag-attempt--exception { border-left-color: var(--mud-palette-error); background: rgba(var(--mud-palette-error-rgb), 0.04); }
+
+.diag-attempt--final {
+    box-shadow: 0 2px 12px rgba(var(--mud-palette-success-rgb), 0.18);
+    border-color: rgba(var(--mud-palette-success-rgb), 0.40);
+}
+
+.diag-attempt__header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.diag-attempt__index {
+    color: var(--mud-palette-text-disabled);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    min-width: 28px;
+}
+
+.diag-attempt__name {
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+    font-size: 0.95rem;
+}
+
+.diag-attempt__status,
+.diag-attempt__source {
+    font-size: 0.7rem !important;
+}
+
+.diag-attempt__duration {
+    margin-left: auto;
+    color: var(--mud-palette-text-disabled);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.diag-attempt__result {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 8px;
+    background: rgba(var(--mud-palette-success-rgb), 0.06);
+    border-radius: 6px;
+    margin-bottom: 6px;
+}
+
+.diag-attempt__result-title {
+    color: var(--mud-palette-text-primary);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.diag-attempt__result-id {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.78rem;
+    color: var(--mud-palette-text-secondary);
+    background: rgba(var(--mud-palette-text-primary-rgb), 0.05);
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.diag-attempt__result-score {
+    margin-left: auto;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(var(--mud-palette-success-rgb), 0.16);
+    color: var(--mud-palette-success);
+    font-size: 0.72rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.diag-attempt__reason {
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.82rem;
+    padding: 4px 8px;
+    background: rgba(var(--mud-palette-text-primary-rgb), 0.04);
+    border-radius: 4px;
+    margin-bottom: 6px;
+}
+
+.diag-attempt--exception .diag-attempt__reason {
+    color: var(--mud-palette-error);
+    background: rgba(var(--mud-palette-error-rgb), 0.06);
+}
+
+.diag-attempt__stats {
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.78rem;
+    margin: 4px 0 6px;
+}
+
+/* ===== 候选列表 ===== */
+.diag-candidates {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border-top: 1px dashed rgba(var(--mud-palette-text-primary-rgb), 0.10);
+    padding-top: 6px;
+}
+
+.diag-candidate {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    transition: background 150ms ease;
+}
+
+.diag-candidate:hover {
+    background: rgba(var(--mud-palette-text-primary-rgb), 0.03);
+}
+
+.diag-candidate--chosen {
+    background: rgba(var(--mud-palette-success-rgb), 0.10);
+    border: 1px solid rgba(var(--mud-palette-success-rgb), 0.30);
+}
+
+.diag-candidate__score {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--mud-palette-text-secondary);
+    text-align: right;
+    padding-top: 2px;
+}
+
+.diag-candidate--chosen .diag-candidate__score {
+    color: var(--mud-palette-success);
+}
+
+.diag-candidate__main {
+    min-width: 0;
+}
+
+.diag-candidate__title {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--mud-palette-text-primary);
+    font-size: 0.88rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.diag-candidate__check {
+    flex: 0 0 auto;
+}
+
+.diag-candidate__meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.74rem;
+    margin-top: 2px;
+}
+
+.diag-candidate__id {
+    font-family: var(--font-mono, monospace);
+    background: rgba(var(--mud-palette-text-primary-rgb), 0.05);
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+
+.diag-candidate__key {
+    color: var(--mud-palette-text-disabled);
+}
+
+.diag-candidate__url {
+    margin-left: auto;
+    font-size: 0.74rem;
+}

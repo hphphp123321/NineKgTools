@@ -1,0 +1,108 @@
+@using NineKgTools.Core.Models.Tags
+@using NineKgTools.Core.Services.Tags
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudDialog Options="@_dialogOptions">
+    <TitleContent>
+        <div class="d-flex align-center">
+            <MudAvatar Color="Color.Info" Size="Size.Medium" Class="mr-3">
+                <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Medium"/>
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.h5" Color="Color.Primary">@(IsEditMode ? "编辑映射" : "添加映射")</MudText>
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary">将源标签名称映射到目标标签</MudText>
+            </div>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        <MudContainer Class="pa-0">
+            <MudPaper Elevation="2" Class="pa-4 rounded-lg">
+                <MudGrid Spacing="3">
+                    <!-- 源标签名称 -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_sourceName"
+                                      Label="源标签名称"
+                                      Required="true"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Input"
+                                      AdornmentColor="Color.Primary"
+                                      HelperText="输入需要映射的原始标签名称"
+                                      Placeholder="例如：纯爱"/>
+                    </MudItem>
+
+                    <!-- 目标标签选择 -->
+                    <MudItem xs="12">
+                        <MudTextField Value="@(_targetTag?.Name ?? "")"
+                                      Label="目标标签"
+                                      Required="true"
+                                      Variant="Variant.Outlined"
+                                      ReadOnly="true"
+                                      Placeholder="点击选择目标标签..."
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      AdornmentColor="Color.Primary"
+                                      OnAdornmentClick="SelectTargetTag"
+                                      Style="cursor: pointer;"
+                                      HelperText="@(_targetTag?.TopTag != null ? $"所属分类：{_targetTag.TopTag.Name}" : "点击右侧图标选择映射的目标标签")"/>
+                    </MudItem>
+
+                    <!-- 优先级 -->
+                    <MudItem xs="12">
+                        <MudNumericField @bind-Value="_priority"
+                                         Label="优先级"
+                                         Variant="Variant.Outlined"
+                                         Adornment="Adornment.Start"
+                                         AdornmentIcon="@Icons.Material.Filled.Sort"
+                                         AdornmentColor="Color.Warning"
+                                         Min="1"
+                                         Max="999"
+                                         HelperText="数值越小优先级越高（1-999）"/>
+                    </MudItem>
+
+                    <!-- 描述说明 -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_description"
+                                      Label="描述说明（可选）"
+                                      Variant="Variant.Outlined"
+                                      Lines="2"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Description"
+                                      AdornmentColor="Color.Secondary"
+                                      Placeholder="添加关于此映射的说明..."
+                                      AutoGrow="true"/>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudContainer>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Cancel"
+                   Variant="Variant.Text"
+                   Color="Color.Default">
+            取消
+        </MudButton>
+        <MudButton Color="Color.Primary"
+                   OnClick="Submit"
+                   Variant="Variant.Filled"
+                   StartIcon="@Icons.Material.Filled.Save"
+                   Disabled="@(!CanSubmit)">
+            @(IsEditMode ? "保存更改" : "添加映射")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        CloseOnEscapeKey = true,
+        CloseButton = true
+    };
+
+    private bool CanSubmit => !string.IsNullOrWhiteSpace(_sourceName) && _targetTag != null;
+}

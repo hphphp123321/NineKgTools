@@ -1,0 +1,47 @@
+@using NineKgTools.Core.Models.Media
+
+@if (Circles != null && Circles.Count > 0)
+{
+    <div class="d-flex align-start mb-4">
+        <MudIcon Icon="@Icon" Color="@Color" Class="mr-2 mt-1" />
+        
+        <div class="flex-grow-1">
+            <!-- 使用MudChip美化标题显示 -->
+            <MudChip Color="@Color" Size="Size.Small" Variant="Variant.Filled" Class="mb-2 creator-title-chip" T="string">
+                @Title
+            </MudChip>
+            
+            <div class="d-flex flex-wrap gap-2 mt-3">
+                @foreach (var circle in Circles)
+                {
+                    <MudLink Href="@circle.GetCircleLink()"
+                            Typo="Typo.body1"
+                            Class="d-inline-flex align-center circle-link pa-2">
+                        @if (circle.Avatar != null)
+                        {
+                            <MudAvatar Size="Size.Small" Class="mr-2">
+                                <MudImage Src="@circle.Avatar.GetImageUrl()" Alt="@circle.Name" />
+                            </MudAvatar>
+                        }
+                        else
+                        {
+                            <MudAvatar Color="Color.Secondary" Size="Size.Small" Class="mr-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" />
+                            </MudAvatar>
+                        }
+                        @circle.Name
+                    </MudLink>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@* 所有样式已迁移到 /css/components/medias.css *@
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Icon { get; set; } = Icons.Material.Filled.Business;
+    [Parameter] public Color Color { get; set; } = Color.Primary;
+    [Parameter] public List<Circle>? Circles { get; set; }
+}

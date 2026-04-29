@@ -1,0 +1,103 @@
+name: 🐛 Bug 报告
+description: 报告一个可复现的问题
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢花时间报告 bug！请尽量提供完整信息，便于我们快速定位。
+
+        ⚠️ **安全漏洞请勿在此提交**，参见 [SECURITY.md](../blob/main/SECURITY.md)。
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: 提交前检查
+      description: 请在提交 Issue 前确认以下事项
+      options:
+        - label: 我已经搜索过 [现有 Issues](../../issues?q=is%3Aissue)，没有找到类似问题
+          required: true
+        - label: 我确认这不是一个安全漏洞（安全漏洞请按 SECURITY.md 流程处理）
+          required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本
+      description: NineKgTools 的版本号（git tag 或 commit hash）
+      placeholder: "v1.0.0 / commit abc1234"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: 部署方式
+      options:
+        - Docker (docker compose)
+        - Docker (docker run)
+        - dotnet run（本地开发）
+        - Desktop (MAUI) — v1.1+
+        - 其他
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      options:
+        - Windows 10/11
+        - macOS
+        - Linux (Ubuntu/Debian)
+        - Linux (其他)
+        - 容器宿主机（与容器 OS 不同）
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 简要描述观察到的现象
+      placeholder: 识别 DLsite 条目时点击"立即识别"按钮，页面无响应…
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      description: 一步步列出复现该 bug 的完整操作
+      placeholder: |
+        1. 打开 /source/pending 页面
+        2. 点击某条待识别记录的"立即识别"按钮
+        3. 观察到 …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+      placeholder: 期望弹出识别进度对话框并开始识别任务
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志
+      description: 粘贴 `Logs/` 目录下最近的日志节选，或浏览器 Console 错误。将自动以 shell 代码块渲染。
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 补充信息
+      description: 截图、相关配置（**注意脱敏**，不要贴 API key）、其他上下文
+    validations:
+      required: false

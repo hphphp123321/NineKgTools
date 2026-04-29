@@ -1,0 +1,220 @@
+@using NineKgTools.Utils
+
+<MudDialog DisableSidePadding="true">
+    <DialogContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Style="max-height: 600px; overflow-y: auto; overflow-x: hidden;" Class="pa-0">
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="ma-2" ShowCloseIcon="true" CloseIconClicked="@(() => _errorMessage = null)">
+                    @_errorMessage
+                </MudAlert>
+            }
+            @if (Media != null)
+            {
+                <MudGrid Class="ma-0 pa-0">
+                    <!-- 标题图片区域 -->
+                    <MudItem xs="12" Class="pa-0">
+                        <div style="position: relative; height: 200px; overflow: hidden; background: linear-gradient(135deg, #1e88e5, #9c27b0);">
+                            @if (Media.Poster != null)
+                            {
+                                <MudImage Src="@Media.Poster.GetImageUrl()" 
+                                         ObjectFit="ObjectFit.Cover" 
+                                         Style="width: 100%; height: 100%; object-position: center;"
+                                         Class="media-info-poster-image" />
+                            }
+                            <div class="media-info-poster-overlay">
+                                <MudText Typo="Typo.h4" Class="media-info-poster-title">@Media.Title</MudText>
+                            </div>
+                        </div>
+                    </MudItem>
+                    
+                    <!-- 图片画廊与简介区域 -->
+                    <MudItem xs="12" Class="px-3 pt-2">
+                        <MudGrid Spacing="1">
+                            <!-- 图片画廊 -->
+                            @if (Media.Pictures != null && Media.Pictures.Count > 0)
+                            {
+                                <MudItem xs="12" md="8" Class="pb-1">
+                                    <MudPaper Elevation="2" Class="pa-2 rounded-lg">
+                                        <MudCarousel Class="mud-width-full" 
+                                                     Style="height: 360px;" 
+                                                     ShowArrows="true" 
+                                                     AutoCycle="true" 
+                                                     TData="string" 
+                                                     EnableSwipeGesture="true"
+                                                     BulletsColor="Color.Secondary">
+                                            @foreach (var picture in Media.Pictures)
+                                            {
+                                                @if (picture.Url != null)
+                                                {
+                                                    <MudCarouselItem Transition="Transition.Fade">
+                                                        <div class="d-flex justify-center" style="height: 100%">
+                                                            <MudImage Src="@picture.GetImageUrl()" ObjectFit="ObjectFit.Contain"/>
+                                                        </div>
+                                                    </MudCarouselItem>
+                                                }
+                                            }
+                                        </MudCarousel>
+                                    </MudPaper>
+                                </MudItem>
+                            }
+                            
+                            <!-- 简介区域 -->
+                            @if (!string.IsNullOrEmpty(Media.Summary))
+                            {
+                                <MudItem xs="12" md="@(Media.Pictures != null && Media.Pictures.Count > 0 ? 4 : 12)" Class="pb-1">
+                                    <MudPaper Elevation="2" Class="pa-2 h-100 rounded-lg" Style="height: 360px; overflow-y: auto;">
+                                        <MudText Typo="Typo.subtitle1" Color="Color.Primary" Class="mb-1 d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Class="mr-1" />
+                                            简介
+                                        </MudText>
+                                        <MudText Typo="Typo.body2" Style="white-space: pre-line;">@Media.Summary</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudItem>
+                    
+                    <!-- 标签区域 -->
+                    @if (Media.Tags.Count > 0)
+                    {
+                        <MudItem xs="12" Class="px-3 pb-1">
+                            <MudPaper Elevation="2" Class="pa-2 rounded-lg">
+                                <MudText Typo="Typo.subtitle1" Color="Color.Primary" Class="mb-1 d-flex align-center">
+                                    <MudIcon Icon="@Icons.Material.Filled.Label" Size="Size.Small" Class="mr-1" />
+                                    标签
+                                </MudText>
+                                <div class="d-flex flex-wrap">
+                                    @foreach (var tag in Media.Tags.Select((value, index) => new { value, index }))
+                                    {
+                                        <MudChip T="string" Color="@GetTagColor(tag.index)" Size="Size.Small" Class="ma-1" Style="height: 24px;">@tag.value.Name</MudChip>
+                                    }
+                                </div>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                    
+                    <!-- 基本信息区域 -->
+                    <MudItem xs="12" Class="px-3 pb-2">
+                        <MudPaper Elevation="2" Class="pa-2 rounded-lg">
+                            <MudText Typo="Typo.subtitle1" Color="Color.Primary" Class="mb-1 d-flex align-center">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" />
+                                基本信息
+                            </MudText>
+                            <MudGrid Spacing="0">
+                                @if (Media.Category != null)
+                                {
+                                    <MudItem xs="12" md="6" Class="py-1">
+                                        <MudPaper Elevation="0" Class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Category" Class="mr-2" Color="Color.Primary" Size="Size.Small" />
+                                            <div>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">类型</MudText>
+                                                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Style="height: 24px;">@Media.Category.Name</MudChip>
+                                            </div>
+                                        </MudPaper>
+                                    </MudItem>
+                                }
+                                
+                                <MudItem xs="12" md="6" Class="py-1">
+                                    <MudPaper Elevation="0" Class="d-flex align-center">
+                                        <MudIcon Icon="@Icons.Material.Filled.Storage" Class="mr-2" Color="Color.Primary" Size="Size.Small" />
+                                        <div>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">大小</MudText>
+                                            <MudText Typo="Typo.body2">@FileSizeFormatter.FormatFileSize(Media.Size)</MudText>
+                                        </div>
+                                    </MudPaper>
+                                </MudItem>
+                                
+                                @if (Media.Circle != null)
+                                {
+                                    <MudItem xs="12" md="6" Class="py-1">
+                                        <MudPaper Elevation="0" Class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Group" Class="mr-2" Color="Color.Primary" Size="Size.Small" />
+                                            <div>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">创作者/社团</MudText>
+                                                <MudText Typo="Typo.body2">@Media.Circle.Name</MudText>
+                                            </div>
+                                        </MudPaper>
+                                    </MudItem>
+                                }
+                                
+                                <MudItem xs="12" md="6" Class="py-1">
+                                    <MudPaper Elevation="0" Class="d-flex align-center">
+                                        <MudIcon Icon="@Icons.Material.Filled.Star" Class="mr-2" Color="Color.Warning" Size="Size.Small" />
+                                        <div>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">评分</MudText>
+                                            <div class="d-flex align-center mt-n1">
+                                                <MudRating SelectedValue="@((int)Media.Rating)" ReadOnly="true" Size="Size.Small" />
+                                                <MudText Typo="Typo.body2" Class="ml-1">@Media.Rating.ToString("F1")</MudText>
+                                            </div>
+                                        </div>
+                                    </MudPaper>
+                                </MudItem>
+                                
+                                @if (Media.ReleaseDate.HasValue)
+                                {
+                                    <MudItem xs="12" md="6" Class="py-1">
+                                        <MudPaper Elevation="0" Class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Event" Class="mr-2" Color="Color.Primary" Size="Size.Small" />
+                                            <div>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">发布日期</MudText>
+                                                <MudText Typo="Typo.body2">@Media.ReleaseDate.Value.ToString("yyyy-MM-dd")</MudText>
+                                            </div>
+                                        </MudPaper>
+                                    </MudItem>
+                                }
+                                
+                                @if (Media.Source != null)
+                                {
+                                    <MudItem xs="12" Class="py-1">
+                                        <MudPaper Elevation="0" Class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Folder" Class="mr-2" Color="Color.Primary" Size="Size.Small" />
+                                            <div class="overflow-hidden">
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">路径</MudText>
+                                                <MudText Typo="Typo.body2" Class="media-info-path-text">@Media.Source.FullPath</MudText>
+                                            </div>
+                                        </MudPaper>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning" Class="ma-4">未能获取媒体信息</MudAlert>
+            }
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        @if (!HideConfirmButton)
+        {
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Success"
+                       OnClick="ConfirmAsync"
+                       Disabled="@_isSaving"
+                       StartIcon="@(_isSaving ? null : Icons.Material.Filled.CloudUpload)">
+                @if (_isSaving)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2"/>
+                    <MudText>添加中...</MudText>
+                }
+                else
+                {
+                    <MudText>@ConfirmText</MudText>
+                }
+            </MudButton>
+        }
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   OnClick="Close"
+                   Disabled="@_isSaving">
+            @(HideConfirmButton ? "关闭" : "取消")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@* 所有样式已迁移到 /css/components/medias.css *@
+
+ 

@@ -1,0 +1,44 @@
+<Project>
+
+  <!--
+    所有项目共享的 MSBuild 属性（Core / Web / Desktop / Tests 自动继承）。
+    发版流程：手动改 <Version> -> 提交 -> git tag vX.Y.Z -> push -> Actions 自动产物
+  -->
+
+  <PropertyGroup Label="Version">
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Compile">
+    <!-- 语言版本 -->
+    <LangVersion>13</LangVersion>
+
+    <!-- nullable / 隐式 using 全局开启 -->
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- 内置 .NET 分析器（CA / IDE 等）：以警告形式存在，不阻断 build -->
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisMode>Default</AnalysisMode>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+
+    <!--
+      ⚠ 暂不开 <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+      项目当前有 288 个遗留 warning（CS8602 / CS8618 nullable 推断 + NU1701 jieba.NET TFM 兼容）
+      开启会让 Release build 全部失败。属于 v1.1+ 工作：
+        1. 逐个修复 CS86xx 加 ?? / ?. / null check
+        2. 给 jieba.NET 找 net9.0 替代，或在 csproj 里 NoWarn=NU1701
+        3. 修干净后再开 TreatWarningsAsErrors
+    -->
+  </PropertyGroup>
+
+  <PropertyGroup Label="Test" Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+    <!-- 测试项目特殊配置 -->
+    <IsPackable>false</IsPackable>
+    <!-- 测试项目允许 nullable warning 当 warning（不当 error） -->
+  </PropertyGroup>
+
+</Project>

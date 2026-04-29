@@ -1,0 +1,364 @@
+@page "/tags/mappings"
+<PageTitle>标签映射管理</PageTitle>
+@using NineKgTools.Core.Models.Tags
+@using NineKgTools.Core.Services.Tags
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <MudGrid>
+        <!-- 页面标题卡片 -->
+        <MudItem xs="12">
+            <PageHeader Icon="@Icons.Material.Filled.SwapHoriz"
+                        IconColor="Color.Info"
+                        Title="标签映射管理"
+                        Subtitle="手动管理源标签名称到目标标签的映射关系，用于自动识别时匹配标签">
+                <Actions>
+                    <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
+                               Color="Color.Secondary"
+                               Variant="Variant.Outlined"
+                               Size="Size.Medium"
+                               Href="/tags">
+                        返回标签管理
+                    </MudButton>
+                    <MudButton StartIcon="@(_isLoading ? null : Icons.Material.Filled.Refresh)"
+                               Color="Color.Primary"
+                               Variant="Variant.Filled"
+                               Size="Size.Medium"
+                               OnClick="@LoadDataAsync"
+                               Disabled="@_isLoading">
+                        @if (_isLoading)
+                        {
+                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                            <MudText Class="ms-2">加载中</MudText>
+                        }
+                        else
+                        {
+                            <MudText>刷新</MudText>
+                        }
+                    </MudButton>
+                </Actions>
+            </PageHeader>
+        </MudItem>
+
+        <!-- 统计卡片区域 -->
+        <MudItem xs="12">
+            <MudGrid>
+                <MudItem xs="6" sm="4" md="2">
+                    <MudPaper Elevation="2" Class="@GetStatCardClass(null)" @onclick="@(() => SetStatusFilter(null))">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.List" Color="Color.Primary" Size="Size.Medium" Class="mr-3"/>
+                            <div>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">总计</MudText>
+                                <MudText Typo="Typo.h5" Color="Color.Primary">@_statistics.TotalMappings</MudText>
+                            </div>
+                        </div>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" sm="4" md="2">
+                    <MudPaper Elevation="2" Class="@GetStatCardClass(true)" @onclick="@(() => SetStatusFilter(true))">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Medium" Class="mr-3"/>
+                            <div>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">启用</MudText>
+                                <MudText Typo="Typo.h6" Color="Color.Success">@_statistics.ActiveMappings</MudText>
+                            </div>
+                        </div>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" sm="4" md="2">
+                    <MudPaper Elevation="2" Class="@GetStatCardClass(false)" @onclick="@(() => SetStatusFilter(false))">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Medium" Class="mr-3"/>
+                            <div>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">禁用</MudText>
+                                <MudText Typo="Typo.h6" Color="Color.Error">@_statistics.InactiveMappings</MudText>
+                            </div>
+                        </div>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" sm="4" md="2">
+                    <MudPaper Elevation="2" Class="pa-4 card-stat">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.AdsClick" Color="Color.Info" Size="Size.Medium" Class="mr-3"/>
+                            <div>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">总命中数</MudText>
+                                <MudText Typo="Typo.h6" Color="Color.Info">@_statistics.TotalHits</MudText>
+                            </div>
+                        </div>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="6" sm="4" md="2">
+                    <MudPaper Elevation="2" Class="pa-4 card-stat">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.NotInterested" Color="Color.Warning" Size="Size.Medium" Class="mr-3"/>
+                            <div>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">未使用</MudText>
+                                <MudText Typo="Typo.h6" Color="Color.Warning">@_statistics.UnusedMappings</MudText>
+                            </div>
+                        </div>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudItem>
+
+        <!-- 筛选和批量操作栏 -->
+        <MudItem xs="12">
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudGrid>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField @bind-Value="_searchText"
+                                      Label="搜索映射"
+                                      Immediate="true"
+                                      DebounceInterval="300"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      OnDebounceIntervalElapsed="ApplyFilters"
+                                      Clearable="true"
+                                      Placeholder="搜索源名称或目标标签..."
+                                      OnClearButtonClick="@(() => { _searchText = ""; ApplyFilters(); })"/>
+                    </MudItem>
+                    <MudItem xs="6" sm="3" md="2">
+                        <MudSelect T="bool?"
+                                   Value="@_statusFilter"
+                                   Label="状态筛选"
+                                   Clearable="true"
+                                   ValueChanged="@SetStatusFilter">
+                            <MudSelectItem T="bool?" Value="@((bool?)true)">启用</MudSelectItem>
+                            <MudSelectItem T="bool?" Value="@((bool?)false)">禁用</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="6" sm="3" md="2">
+                        <MudButton OnClick="@ResetFilters"
+                                   Variant="Variant.Outlined"
+                                   FullWidth="true"
+                                   Class="mt-2"
+                                   StartIcon="@Icons.Material.Filled.FilterAltOff">
+                            重置筛选
+                        </MudButton>
+                    </MudItem>
+                    <MudItem xs="6" sm="6" md="2">
+                        <MudButton OnClick="@AddMappingAsync"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Success"
+                                   FullWidth="true"
+                                   Class="mt-2"
+                                   StartIcon="@Icons.Material.Filled.Add">
+                            添加映射
+                        </MudButton>
+                    </MudItem>
+                    <MudItem xs="6" sm="6" md="2">
+                        <MudButton OnClick="@CleanupUnusedAsync"
+                                   Variant="Variant.Outlined"
+                                   Color="Color.Warning"
+                                   FullWidth="true"
+                                   Class="mt-2"
+                                   StartIcon="@Icons.Material.Filled.CleaningServices">
+                            清理未使用
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+
+                <!-- 批量操作按钮 -->
+                @if (_selectedItems.Count > 0)
+                {
+                    <MudDivider Class="my-3"/>
+                    <div class="d-flex gap-2 align-center flex-wrap tags-mapping-batch-actions">
+                        <MudText Typo="Typo.body2" Class="mr-2">已选择 <strong>@_selectedItems.Count</strong> 项：</MudText>
+                        <MudButton OnClick="@BatchEnableAsync"
+                                   Variant="Variant.Outlined"
+                                   Color="Color.Success"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.CheckCircle">
+                            批量启用
+                        </MudButton>
+                        <MudButton OnClick="@BatchDisableAsync"
+                                   Variant="Variant.Outlined"
+                                   Color="Color.Warning"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Cancel">
+                            批量禁用
+                        </MudButton>
+                        <MudButton OnClick="@BatchDeleteAsync"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Delete">
+                            批量删除
+                        </MudButton>
+                    </div>
+                }
+            </MudPaper>
+        </MudItem>
+
+        <!-- 数据表格 -->
+        <MudItem xs="12">
+            <MudCard Elevation="2" Class="tags-mapping-table">
+                @if (_isLoading)
+                {
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary"/>
+                }
+                <MudDataGrid Items="@_filteredMappings"
+                             T="TagMapping"
+                             Elevation="0"
+                             Dense="true"
+                             Hover="true"
+                             ReadOnly="true"
+                             Striped="true"
+                             FixedHeader="true"
+                             Height="max(300px, calc(100vh - 520px))"
+                             MultiSelection="true"
+                             SelectedItems="@_selectedItems"
+                             SelectedItemsChanged="@((HashSet<TagMapping> items) => _selectedItems = items)"
+                             SortMode="SortMode.Multiple">
+                    <Columns>
+                        <SelectColumn T="TagMapping" ShowInFooter="false" ShowInHeader="true"/>
+
+                        <!-- 源名称 -->
+                        <PropertyColumn Property="x => x.SourceName" Title="源标签名称" Sortable="true"/>
+
+                        <!-- 目标标签 -->
+                        <TemplateColumn Title="目标标签" Sortable="true" SortBy="@(x => x.TargetTag?.Name ?? "")">
+                            <CellTemplate>
+                                @if (context.Item.TargetTag != null)
+                                {
+                                    <div class="d-flex align-center gap-2">
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
+                                            @context.Item.TargetTag.Name
+                                        </MudChip>
+                                        @if (context.Item.TargetTag.TopTag != null)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                (@context.Item.TargetTag.TopTag.Name)
+                                            </MudText>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Filled">
+                                        <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Class="mr-1"/>
+                                        未设置
+                                    </MudChip>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+
+                        <!-- 优先级 -->
+                        <PropertyColumn Property="x => x.Priority" Title="优先级" Sortable="true"/>
+
+                        <!-- 状态 -->
+                        <TemplateColumn Title="状态" Sortable="true" SortBy="@(x => x.IsActive)">
+                            <CellTemplate>
+                                <MudSwitch T="bool" Value="@context.Item.IsActive"
+                                           Color="Color.Success"
+                                           ValueChanged="@((bool _) => ToggleStatusAsync(context.Item))"
+                                           Size="Size.Small"/>
+                            </CellTemplate>
+                        </TemplateColumn>
+
+                        <!-- 命中次数 -->
+                        <PropertyColumn Property="x => x.HitCount" Title="命中次数" Sortable="true"/>
+
+                        <!-- 最后命中时间 -->
+                        <TemplateColumn Title="最后命中" Sortable="true" SortBy="@(x => x.LastHitAt)">
+                            <CellTemplate>
+                                @if (context.Item.LastHitAt.HasValue)
+                                {
+                                    <MudTooltip Text="@context.Item.LastHitAt.Value.ToString("yyyy-MM-dd HH:mm:ss")">
+                                        <MudText Typo="Typo.body2">@FormatRelativeTime(context.Item.LastHitAt.Value)</MudText>
+                                    </MudTooltip>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">从未</MudText>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+
+                        <!-- 描述 -->
+                        <TemplateColumn Title="描述" Sortable="false">
+                            <CellTemplate>
+                                @if (!string.IsNullOrEmpty(context.Item.Description))
+                                {
+                                    <MudTooltip Text="@context.Item.Description" Delay="300">
+                                        <MudText Typo="Typo.body2" Style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            @context.Item.Description
+                                        </MudText>
+                                    </MudTooltip>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+
+                        <!-- 操作 -->
+                        <TemplateColumn Title="操作" Sortable="false">
+                            <CellTemplate>
+                                <div class="d-flex gap-1">
+                                    <MudTooltip Text="编辑" Duration="0">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                       Size="Size.Small"
+                                                       Color="Color.Primary"
+                                                       OnClick="@(() => EditMappingAsync(context.Item))"/>
+                                    </MudTooltip>
+                                    <MudTooltip Text="删除" Duration="0">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Size="Size.Small"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => DeleteMappingAsync(context.Item))"/>
+                                    </MudTooltip>
+                                </div>
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                    <NoRecordsContent>
+                        <MudContainer Class="d-flex flex-column justify-center align-center py-8">
+                            <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Color="Color.Info" Size="Size.Large" Class="mb-4"/>
+                            <MudText Typo="Typo.h6" Color="Color.Info">暂无标签映射</MudText>
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">点击"添加映射"按钮创建新的映射规则</MudText>
+                        </MudContainer>
+                    </NoRecordsContent>
+                    <PagerContent>
+                        <MudDataGridPager T="TagMapping" PageSizeOptions="new int[]{10, 25, 50, 100}"/>
+                    </PagerContent>
+                </MudDataGrid>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private string GetStatCardClass(bool? status)
+    {
+        var baseClass = "pa-4 cursor-pointer card-stat";
+        if (_statusFilter == status)
+        {
+            return status switch
+            {
+                null => $"{baseClass} card-bordered-primary",
+                true => $"{baseClass} card-bordered-success",
+                false => $"{baseClass} card-bordered-error"
+            };
+        }
+        return baseClass;
+    }
+
+    private string FormatRelativeTime(DateTime dateTime)
+    {
+        var diff = DateTime.UtcNow - dateTime;
+
+        if (diff.TotalMinutes < 1)
+            return "刚刚";
+        if (diff.TotalHours < 1)
+            return $"{(int)diff.TotalMinutes}分钟前";
+        if (diff.TotalDays < 1)
+            return $"{(int)diff.TotalHours}小时前";
+        if (diff.TotalDays < 30)
+            return $"{(int)diff.TotalDays}天前";
+        if (diff.TotalDays < 365)
+            return $"{(int)(diff.TotalDays / 30)}个月前";
+
+        return $"{(int)(diff.TotalDays / 365)}年前";
+    }
+}

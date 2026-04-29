@@ -1,0 +1,1110 @@
+﻿@page "/media/{id:int}"
+@using NineKgTools.Components.Common
+@using NineKgTools.Components.Medias
+@using NineKgTools.Components.Creators
+@using NineKgTools.Core.Models.Categories
+@using NineKgTools.Core.Models.Media
+@using NineKgTools.Core.Models.Media.Audio
+@using NineKgTools.Core.Models.Media.Game
+@using NineKgTools.Core.Models.Media.Picture
+@using NineKgTools.Core.Models.Media.Text
+@using NineKgTools.Core.Models.Media.Video
+@using NineKgTools.Utils
+
+<PageTitle>@(_media?.Title ?? "媒体详情")</PageTitle>
+
+@if (_isLoading)
+{
+    <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+        <!-- 标题骨架 -->
+        <MudPaper Elevation="3" Class="pa-4 rounded-lg mb-4">
+            <div class="d-flex align-center gap-4">
+                <MudSkeleton SkeletonType="SkeletonType.Circle" Width="48px" Height="48px"/>
+                <div class="flex-grow-1">
+                    <MudSkeleton Width="40%" Height="32px"/>
+                    <MudSkeleton Width="20%" Height="18px" Class="mt-1"/>
+                </div>
+                <MudSkeleton Width="100px" Height="36px" Class="rounded"/>
+            </div>
+        </MudPaper>
+        <MudGrid>
+            <!-- 左侧图片 -->
+            <MudItem xs="12" md="3">
+                <MudPaper Elevation="3" Class="pa-0 rounded-lg overflow-hidden">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Class="media-poster-container mud-width-full"/>
+                    <div class="pa-4">
+                        <MudSkeleton Width="60%" Height="24px"/>
+                        <MudSkeleton Width="80%" Class="mt-3"/>
+                        <MudSkeleton Width="70%" Class="mt-2"/>
+                        <MudSkeleton Width="50%" Class="mt-2"/>
+                    </div>
+                </MudPaper>
+            </MudItem>
+
+            <!-- 右侧详情 -->
+            <MudItem xs="12" md="9">
+                <MudPaper Elevation="3" Class="pa-4 rounded-lg">
+                    <MudSkeleton Width="60%" Height="32px"/>
+                    <MudSkeleton Width="40%" Class="mt-2"/>
+                    <div class="d-flex gap-2 mt-3">
+                        <MudSkeleton Width="60px" Height="28px" Class="rounded-pill"/>
+                        <MudSkeleton Width="80px" Height="28px" Class="rounded-pill"/>
+                        <MudSkeleton Width="50px" Height="28px" Class="rounded-pill"/>
+                    </div>
+                    <MudSkeleton Width="100%" Height="100px" Class="mt-4"/>
+                </MudPaper>
+                <MudPaper Elevation="3" Class="pa-4 rounded-lg mt-4">
+                    <MudSkeleton Width="30%" Height="24px"/>
+                    <MudSkeleton Width="100%" Height="80px" Class="mt-3"/>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
+}
+else if (_media == null)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="d-flex flex-column justify-center align-center media-empty-state">
+        <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" Size="Size.Large" Class="mb-4"/>
+        <MudText Typo="Typo.h5" Color="Color.Error">媒体不存在或已被删除</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary mt-2">ID: @Id</MudText>
+        <div class="d-flex gap-3 mt-4">
+            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Home">
+                返回首页
+            </MudButton>
+            <MudButton Href="/media/overview" Variant="Variant.Outlined" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Collections">
+                浏览媒体库
+            </MudButton>
+        </div>
+    </MudContainer>
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4 fade-in">
+        <!-- 页面标题（吸顶） -->
+        <div class="media-header-sticky">
+        <MudGrid>
+            <MudItem xs="12">
+                <MudCard Elevation="4" Class="@GetHeaderCardClass(_media.Category.TopCategory)">
+                    <!-- 海报背景（半透明，铺满横条） -->
+                    <div class="media-header-poster-bg" style="background-image: url('@GetPosterUrl()')"></div>
+                    <MudCardContent Class="media-header-content">
+                        <div class="d-flex align-center media-header-row">
+                            <div class="d-flex align-center flex-grow-1 min-w-0">
+                                <MudAvatar Size="Size.Large" Color="@GetMediaColor(_media.Category.TopCategory)"
+                                           Class="mr-4 header-icon media-header-avatar">
+                                    <MudIcon Icon="@GetMediaIcon(_media.Category.TopCategory)" Size="Size.Large"/>
+                                </MudAvatar>
+                                <div class="flex-grow-1 min-w-0">
+                                    <MudText Typo="Typo.h1"
+                                             Class="media-header-title mb-2"
+                                             title="@_media.Title">
+                                        @_media.Title
+                                    </MudText>
+                                    <MudChip T="string"
+                                             Icon="@GetMediaIcon(_media.Category.TopCategory)"
+                                             Color="@GetMediaColor(_media.Category.TopCategory)"
+                                             Variant="Variant.Filled"
+                                             Size="Size.Small"
+                                             Class="media-header-category-chip">
+                                        @_media.Category.Name
+                                    </MudChip>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-3 media-header-actions">
+                                <MudButton StartIcon="@Icons.Material.Filled.ArrowBack"
+                                           Color="Color.Secondary"
+                                           Variant="Variant.Outlined"
+                                           Size="Size.Medium"
+                                           Href="/media/overview">
+                                    返回媒体库
+                                </MudButton>
+                                @if (_isEditMode)
+                                {
+                                    <MudButton OnClick="CancelEditMode"
+                                               StartIcon="@Icons.Material.Filled.Cancel"
+                                               Color="Color.Default"
+                                               Variant="Variant.Outlined"
+                                               Size="Size.Medium">
+                                        取消
+                                    </MudButton>
+                                    <MudButton Disabled="@_saveProcessing" OnClick="SaveMedia"
+                                               StartIcon="@(!_saveProcessing ? Icons.Material.Filled.Save : null)"
+                                               Color="Color.Primary"
+                                               Variant="Variant.Filled"
+                                               Size="Size.Medium">
+                                        @if (_saveProcessing)
+                                        {
+                                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                                            <span class="ms-2">保存中</span>
+                                        }
+                                        else
+                                        {
+                                            @:保存
+                                        }
+                                    </MudButton>
+                                    <MudButton Disabled="@(_deleteProcessing || _saveProcessing)"
+                                               OnClick="DeleteMedia"
+                                               StartIcon="@(!_deleteProcessing ? Icons.Material.Filled.Delete : null)"
+                                               Color="Color.Error"
+                                               Variant="Variant.Filled"
+                                               Size="Size.Medium">
+                                        @if (_deleteProcessing)
+                                        {
+                                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                                            <span class="ms-2">删除中</span>
+                                        }
+                                        else
+                                        {
+                                            @:删除
+                                        }
+                                    </MudButton>
+                                }
+                                else
+                                {
+                                    <MudButton OnClick="EnterEditMode"
+                                               StartIcon="@Icons.Material.Filled.Edit"
+                                               Color="Color.Primary"
+                                               Variant="Variant.Filled"
+                                               Size="Size.Medium">
+                                        编辑
+                                    </MudButton>
+                                }
+                            </div>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+        </div>
+
+        <!-- 媒体详情 -->
+        <MudGrid Class="mt-4">
+            <!-- 左侧媒体信息 -->
+            <MudItem xs="12" md="3" Class="media-sidebar">
+                <MudCard Elevation="3" Class="card-base card-sidebar">
+                    <!-- 媒体海报 -->
+                    <div class="position-relative media-poster-container">
+                        <MudImage Src="@GetPosterUrl()"
+                                  ObjectFit="ObjectFit.Contain"
+                                  Class="poster-image media-poster-image-wrapper"
+                                  Alt="@(_media?.Title ?? "媒体海报")"/>
+                    </div>
+
+                    <MudDivider/>
+
+                    <!-- 媒体操作 -->
+                    <MudCardActions Class="d-flex gap-2 justify-center pa-4">
+                        <FavoriteSelector MediaId="@_media.Id" OnFavoritesChanged="RefreshMedia" />
+                        @if (_isEditMode)
+                        {
+                            <MudTooltip Duration="0" Text="更换封面">
+                                <MudIconButton Icon="@Icons.Material.Filled.AddPhotoAlternate"
+                                               Color="Color.Primary"
+                                               Variant="Variant.Filled"
+                                               OnClick="OpenUploadPosterDialog"/>
+                            </MudTooltip>
+                        }
+                    </MudCardActions>
+
+                    <MudDivider/>
+
+                    <!-- 媒体基本信息 -->
+                    <MudCardContent Class="pa-4">
+                        <!-- 评分 -->
+                        <div class="d-flex align-center mb-4">
+                            <MudText Typo="Typo.subtitle1" Class="mr-2">评分:</MudText>
+                            <MudRating @bind-SelectedValue="_rating"
+                                       MaxValue="5"
+                                       ReadOnly="@(!_isEditMode)"
+                                       Color="Color.Warning"
+                                       Class="mr-2"
+                                       FullIcon="@Icons.Material.Filled.Star"
+                                       EmptyIcon="@Icons.Material.Filled.StarBorder"/>
+                            <MudText Typo="Typo.body1" Color="Color.Warning">@_rating</MudText>
+                        </div>
+
+                        <!-- 文件源路径 -->
+                        @if (_media.Source != null)
+                        {
+                            <MudPaper Elevation="0" Class="pa-3 mb-3 rounded-lg">
+                                <div class="d-flex align-center mb-2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Folder"
+                                             Size="Size.Small"
+                                             Color="Color.Info"
+                                             Class="mr-2"/>
+                                    <MudText Typo="Typo.subtitle2" Color="Color.Primary">源文件路径:</MudText>
+                                    <MudSpacer/>
+                                    @if (!IsRemoteAccess)
+                                    {
+                                        <MudTooltip Text="打开所在目录" Duration="0">
+                                            <MudIconButton Icon="@Icons.Material.Filled.FolderOpen"
+                                                           Size="Size.Small"
+                                                           Color="Color.Info"
+                                                           OnClick="OpenSourceLocation"/>
+                                        </MudTooltip>
+                                    }
+                                    <MudTooltip Text="复制路径" Duration="0">
+                                        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                                       Size="Size.Small"
+                                                       Color="Color.Default"
+                                                       OnClick="CopySourceFilepath"/>
+                                    </MudTooltip>
+                                    <MudTooltip Text="查看媒体源详情" Duration="0">
+                                        <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
+                                                       Size="Size.Small"
+                                                       Color="Color.Primary"
+                                                       aria-label="查看媒体源详情"
+                                                       Href="@_media.Source.GetSourceLink()"/>
+                                    </MudTooltip>
+                                </div>
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary mb-2 media-sidebar-text">
+                                    @_media.Source.FullPath
+                                </MudText>
+
+                                <!-- 入口文件操作 -->
+                                @if (!IsRemoteAccess)
+                                {
+                                    <MudDivider Class="my-2"/>
+                                    @if (HasEntryFile)
+                                    {
+                                        <div class="d-flex align-center gap-2">
+                                            <MudButton Variant="Variant.Filled"
+                                                       Color="@(_media.Category.TopCategory == TopCategory.Game ? Color.Success : Color.Primary)"
+                                                       Size="Size.Small"
+                                                       StartIcon="@(_media.Category.TopCategory == TopCategory.Game ? Icons.Material.Filled.PlayArrow : Icons.Material.Filled.OpenInNew)"
+                                                       OnClick="OpenEntryFile"
+                                                       FullWidth="true">
+                                                @(_media.Category.TopCategory == TopCategory.Game ? "启动游戏" : "打开文件")
+                                            </MudButton>
+                                            <MudTooltip Text="查看媒体源详情" Duration="0">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Settings"
+                                                               Size="Size.Small"
+                                                               Color="Color.Default"
+                                                               Href="@_media.Source.GetSourceLink()"/>
+                                            </MudTooltip>
+                                        </div>
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">
+                                            入口: @Path.GetFileName(_media.Source.EntryFilePath)
+                                        </MudText>
+                                    }
+                                    else
+                                    {
+                                        <MudButton Variant="Variant.Outlined"
+                                                   Color="Color.Warning"
+                                                   Size="Size.Small"
+                                                   StartIcon="@Icons.Material.Filled.TouchApp"
+                                                   Href="@_media.Source.GetSourceLink()"
+                                                   FullWidth="true">
+                                            设置入口文件
+                                        </MudButton>
+                                        <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">
+                                            未设置入口文件，点击前往媒体源设置
+                                        </MudText>
+                                    }
+                                }
+                                else
+                                {
+                                    <MudDivider Class="my-2"/>
+                                    <MudButton Variant="Variant.Text"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               StartIcon="@Icons.Material.Filled.OpenInNew"
+                                               Href="@_media.Source.GetSourceLink()"
+                                               FullWidth="true">
+                                        查看媒体源详情
+                                    </MudButton>
+                                }
+                            </MudPaper>
+                        }
+
+                        <!-- 入库日期 -->
+                        <div class="d-flex mb-2 align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.CalendarMonth"
+                                     Size="Size.Small"
+                                     Class="mr-2 mt-1"/>
+                            <div class="flex-grow-1">
+                                <MudText Typo="Typo.subtitle2">入库日期:</MudText>
+                                <MudText Typo="Typo.body2">
+                                    @(_media.StoreDate?.ToString("yyyy-MM-dd") ?? "未知")
+                                </MudText>
+                            </div>
+                            @if (_isEditMode)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => OpenDatePicker("StoreDate"))"
+                                               Class="ml-auto"/>
+                            }
+                        </div>
+
+                        <!-- 发行日期 -->
+                        <div class="d-flex mb-2 align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.EventAvailable"
+                                     Size="Size.Small"
+                                     Class="mr-2 mt-1"/>
+                            <div class="flex-grow-1">
+                                <MudText Typo="Typo.subtitle2">发行日期:</MudText>
+                                <MudText Typo="Typo.body2">
+                                    @(_media.ReleaseDate?.ToString("yyyy-MM-dd") ?? "未知")
+                                </MudText>
+                            </div>
+                            @if (_isEditMode)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => OpenDatePicker("ReleaseDate"))"
+                                               Class="ml-auto"/>
+                            }
+                        </div>
+
+                        <!-- 文件大小 -->
+                        <div class="d-flex mb-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Storage"
+                                     Size="Size.Small"
+                                     Class="mr-2 mt-1"/>
+                            <div>
+                                <MudText Typo="Typo.subtitle2">文件大小:</MudText>
+                                <MudText Typo="Typo.body2">@GetFormattedSize(_media.Size)</MudText>
+                            </div>
+                        </div>
+
+                        <!-- 社团/圈子 -->
+                        @if (_media.Circle != null)
+                        {
+                            <div class="d-flex mb-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Groups"
+                                         Size="Size.Small"
+                                         Class="mr-2 mt-1"/>
+                                <div>
+                                    <MudText Typo="Typo.subtitle2">社团/品牌:</MudText>
+                                    <MudLink Href="@_media.Circle.GetCircleLink()" Typo="Typo.body2"
+                                             Color="Color.Primary">
+                                        @_media.Circle.Name
+                                    </MudLink>
+                                </div>
+                            </div>
+                        }
+
+                        <!-- 分类 -->
+                        <div class="d-flex mb-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Category"
+                                     Size="Size.Small"
+                                     Class="mr-2 mt-1"/>
+                            <div class="flex-grow-1 min-w-0">
+                                <MudText Typo="Typo.subtitle2">分类:</MudText>
+                                <div class="d-flex align-center gap-2">
+                                    @if (_isEditMode)
+                                    {
+                                        <CategorySelector SelectedCategory="_media.Category" SelectedCategoryChanged="CategoryChanged" />
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="@GetMediaColor(_media.Category.TopCategory)" Variant="Variant.Filled">
+                                            @_media.Category.Name
+                                        </MudChip>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 相关链接 -->
+                        <div class="d-flex mt-4">
+                            <MudIcon Icon="@Icons.Material.Filled.Link"
+                                     Size="Size.Small"
+                                     Class="mr-2 mt-1"/>
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="d-flex align-center justify-space-between mb-2">
+                                    <MudText Typo="Typo.subtitle2">相关链接:</MudText>
+                                    @if (_isEditMode)
+                                    {
+                                        <MudTooltip Text="添加链接">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                                           Size="Size.Small"
+                                                           Color="Color.Info"
+                                                           OnClick="OpenAddLinkDialog"/>
+                                        </MudTooltip>
+                                    }
+                                </div>
+                                
+                                @if (_media.Links.Count > 0)
+                                {
+                                    <div class="links-container-wrapper @(_media.Links.Count > 3 ? "has-overflow" : "")">
+                                    <div class="links-container">
+                                        @foreach (var link in _media.Links)
+                                        {
+                                            <MudPaper Elevation="0" Class="pa-2 mb-2 rounded-lg link-item">
+                                                <div class="d-flex align-center">
+                                                    <MudAvatar Size="Size.Small" Color="Color.Info" Class="mr-2">
+                                                        <MudIcon Size="Size.Small" Icon="@GetLinkFavicon(link)"/>
+                                                    </MudAvatar>
+                                                    <MudLink Href="@link.ToString()"
+                                                             Target="_blank"
+                                                             Typo="Typo.body2"
+                                                             Class="flex-grow-1 link-text">
+                                                        @GetLinkDisplayName(link)
+                                                    </MudLink>
+                                                    @if (_isEditMode)
+                                                    {
+                                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                       Size="Size.Small"
+                                                                       Color="Color.Error"
+                                                                       OnClick="@(() => RemoveLink(link))"
+                                                                       Class="ml-1 delete-link-button"/>
+                                                    }
+                                                </div>
+                                            </MudPaper>
+                                        }
+                                    </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.caption" Class="mud-text-secondary font-italic">
+                                        @if (_isEditMode)
+                                        {
+                                            @:暂无相关链接，点击"+"添加
+                                        }
+                                        else
+                                        {
+                                            @:暂无相关链接
+                                        }
+                                    </MudText>
+                                }
+                            </div>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- 右侧媒体详情 -->
+            <MudItem xs="12" md="9">
+                <!-- 媒体标题和基本信息 -->
+                <MudPaper Elevation="3" Class="card-base card-media-main">
+                    <MudText Typo="Typo.h4" Class="mb-2 media-title">@_media.Title</MudText>
+
+                    <div class="mb-3 alias-section">
+                        <EditableAliasList Aliases="_media.AliasTitles" AliasesChanged="OnAliasTitlesChanged" IsEditable="_isEditMode" />
+                    </div>
+
+                    <!-- 标签 -->
+                    <TagSelector SelectedTags="_media.Tags" SelectedTagsChanged="OnTagsChanged" IsEditable="_isEditMode" />
+
+                    <!-- 简介 -->
+                    <div class="mt-4 mb-4">
+                        <div class="d-flex align-center mb-3">
+                            <MudIcon Icon="@Icons.Material.Filled.Info"
+                                     Class="mr-2"
+                                     Color="Color.Primary"/>
+                            <MudText Typo="Typo.h6">简介</MudText>
+
+                            @if (string.IsNullOrEmpty(_media.SummaryTranslated) && _isEditMode)
+                            {
+                                <MudSpacer/>
+                                <MudTooltip Duration="0" Text="翻译简介">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Translate"
+                                                   Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   OnClick="TranslateSummary"
+                                                   Class="ml-auto"
+                                                   Disabled="@_translating"/>
+                                </MudTooltip>
+                                @if (_translating)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+                                }
+                            }
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(_media.Summary) && !string.IsNullOrEmpty(_media.SummaryTranslated))
+                        {
+                            <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-3">
+                                <MudTabPanel Text="原文" Icon="@Icons.Material.Filled.Language">
+                                    @if (_isEditMode)
+                                    {
+                                        <MudTextField @bind-Value="_media.Summary"
+                                                      Class="py-2"
+                                                      Typo="Typo.body1"
+                                                      Variant="Variant.Outlined"
+                                                      Margin="Margin.Dense"
+                                                      AutoGrow="true"
+                                                      Immediate="true"
+                                                      FullWidth="true"/>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.body1" Class="py-2">@_media.Summary</MudText>
+                                    }
+                                </MudTabPanel>
+                                <MudTabPanel Text="翻译" Icon="@Icons.Material.Filled.Translate">
+                                    @if (_isEditMode)
+                                    {
+                                        <MudTextField @bind-Value="_media.SummaryTranslated"
+                                                      Class="py-2"
+                                                      Typo="Typo.body1"
+                                                      Variant="Variant.Outlined"
+                                                      Margin="Margin.Dense"
+                                                      AutoGrow="true"
+                                                      Immediate="true"
+                                                      FullWidth="true"/>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.body1" Class="py-2">@_media.SummaryTranslated</MudText>
+                                    }
+                                </MudTabPanel>
+                            </MudTabs>
+                        }
+                        else
+                        {
+                            @if (_isEditMode)
+                            {
+                                <MudTextField @bind-Value="@(_media.Summary)"
+                                              Class="py-2"
+                                              AutoGrow="true"
+                                              Typo="Typo.body1"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense"
+                                              Immediate="true"
+                                              FullWidth="true"/>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body1" Class="py-2">
+                                    @if (string.IsNullOrEmpty(_media.Summary))
+                                    {
+                                        <span class="mud-text-secondary font-italic">暂无简介，进入编辑模式添加</span>
+                                    }
+                                    else
+                                    {
+                                        @_media.Summary
+                                    }
+                                </MudText>
+                            }
+                        }
+                    </div>
+                </MudPaper>
+
+                <!-- 媒体特定信息 -->
+                <MudPaper Elevation="3" Class="rounded-lg mt-4 media-details-card card-media-details">
+                    <div class="d-flex align-center pa-4 cursor-pointer media-collapse-header" role="button" tabindex="0" aria-expanded="@_mediaDetailsExpanded" @onclick="() => _mediaDetailsExpanded = !_mediaDetailsExpanded" @onkeydown="@(e => OnCollapseKeyDown(e, "details"))" @onkeydown:preventDefault>
+                        <MudIcon Icon="@GetMediaIcon(_media.Category.TopCategory)"
+                                 Color="@GetMediaColor(_media.Category.TopCategory)"
+                                 Size="Size.Medium"
+                                 Class="mr-2"/>
+                        <MudText Typo="Typo.h6" Color="@GetMediaColor(_media.Category.TopCategory)">
+                            @GetMediaTypeName(_media.Category.TopCategory)详情
+                        </MudText>
+                        <MudSpacer />
+                        <MudIconButton Icon="@(_mediaDetailsExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                       Size="Size.Small"
+                                       Class="ml-2" />
+                    </div>
+
+                    <MudCollapse Expanded="_mediaDetailsExpanded">
+                        <div class="media-specific-content pa-4 pt-0">
+                        @switch (_media.Category.TopCategory)
+                        {
+                            case TopCategory.Video:
+                                var videoMedia = _media as VideoMedia;
+                                @if (videoMedia != null)
+                                {
+                                    @if (videoMedia.Episodes > 0)
+                                    {
+                                        <div class="d-flex align-center mb-4">
+                                            <MudIcon Icon="@Icons.Material.Filled.ViewList" Color="Color.Primary" Class="mr-2" />
+                                            <div>
+                                                <MudText Typo="Typo.subtitle2">集数</MudText>
+                                                <div class="d-flex align-center mt-1">
+                                                    <MudBadge Color="Color.Primary" Content="@videoMedia.Episodes.ToString()" Overlap="true" Class="mr-2"></MudBadge>
+                                                    <MudText Typo="Typo.body2">共@(videoMedia.Episodes)集</MudText>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    
+                                    <CircleList Title="制作公司" Icon="@Icons.Material.Filled.Business" Color="Color.Primary" Circles="@videoMedia.Makers" />
+                                    <EditableCreatorList Title="编剧/脚本" Icon="@Icons.Material.Filled.Edit"
+                                                        Creators="@videoMedia.ScreenWriters"
+                                                        CreatorsChanged="@(list => { videoMedia.ScreenWriters = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.ScreenWriter"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Info" />
+                                    <EditableCreatorList Title="原画/人设" Icon="@Icons.Material.Filled.Brush"
+                                                        Creators="@videoMedia.Illustrators"
+                                                        CreatorsChanged="@(list => { videoMedia.Illustrators = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.Illustrator"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Warning" />
+                                    <EditableCreatorList Title="演员/声优" Icon="@Icons.Material.Filled.RecordVoiceOver"
+                                                        Creators="@videoMedia.Actors"
+                                                        CreatorsChanged="@(list => { videoMedia.Actors = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.Actor"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Secondary" />
+                                    <EditableCreatorList Title="音乐" Icon="@Icons.Material.Filled.MusicNote"
+                                                        Creators="@videoMedia.Musicians"
+                                                        CreatorsChanged="@(list => { videoMedia.Musicians = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.Musician"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Success" />
+                                    <EditableCreatorList Title="导演" Icon="@Icons.Material.Filled.MovieFilter"
+                                                        Creators="@videoMedia.Directors"
+                                                        CreatorsChanged="@(list => { videoMedia.Directors = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.Director"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Tertiary" />
+                                }
+                                break;
+                            
+                            case TopCategory.Audio:
+                                var audioMedia = _media as AudioMedia;
+                                @if (audioMedia != null)
+                                {
+                                    <EditableCreatorList Title="声优" Icon="@Icons.Material.Filled.RecordVoiceOver"
+                                                        Creators="@audioMedia.VoiceActors"
+                                                        CreatorsChanged="@(list => { audioMedia.VoiceActors = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.VoiceActor"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Secondary" />
+                                    <EditableCreatorList Title="编剧/脚本" Icon="@Icons.Material.Filled.Edit"
+                                                        Creators="@audioMedia.ScreenWriters"
+                                                        CreatorsChanged="@(list => { audioMedia.ScreenWriters = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.ScreenWriter"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Info" />
+                                    <EditableCreatorList Title="插画师" Icon="@Icons.Material.Filled.Brush"
+                                                        Creators="@audioMedia.Illustrators"
+                                                        CreatorsChanged="@(list => { audioMedia.Illustrators = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.Illustrator"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Warning" />
+                                    <EditableCreatorList Title="音乐" Icon="@Icons.Material.Filled.MusicNote"
+                                                        Creators="@audioMedia.Musicians"
+                                                        CreatorsChanged="@(list => { audioMedia.Musicians = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.Musician"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Success" />
+                                    <EditableCreatorList Title="作者" Icon="@Icons.Material.Filled.Person"
+                                                        Creators="@audioMedia.Authors"
+                                                        CreatorsChanged="@(list => { audioMedia.Authors = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.Author"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Primary" />
+                                }
+                                break;
+                            
+                            case TopCategory.Game:
+                                var gameMedia = _media as GameMedia;
+                                @if (gameMedia != null)
+                                {
+                                    @if (gameMedia.Platforms.Count > 0)
+                                    {
+                                        <div class="d-flex align-start mb-4">
+                                            <MudIcon Icon="@Icons.Material.Filled.Devices" Color="Color.Primary" Class="mr-2 mt-1" />
+                                            
+                                            <div class="flex-grow-1 min-w-0">
+                                                <MudText Typo="Typo.subtitle2" Class="mb-2">平台</MudText>
+                                                
+                                                <div class="d-flex flex-wrap gap-2">
+                                                    @foreach (var platform in gameMedia.Platforms)
+                                                    {
+                                                        <MudChip Color="Color.Info" Size="Size.Medium" Variant="Variant.Filled" Class="platform-chip" T="string">
+                                                            <span class="d-flex align-center">
+                                                                <i class="fa-brands @GetPlatformIconClass(platform) platform-icon"></i>
+                                                                @platform.ToString()
+                                                            </span>
+                                                        </MudChip>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    
+                                    <EditableCreatorList Title="编剧/脚本" Icon="@Icons.Material.Filled.Edit"
+                                                        Creators="@gameMedia.ScreenWriters"
+                                                        CreatorsChanged="@(list => { gameMedia.ScreenWriters = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.ScreenWriter"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Info" />
+                                    <EditableCreatorList Title="插画师" Icon="@Icons.Material.Filled.Brush"
+                                                        Creators="@gameMedia.Illustrators"
+                                                        CreatorsChanged="@(list => { gameMedia.Illustrators = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.Illustrator"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Warning" />
+                                    <EditableCreatorList Title="声优" Icon="@Icons.Material.Filled.RecordVoiceOver"
+                                                        Creators="@gameMedia.VoiceActors"
+                                                        CreatorsChanged="@(list => { gameMedia.VoiceActors = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.VoiceActor"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Secondary" />
+                                    <EditableCreatorList Title="音乐" Icon="@Icons.Material.Filled.MusicNote"
+                                                        Creators="@gameMedia.Musicians"
+                                                        CreatorsChanged="@(list => { gameMedia.Musicians = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.Musician"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Success" />
+                                    <EditableCreatorList Title="作者" Icon="@Icons.Material.Filled.Person"
+                                                        Creators="@gameMedia.Authors"
+                                                        CreatorsChanged="@(list => { gameMedia.Authors = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.Author"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Primary" />
+                                }
+                                break;
+                            
+                            case TopCategory.Picture:
+                                var pictureMedia = _media as PictureMedia;
+                                @if (pictureMedia != null)
+                                {
+                                    @if (pictureMedia.PageNum > 0)
+                                    {
+                                        <div class="d-flex align-center mb-4">
+                                            <MudIcon Icon="@Icons.Material.Filled.Pages" Color="Color.Primary" Class="mr-2" />
+                                            <div>
+                                                <MudText Typo="Typo.subtitle2">页数</MudText>
+                                                <MudText Typo="Typo.body1">@pictureMedia.PageNum</MudText>
+                                            </div>
+                                        </div>
+                                    }
+                                    
+                                    <EditableCreatorList Title="画师" Icon="@Icons.Material.Filled.Brush"
+                                                        Creators="@pictureMedia.Illustrators"
+                                                        CreatorsChanged="@(list => { pictureMedia.Illustrators = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.Illustrator"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Warning" />
+                                    <EditableCreatorList Title="模特/演员" Icon="@Icons.Material.Filled.Person"
+                                                        Creators="@pictureMedia.Actors"
+                                                        CreatorsChanged="@(list => { pictureMedia.Actors = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.Actor"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Secondary" />
+                                    <EditableCreatorList Title="作者" Icon="@Icons.Material.Filled.Create"
+                                                        Creators="@pictureMedia.Authors"
+                                                        CreatorsChanged="@(list => { pictureMedia.Authors = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.Author"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Primary" />
+                                }
+                                break;
+                            
+                            case TopCategory.Text:
+                                var textMedia = _media as TextMedia;
+                                @if (textMedia != null)
+                                {
+                                    @if (textMedia.WordCount > 0)
+                                    {
+                                        <div class="d-flex align-center mb-4">
+                                            <MudIcon Icon="@Icons.Material.Filled.Numbers" Color="Color.Primary" Class="mr-2" />
+                                            <div>
+                                                <MudText Typo="Typo.subtitle2">字数</MudText>
+                                                <MudText Typo="Typo.body1">@($"{textMedia.WordCount:N0}")</MudText>
+                                            </div>
+                                        </div>
+                                    }
+                                    
+                                    @if (textMedia.BookNum > 0)
+                                    {
+                                        <div class="d-flex align-center mb-4">
+                                            <MudIcon Icon="@Icons.Material.Filled.MenuBook" Color="Color.Primary" Class="mr-2" />
+                                            <div>
+                                                <MudText Typo="Typo.subtitle2">册数</MudText>
+                                                <MudText Typo="Typo.body1">@textMedia.BookNum</MudText>
+                                            </div>
+                                        </div>
+                                    }
+                                    
+                                    @if (textMedia.Author != null)
+                                    {
+                                        <div class="d-flex align-start mb-4">
+                                            <MudIcon Icon="@Icons.Material.Filled.Person" Color="Color.Primary" Class="mr-2 mt-1" />
+                                            
+                                            <div class="flex-grow-1 min-w-0">
+                                                <MudText Typo="Typo.subtitle2" Class="mb-2">作者</MudText>
+                                                
+                                                <MudLink Href="@textMedia.Author.GetCreatorLink()" Typo="Typo.body1" Class="creator-link d-inline-flex align-center">
+                                                    @if (textMedia.Author.Avatar != null)
+                                                    {
+                                                        <MudAvatar Image="@textMedia.Author.Avatar.GetImageUrl()" Size="Size.Small" Class="mr-2" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudAvatar Color="Color.Primary" Size="Size.Small" Class="mr-2">
+                                                            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                                                        </MudAvatar>
+                                                    }
+                                                    @textMedia.Author.Name
+                                                </MudLink>
+                                            </div>
+                                        </div>
+                                    }
+                                    
+                                    <EditableCreatorList Title="插画师" Icon="@Icons.Material.Filled.Brush"
+                                                        Creators="@textMedia.Illustrators"
+                                                        CreatorsChanged="@(list => { textMedia.Illustrators = list; StateHasChanged(); })"
+                                                        FilterByType="CreatorType.Illustrator"
+                                                        Editable="_isEditMode"
+                                                        Color="Color.Warning" />
+                                }
+                                break;
+                            
+                            default:
+                                <MudText Color="Color.Info">暂无详细信息</MudText>
+                                break;
+                        }
+                        
+                        <InfoEditor InfoDictionary="_media.Infos" InfoDictionaryChanged="OnInfosChanged" IsEditable="_isEditMode" />
+                        </div>
+                    </MudCollapse>
+                </MudPaper>
+
+                <!-- 媒体图片 -->
+                <MudPaper Elevation="3" Class="rounded-lg mt-4 media-images-card card-media-images">
+                    <div class="d-flex align-center pa-4 cursor-pointer media-collapse-header" role="button" tabindex="0" aria-expanded="@_mediaImagesExpanded" @onclick="() => _mediaImagesExpanded = !_mediaImagesExpanded" @onkeydown="@(e => OnCollapseKeyDown(e, "images"))" @onkeydown:preventDefault>
+                        <MudIcon Icon="@Icons.Material.Filled.PhotoLibrary" Class="mr-2" Color="Color.Warning"/>
+                        <MudText Typo="Typo.h6">媒体图片</MudText>
+                        <MudSpacer />
+                        <div class="d-flex align-center gap-2" @onclick:stopPropagation="true">
+                            @if (_isEditMode)
+                            {
+                                <MudButton OnClick="OpenUploadMediaImageDialog"
+                                           StartIcon="@Icons.Material.Filled.AddPhotoAlternate"
+                                           Color="Color.Primary"
+                                           Variant="Variant.Outlined"
+                                           Size="Size.Small">
+                                    添加图片
+                                </MudButton>
+                            }
+                        </div>
+                        <MudIconButton Icon="@(_mediaImagesExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                       Size="Size.Small"
+                                       Class="ml-2" />
+                    </div>
+
+                    <MudCollapse Expanded="_mediaImagesExpanded">
+                        <div class="pa-4 pt-0">
+
+                    @if (_media.Pictures.Count > 0)
+                    {
+                        <MudCarousel Class="mud-width-full image-carousel media-carousel"
+                                     AutoCycle="true"
+                                     AutoCycleTime="TimeSpan.FromSeconds(5)"
+                                     ShowArrows="true"
+                                     ShowBullets="true"
+                                     EnableSwipeGesture="true"
+                                     TData="object">
+                            @foreach (var picture in _media.Pictures)
+                            {
+                                <MudCarouselItem Transition="Transition.Slide">
+                                    <div class="d-flex justify-center mud-height-full">
+                                        <MudImage ObjectFit="ObjectFit.Contain"
+                                                  Src="@picture.GetImageUrl()"
+                                                  Alt="@_media.Title"
+                                                  Class="rounded-lg carousel-image media-carousel-image"
+                                                  @onclick="() => OpenImagePreview(picture)"/>
+                                    </div>
+                                </MudCarouselItem>
+                            }
+                        </MudCarousel>
+                    }
+                    else
+                    {
+                        <MudContainer Class="d-flex flex-column justify-center align-center media-images-empty">
+                            <MudIcon Icon="@Icons.Material.Filled.ImageNotSupported" Color="Color.Default"
+                                     Size="Size.Large" Class="mb-3"/>
+                            <MudText Align="Align.Center" Color="Color.Default">暂无媒体图片</MudText>
+                            @if (_isEditMode)
+                            {
+                                <MudText Align="Align.Center" Typo="Typo.caption" Class="mud-text-secondary">
+                                    点击上方"添加图片"按钮上传
+                                </MudText>
+                            }
+                        </MudContainer>
+                    }
+                        </div>
+                    </MudCollapse>
+                </MudPaper>
+
+                <!-- 详细描述 -->
+                <MudPaper Elevation="3" Class="rounded-lg mt-4 media-description-card card-media-description">
+                    <div class="d-flex align-center pa-4 cursor-pointer media-collapse-header" role="button" tabindex="0" aria-expanded="@_descriptionExpanded" @onclick="() => _descriptionExpanded = !_descriptionExpanded" @onkeydown="@(e => OnCollapseKeyDown(e, "description"))" @onkeydown:preventDefault>
+                        <MudIcon Icon="@Icons.Material.Filled.Description" Class="mr-2" Color="Color.Success"/>
+                        <MudText Typo="Typo.h6">详细描述</MudText>
+                        <MudSpacer />
+                        <div class="d-flex align-center gap-2" @onclick:stopPropagation="true">
+                            @if (_isEditMode)
+                            {
+                                @if (!string.IsNullOrEmpty(_media.Description) && string.IsNullOrEmpty(_media.DescriptionTranslated))
+                                {
+                                    <MudTooltip Duration="0" Text="翻译详情">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Translate"
+                                                       Size="Size.Small"
+                                                       Color="Color.Success"
+                                                       OnClick="TranslateDescription"
+                                                       Disabled="@_translating"/>
+                                    </MudTooltip>
+                                    @if (_translating)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true"/>
+                                    }
+                                }
+                                @if (!string.IsNullOrEmpty(_media.Description))
+                                {
+                                    <MudButton OnClick="() => _descriptionEditor?.ToggleEditMode()"
+                                               StartIcon="@(_descriptionEditor?.IsEditing == true ? Icons.Material.Filled.Visibility : Icons.Material.Filled.Edit)"
+                                               Color="Color.Success"
+                                               Variant="Variant.Outlined"
+                                               Size="Size.Small">
+                                        @(_descriptionEditor?.IsEditing == true ? "预览" : "编辑")
+                                    </MudButton>
+                                }
+                            }
+                        </div>
+                        <MudIconButton Icon="@(_descriptionExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                       Size="Size.Small"
+                                       Class="ml-2" />
+                    </div>
+
+                    <MudCollapse Expanded="_descriptionExpanded">
+                        <div class="px-4 pb-4">
+                            <DescriptionEditor @ref="_descriptionEditor"
+                                               Description="@_media.Description"
+                                               DescriptionChanged="OnDescriptionChanged"
+                                               DescriptionTranslated="@_media.DescriptionTranslated"
+                                               DescriptionTranslatedChanged="OnDescriptionTranslatedChanged"
+                                               OnTranslateRequested="TranslateDescription"
+                                               IsTranslating="_translating" />
+                        </div>
+                    </MudCollapse>
+                </MudPaper>
+
+                <!-- 相关媒体 -->
+                <MudPaper Elevation="3" Class="rounded-lg mt-4 mb-4 related-media-card card-related-media">
+                    <div class="d-flex align-center pa-4 cursor-pointer media-collapse-header" role="button" tabindex="0" aria-expanded="@_relatedMediaExpanded" @onclick="() => _relatedMediaExpanded = !_relatedMediaExpanded" @onkeydown="@(e => OnCollapseKeyDown(e, "related"))" @onkeydown:preventDefault>
+                        <MudIcon Icon="@Icons.Material.Filled.Link" Class="mr-2" Color="Color.Primary"/>
+                        <MudText Typo="Typo.h6">相关媒体</MudText>
+                        <MudSpacer />
+                        <div class="d-flex align-center gap-2" @onclick:stopPropagation="true">
+                            @if (_isEditMode)
+                            {
+                                <MudButton OnClick="OpenMediaSelectorDialog"
+                                           StartIcon="@Icons.Material.Filled.Add"
+                                           Color="Color.Primary"
+                                           Variant="Variant.Outlined"
+                                           Size="Size.Small">
+                                    添加关联
+                                </MudButton>
+                            }
+                        </div>
+                        <MudIconButton Icon="@(_relatedMediaExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                       Size="Size.Small"
+                                       Class="ml-2" />
+                    </div>
+
+                    <MudCollapse Expanded="_relatedMediaExpanded">
+                        <div class="px-4 pb-4">
+                            @if (_media.RelatedMedias.Count > 0)
+                            {
+                                <div class="d-flex flex-wrap gap-4 media-related-scroll">
+                                    @foreach (var relatedMedia in _media.RelatedMedias)
+                                    {
+                                        <div class="related-media-card-wrapper">
+                                            <SimpleMediaCard MediaId="@relatedMedia.Id" />
+                                            @if (_isEditMode)
+                                            {
+                                                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                                               Size="Size.Small"
+                                                               Color="Color.Error"
+                                                               OnClick="() => ConfirmRemoveRelatedMedia(relatedMedia)"
+                                                               Class="related-media-delete-btn" />
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="d-flex flex-column align-center justify-center py-6">
+                                    <MudIcon Icon="@Icons.Material.Filled.LinkOff" Size="Size.Large" Color="Color.Default" Class="mb-2" />
+                                    <MudText Typo="Typo.body1" Color="Color.Secondary">暂无相关媒体</MudText>
+                                    @if (_isEditMode)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">点击"添加关联"按钮选择相关媒体</MudText>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </MudCollapse>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
+}
+
+<!-- 图片预览对话框 -->
+<MudDialog @bind-Visible="_isPreviewDialogVisible"
+           Options="new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.Large, CloseOnEscapeKey = true }">
+    <TitleContent>
+        <MudText Typo="Typo.h6">图片预览</MudText>
+    </TitleContent>
+    <DialogContent>
+        <div class="d-flex justify-center py-4 media-preview-container">
+            @if (_previewImage != null)
+            {
+                <MudImage ObjectFit="ObjectFit.Contain"
+                          Src="@_previewImage.GetImageUrl()"
+                          Alt="@(_media?.Title ?? "图片预览")"
+                          Class="media-preview-image"/>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" OnClick="CloseImagePreview">关闭</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- 日期选择对话框 -->
+<MudDialog @bind-Visible="_isDatePickerVisible" Options="new DialogOptions { FullWidth = false, MaxWidth = MaxWidth.ExtraSmall, CloseOnEscapeKey = true }">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@_datePickerTitle</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudDatePicker @bind-Date="_selectedDate" AutoClose="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Default" OnClick="CloseDatePicker">取消</MudButton>
+        <MudButton Color="Color.Primary" OnClick="SaveSelectedDate">确定</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- 添加链接对话框 -->
+<MudDialog @bind-Visible="_isAddLinkDialogVisible" Options="new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.ExtraSmall, CloseOnEscapeKey = true }">
+    <TitleContent>
+        <div class="d-flex align-center">
+            <MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-2" />
+            <MudText Typo="Typo.h6">添加链接</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_newLinkUrl" 
+                      Label="网址" 
+                      Variant="Variant.Outlined" 
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Link"
+                      AdornmentColor="Color.Info"
+                      Placeholder="https://www.example.com"
+                      HelperText="请输入完整的网址，包含http://或https://"
+                      Immediate="true"
+                      Class="mt-3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Default" OnClick="CloseAddLinkDialog">取消</MudButton>
+        <MudButton Color="Color.Primary" OnClick="AddNewLink" Disabled="@(!IsValidUrl(_newLinkUrl))">添加链接</MudButton>
+    </DialogActions>
+</MudDialog>
+}

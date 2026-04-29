@@ -1,0 +1,57 @@
+# NineKgTools.Web - Docker Compose 部署
+#
+# 首次使用：
+#   1. cp .env.example .env
+#   2. 编辑 .env 填入 OPENAI_API_KEY（必填）
+#   3. mkdir -p data logs config media
+#   4. docker compose up -d
+#
+# 配置文件首次启动时会从 example 自动复制到 config/config.yaml；
+# Bangumi key、监视文件夹等需要在 Web UI 或 config/config.yaml 里配置后重启生效。
+#
+# 持久化目录（建议 host 端备份）：
+#   ./data    -> /app/Database     SQLite 主库 + 向量库 + Hangfire 库
+#   ./logs    -> /app/Logs         Serilog 日志文件
+#   ./config  -> /app/Config       config.yaml + tags.yaml
+#   ./media   -> /app/media        监视文件夹（可在 config.yaml 改名/加挂载）
+
+services:
+  web:
+    # 生产用：从 GHCR 拉镜像（v1.0.0 发布后可用）
+    image: ghcr.io/hphphp123321/nine-kg-tools:latest
+    # 本地开发：注释掉 image，启用下面 build 段从源码构建
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    container_name: ninekg-web
+    restart: unless-stopped
+    ports:
+      - "23333:23333"
+    env_file:
+      - .env
+    environment:
+      # 时区：影响日志时间戳与 Hangfire cron 解析
+      TZ: ${TZ:-Asia/Shanghai}
+      # 想清空数据库重建：临时设为 true 后启动一次，再改回 false
+      NINEKG_RESET_DB: "false"
+      # 启动时自动应用 EF Core Migrations：默认 true。
+      # 想要"停服 → 备份 → 手动决定升级时机"的运维节奏，临时设 "false"——
+      # 启动只记 Warning 不执行迁移；备份后再改回 "true" 重启。
+      NINEKG_DB_AUTO_MIGRATE: "true"
+    volumes:
+      - ./data:/app/Database
+      - ./logs:/app/Logs
+      - ./config:/app/Config
+      - ./media:/app/media
+    healthcheck:
+      # /healthz 由 10 号 todo 落地，AddHealthChecks() 注册的端点，匿名可访问
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://localhost:23333/healthz", "-o", "/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+# 命名网络（可选，单容器时其实用 default 即可）
+networks:
+  default:
+    name: ninekg

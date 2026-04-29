@@ -1,0 +1,235 @@
+@page "/favorites"
+@page "/favorite"
+
+<PageTitle>收藏夹管理</PageTitle>
+
+@using NineKgTools.Components.Medias
+@using NineKgTools.Core.Models.Favorites
+@using NineKgTools.Core.Services.Favorites
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <MudGrid>
+        <!-- 页面标题 -->
+        <MudItem xs="12">
+            <PageHeader Icon="@Icons.Material.Filled.Bookmark"
+                        IconColor="Color.Tertiary"
+                        Title="收藏夹管理"
+                        Subtitle="管理和组织您的媒体收藏" />
+        </MudItem>
+
+        <!-- 收藏夹列表 -->
+        <MudItem xs="12" md="3">
+            <MudCard Elevation="3" Class="card-base card-bordered-tertiary card-sidebar mb-4">
+                <MudCardHeader>
+                    <CardHeaderAvatar>
+                        <MudIcon Icon="@Icons.Material.Filled.BookmarkBorder" Color="Color.Tertiary" />
+                    </CardHeaderAvatar>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">收藏夹列表</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <div class="d-flex align-center gap-1">
+                            <MudTooltip Text="添加收藏夹">
+                                <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                              Color="Color.Tertiary"
+                                              Size="Size.Medium"
+                                              OnClick="ToggleCreateFavoritePopover"/>
+                            </MudTooltip>
+                            <MudTooltip Text="刷新">
+                                <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                              Color="Color.Tertiary"
+                                              Size="Size.Medium"
+                                              OnClick="@(() => LoadFavorites())"
+                                              Disabled="@_isLoading" />
+                            </MudTooltip>
+                        </div>
+                        @if (_createPopoverOpen)
+                        {
+                            <div class="fav-popover-overlay" @onclick="ToggleCreateFavoritePopover"></div>
+                        }
+                        <MudPopover Open="@_createPopoverOpen"
+                                   AnchorOrigin="Origin.BottomRight"
+                                   TransformOrigin="Origin.TopRight"
+                                   Fixed="true"
+                                   Class="pa-4 rounded-lg mud-elevation-4"
+                                   Style="min-width: min(300px, 90vw); z-index: var(--z-popover);">
+                            <div class="d-flex flex-column gap-2">
+                                <MudText Typo="Typo.subtitle1" Color="Color.Tertiary">创建新收藏夹</MudText>
+                                <MudTextField @bind-Value="_newFavoriteName"
+                                            Label="收藏夹名称"
+                                            Variant="Variant.Outlined"
+                                            Immediate="true"
+                                            Margin="Margin.Dense"
+                                            MaxLength="50"
+                                            Counter="50"
+                                            Adornment="Adornment.Start"
+                                            AdornmentIcon="@Icons.Material.Filled.Bookmark"
+                                            AdornmentColor="Color.Tertiary" />
+                                <div class="d-flex justify-end gap-2 mt-2">
+                                    <MudButton Color="Color.Default"
+                                             Variant="Variant.Text"
+                                             OnClick="ToggleCreateFavoritePopover">
+                                        取消
+                                    </MudButton>
+                                    <MudButton Color="Color.Tertiary"
+                                             Variant="Variant.Filled"
+                                             OnClick="CreateFavorite"
+                                             Disabled="@(string.IsNullOrWhiteSpace(_newFavoriteName) || _isSubmitting)">
+                                        @if (_isSubmitting)
+                                        {
+                                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1"/>
+                                        }
+                                        创建
+                                    </MudButton>
+                                </div>
+                            </div>
+                        </MudPopover>
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudDivider />
+                
+                @if (_isLoading)
+                {
+                    <MudContainer Class="py-8">
+                        <MudProgressCircular Color="Color.Tertiary" Size="Size.Medium" Indeterminate="true" Class="mx-auto d-block" />
+                    </MudContainer>
+                }
+                else if (_favorites.Count == 0)
+                {
+                    <MudContainer Class="d-flex flex-column align-center py-8">
+                        <MudIcon Icon="@Icons.Material.Filled.FolderOff" Color="Color.Default" Size="Size.Large" Class="mb-4" />
+                        <MudText Align="Align.Center">暂无收藏夹</MudText>
+                        <MudButton OnClick="ToggleCreateFavoritePopover"
+                                  Variant="Variant.Text"
+                                  Color="Color.Tertiary"
+                                  StartIcon="@Icons.Material.Filled.Add"
+                                  Class="mt-2">
+                            创建收藏夹
+                        </MudButton>
+                    </MudContainer>
+                }
+                else
+                {
+                    <MudList T="Favorite" Clickable="true" Class="py-0 fav-list-scroll">
+                        @foreach (var favorite in _favorites)
+                        {
+                            <MudListItem T="Favorite" Icon="@(favorite.Id == _selectedFavorite?.Id ? Icons.Material.Filled.Bookmark : Icons.Material.Filled.BookmarkBorder)"
+                                        IconColor="@(favorite.Id == _selectedFavorite?.Id ? Color.Tertiary : Color.Default)"
+                                        Class="@(favorite.Id == _selectedFavorite?.Id ? "mud-selected-item" : "")"
+                                        OnClick="@(() => SelectFavorite(favorite))">
+                                <ChildContent>
+                                    <div class="d-flex align-center" style="min-width: 0;">
+                                        <MudText Class="flex-grow-1 mr-2 fav-name-text">@favorite.Name</MudText>
+                                        <MudChip T="int" Size="Size.Small"
+                                               Color="Color.Default"
+                                               Label="true"
+                                               Class="fav-count-chip">
+                                            @(favorite.Medias.Count)
+                                        </MudChip>
+                                    </div>
+                                </ChildContent>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </MudCard>
+        </MudItem>
+
+        <!-- 收藏夹内容 -->
+        <MudItem xs="12" md="9">
+            @if (_selectedFavorite == null)
+            {
+                <MudCard Elevation="3" Class="card-base d-flex justify-center align-center fav-empty-placeholder">
+                    <MudContainer Class="d-flex flex-column align-center py-8">
+                        <MudIcon Icon="@Icons.Material.Filled.BookmarkBorder" Color="Color.Tertiary" Size="Size.Large" Class="mb-4" />
+                        <MudText Align="Align.Center" Typo="Typo.h6">请选择一个收藏夹</MudText>
+                        <MudText Align="Align.Center" Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
+                            从列表中选择一个收藏夹查看内容
+                        </MudText>
+                    </MudContainer>
+                </MudCard>
+            }
+            else
+            {
+                <MediaShownView @key="_selectedFavorite.Id"
+                                @ref="_mediaShownView"
+                                InitialQueryParameters="@_initialParams"
+                                Title="@_selectedFavorite.Name"
+                                TitleIcon="@Icons.Material.Filled.Bookmark"
+                                TitleColor="Color.Tertiary"
+                                EmptyTitle="收藏夹内暂无媒体"
+                                EmptyDescription="您可以在媒体详情页面添加媒体到此收藏夹"
+                                EmptyIcon="@Icons.Material.Filled.ImageNotSupported"
+                                DefaultGridView="true"
+                                HideFavoriteButton="true"
+                                ShowCategoryFilter="true"
+                                ShowTagFilter="true"
+                                ShowFavoriteFilter="false"
+                                ShowRatingFilter="true"
+                                ShowDateFilter="true"
+                                PageSize="20">
+                    <TitleActions>
+                        <div>
+                            <MudTooltip Text="重命名">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                             Color="Color.Tertiary"
+                                             Size="Size.Small"
+                                             OnClick="@(() => ToggleRenameFavoritePopover(_selectedFavorite))"
+                                             Disabled="@(_selectedFavorite.Id == StaticFavorites.DefaultFavorite.Id)"/>
+                            </MudTooltip>
+                            @if (_renamePopoverOpen)
+                            {
+                                <div class="fav-popover-overlay" @onclick="CloseRenamePopover"></div>
+                            }
+                            <MudPopover Open="@_renamePopoverOpen"
+                                       AnchorOrigin="Origin.BottomRight"
+                                       TransformOrigin="Origin.TopRight"
+                                       Fixed="true"
+                                       Class="pa-4 rounded-lg mud-elevation-4"
+                                       Style="min-width: min(300px, 90vw); z-index: var(--z-popover);">
+                                <div class="d-flex flex-column gap-2">
+                                    <MudText Typo="Typo.subtitle1" Color="Color.Tertiary">重命名收藏夹</MudText>
+                                    <MudTextField @bind-Value="_renameFavoriteName"
+                                                Label="收藏夹名称"
+                                                Variant="Variant.Outlined"
+                                                Immediate="true"
+                                                Margin="Margin.Dense"
+                                                MaxLength="50"
+                                                Counter="50"
+                                                Adornment="Adornment.Start"
+                                                AdornmentIcon="@Icons.Material.Filled.Bookmark"
+                                                AdornmentColor="Color.Tertiary" />
+                                    <div class="d-flex justify-end gap-2 mt-2">
+                                        <MudButton Color="Color.Default"
+                                                 Variant="Variant.Text"
+                                                 OnClick="CloseRenamePopover">
+                                            取消
+                                        </MudButton>
+                                        <MudButton Color="Color.Tertiary"
+                                                 Variant="Variant.Filled"
+                                                 OnClick="@(async () => { if (_favoriteToRename != null) await RenameFavorite(_favoriteToRename, _renameFavoriteName); })"
+                                                 Disabled="@(string.IsNullOrWhiteSpace(_renameFavoriteName) || _isSubmitting || _favoriteToRename == null)">
+                                            @if (_isSubmitting)
+                                            {
+                                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-1"/>
+                                            }
+                                            确定
+                                        </MudButton>
+                                    </div>
+                                </div>
+                            </MudPopover>
+                        </div>
+
+                        <MudTooltip Text="删除">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                         Color="Color.Error"
+                                         Size="Size.Small"
+                                         OnClick="@(() => OpenDeleteFavoriteDialog(_selectedFavorite))"
+                                         Disabled="@(_selectedFavorite.Id == StaticFavorites.DefaultFavorite.Id)" />
+                        </MudTooltip>
+                    </TitleActions>
+                </MediaShownView>
+            }
+        </MudItem>
+    </MudGrid>
+</MudContainer>

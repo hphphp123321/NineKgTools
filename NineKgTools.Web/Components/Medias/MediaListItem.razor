@@ -1,0 +1,103 @@
+@using MudBlazor
+@using NineKgTools.Core.Models.Media
+@using NineKgTools.Core.Models.Categories
+@using NineKgTools.Utils
+
+@* 完整媒体列表项组件 *@
+
+@if (_isLoading)
+{
+    <MudListItem T="string" Class="media-list-item">
+        <div class="d-flex align-center gap-3">
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="80px" Width="80px" Class="rounded"/>
+            <div class="flex-grow-1">
+                <MudSkeleton SkeletonType="SkeletonType.Text" Width="70%" Height="24px" Class="mb-2"/>
+                <MudSkeleton SkeletonType="SkeletonType.Text" Width="50%" Height="18px" Class="mb-1"/>
+                <MudSkeleton SkeletonType="SkeletonType.Text" Width="40%" Height="16px"/>
+            </div>
+        </div>
+    </MudListItem>
+}
+else if (_media != null)
+{
+    <MudListItem T="string" Class="media-list-item-full" OnClick="@(() => NavigateToMedia())">
+        <div class="d-flex align-center gap-4">
+            <!-- 缩略图 -->
+            <div class="media-list-thumbnail-large">
+                <MudImage Src="@(_posterUrl)"
+                          ObjectFit="ObjectFit.Cover"
+                          Height="80"
+                          Width="80"
+                          Class="rounded" />
+            </div>
+
+            <!-- 媒体信息 -->
+            <div class="flex-grow-1 media-list-content-full">
+                <!-- 标题和类型徽章 -->
+                <div class="d-flex align-center gap-2 mb-1">
+                    <!-- 类型徽章 -->
+                    <MudChip T="string"
+                            Size="Size.Small"
+                            Color="@GetMediaColor(_media.Category.TopCategory)"
+                            Variant="Variant.Filled"
+                            Class="ma-0 pa-1"
+                            Style="height: 22px; font-size: 0.75rem;">
+                        @_media.Category.Name
+                    </MudChip>
+                    <!-- 标题 -->
+                    <MudText Typo="Typo.subtitle1" Class="media-list-title-full">
+                        @_media.Title
+                    </MudText>
+                </div>
+
+                <!-- 社团信息 -->
+                @if (_circle != null)
+                {
+                    <div class="d-flex align-center gap-1 mb-1">
+                        <MudIcon Icon="@Icons.Material.Filled.Groups" Size="Size.Small" Color="Color.Secondary" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @_circle.Name
+                        </MudText>
+                    </div>
+                }
+
+                <!-- 评分和日期 -->
+                <div class="d-flex align-center gap-3">
+                    <div class="d-flex align-center gap-1">
+                        <MudRating SelectedValue="@((int)(_rating/2))"
+                                  Size="Size.Small"
+                                  ReadOnly="true"
+                                  Color="Color.Warning"/>
+                        <MudText Typo="Typo.caption" Color="Color.Warning">
+                            @_rating.ToString("F1")
+                        </MudText>
+                    </div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        @(_media.ReleaseDate.HasValue ? _media.ReleaseDate.Value.ToString("yyyy-MM-dd") : "未知日期")
+                    </MudText>
+                </div>
+            </div>
+
+            <!-- 收藏按钮和操作图标 -->
+            <div class="d-flex align-center gap-2">
+                @if (!HideFavoriteButton)
+                {
+                    <FavoriteSelector MediaId="@MediaId" OnFavoritesChanged="RefreshMedia" SimpleMode="true" />
+                }
+                <MudIcon Icon="@Icons.Material.Filled.ChevronRight"
+                         Color="Color.Secondary"
+                         Size="Size.Small" />
+            </div>
+        </div>
+    </MudListItem>
+}
+else
+{
+    <MudListItem T="string" Class="media-list-item">
+        <div class="d-flex align-center justify-center pa-4">
+            <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" Size="Size.Small" Class="mr-2"/>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">加载失败</MudText>
+        </div>
+    </MudListItem>
+}
+

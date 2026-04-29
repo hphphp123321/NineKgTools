@@ -1,0 +1,226 @@
+@using NineKgTools.Core.Models.Tasks.Diagnostics
+
+@if (Diagnostics is null)
+{
+    <div class="diag-empty">
+        <MudIcon Icon="@Icons.Material.Filled.SearchOff" Size="Size.Large" Color="Color.Secondary"/>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">该任务没有识别诊断信息</MudText>
+    </div>
+}
+else
+{
+    <div class="diag-root">
+
+        @* ===== Hero 摘要 ===== *@
+        <div class="diag-hero @HeroAccentClass()">
+            <div class="diag-hero__row">
+                <MudIcon Icon="@HeroIcon()" Color="@HeroColor()" Size="Size.Medium"/>
+                <div class="diag-hero__text">
+                    <div class="diag-hero__title">
+                        @if (Diagnostics.FinalChoice is { } choice)
+                        {
+                            <span class="diag-hero__verdict diag-hero__verdict--ok">识别成功</span>
+                            <span class="diag-hero__sep">·</span>
+                            <span class="diag-hero__chosen">@choice.WebsiteName</span>
+                            @if (!string.IsNullOrEmpty(choice.ResultTitle))
+                            {
+                                <span class="diag-hero__sep">·</span>
+                                <span class="diag-hero__result-title">@choice.ResultTitle</span>
+                            }
+                            @if (choice.ResultScore is { } score)
+                            {
+                                <span class="diag-hero__score">@($"{score:F2}")</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="diag-hero__verdict diag-hero__verdict--fail">识别失败</span>
+                            @if (!string.IsNullOrEmpty(Diagnostics.OverallFailureReason))
+                            {
+                                <span class="diag-hero__sep">·</span>
+                                <span>@Diagnostics.OverallFailureReason</span>
+                            }
+                        }
+                    </div>
+                    <div class="diag-hero__meta">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">
+                            @($"分类 {Diagnostics.PossibleTopCategory}")
+                        </MudChip>
+                        <span class="diag-hero__path" title="@Diagnostics.SourcePath">
+                            @TruncateMid(Diagnostics.SourcePath, 80)
+                        </span>
+                        @if (Diagnostics.EndTime is { } end)
+                        {
+                            var d = end - Diagnostics.StartTime;
+                            <span class="diag-hero__duration">耗时 @($"{d.TotalSeconds:F2}")s</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* ===== 关键词解析 ===== *@
+        @if (Diagnostics.Keywords is { } kw)
+        {
+            <MudExpansionPanels Elevation="0" MultiExpansion="true" Class="diag-section">
+                <MudExpansionPanel Text="关键词解析" Expanded="true">
+                    <div class="diag-keywords">
+                        @if (!string.IsNullOrEmpty(kw.ProductCode))
+                        {
+                            <div class="diag-kv">
+                                <span class="diag-kv__k">产品代码</span>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">@kw.ProductCode</MudChip>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(kw.CircleName))
+                        {
+                            <div class="diag-kv">
+                                <span class="diag-kv__k">社团 / 制作者</span>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Tertiary" Variant="Variant.Outlined">@kw.CircleName</MudChip>
+                            </div>
+                        }
+                        <div class="diag-kv">
+                            <span class="diag-kv__k">主关键词</span>
+                            <span class="diag-kv__v diag-kv__v--strong">@(string.IsNullOrEmpty(kw.PrimaryKeyword) ? "—" : kw.PrimaryKeyword)</span>
+                        </div>
+                        @if (kw.SecondaryKeywords is { Count: > 0 })
+                        {
+                            <div class="diag-kv">
+                                <span class="diag-kv__k">次要关键词</span>
+                                <span class="diag-kv__v">
+                                    @foreach (var sk in kw.SecondaryKeywords)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default">@sk</MudChip>
+                                    }
+                                </span>
+                            </div>
+                        }
+                        <div class="diag-kv">
+                            <span class="diag-kv__k">清理后标题</span>
+                            <span class="diag-kv__v">@(string.IsNullOrEmpty(kw.CleanedTitle) ? "—" : kw.CleanedTitle)</span>
+                        </div>
+                        <div class="diag-kv">
+                            <span class="diag-kv__k">检测语言</span>
+                            <span class="diag-kv__v diag-kv__v--muted">@kw.DetectedLanguage</span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(kw.Version))
+                        {
+                            <div class="diag-kv">
+                                <span class="diag-kv__k">版本</span>
+                                <span class="diag-kv__v diag-kv__v--muted">@kw.Version</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(kw.Date))
+                        {
+                            <div class="diag-kv">
+                                <span class="diag-kv__k">日期</span>
+                                <span class="diag-kv__v diag-kv__v--muted">@kw.Date</span>
+                            </div>
+                        }
+                    </div>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        }
+
+        @* ===== 网站尝试 ===== *@
+        <div class="diag-section diag-attempts">
+            <div class="diag-attempts__header">
+                <MudText Typo="Typo.subtitle2" Class="diag-attempts__title">
+                    网站尝试（共 @Diagnostics.WebsiteAttempts.Count 次）
+                </MudText>
+            </div>
+
+            @if (Diagnostics.WebsiteAttempts.Count == 0)
+            {
+                <div class="diag-empty">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">尚未尝试任何网站</MudText>
+                </div>
+            }
+            else
+            {
+                @for (var i = 0; i < Diagnostics.WebsiteAttempts.Count; i++)
+                {
+                    var a = Diagnostics.WebsiteAttempts[i];
+                    var isFinal = ReferenceEquals(a, Diagnostics.FinalChoice);
+                    <div class="diag-attempt @(isFinal ? "diag-attempt--final" : "") diag-attempt--@StatusClass(a.Status)">
+                        <div class="diag-attempt__header">
+                            <span class="diag-attempt__index">#@(i + 1)</span>
+                            <span class="diag-attempt__name">@a.WebsiteName</span>
+                            <MudChip T="string" Size="Size.Small" Color="@StatusColor(a.Status)" Variant="Variant.Filled" Class="diag-attempt__status">
+                                @StatusText(a.Status)
+                            </MudChip>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined" Class="diag-attempt__source">
+                                @SourceText(a.Source)@(string.IsNullOrEmpty(a.AttemptedId) ? "" : $" · {a.AttemptedId}")
+                            </MudChip>
+                            <span class="diag-attempt__duration">@($"{a.Duration.TotalMilliseconds:F0}")ms</span>
+                        </div>
+
+                        @if (a.Status == WebsiteAttemptStatus.Success || a.Status == WebsiteAttemptStatus.CacheHit)
+                        {
+                            <div class="diag-attempt__result">
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small"/>
+                                <span class="diag-attempt__result-title">@(a.ResultTitle ?? "—")</span>
+                                @if (!string.IsNullOrEmpty(a.ResultId))
+                                {
+                                    <span class="diag-attempt__result-id">@a.ResultId</span>
+                                }
+                                @if (a.ResultScore is { } s)
+                                {
+                                    <span class="diag-attempt__result-score">得分 @($"{s:F3}")</span>
+                                }
+                            </div>
+                        }
+                        else if (!string.IsNullOrEmpty(a.Reason))
+                        {
+                            <div class="diag-attempt__reason">@a.Reason</div>
+                        }
+
+                        @if (a.TopCandidates is { Count: > 0 })
+                        {
+                            <div class="diag-attempt__stats">
+                                共扫描 <strong>@a.TotalCandidatesScanned</strong> 条候选，过滤 <strong>@a.FilteredByMinSimilarityCount</strong> 条低分项，展示 Top @a.TopCandidates.Count
+                            </div>
+                            <div class="diag-candidates">
+                                @foreach (var c in a.TopCandidates)
+                                {
+                                    <div class="diag-candidate @(c.Chosen ? "diag-candidate--chosen" : "")">
+                                        <div class="diag-candidate__score">@($"{c.Score:F3}")</div>
+                                        <div class="diag-candidate__main">
+                                            <div class="diag-candidate__title">
+                                                @if (c.Chosen)
+                                                {
+                                                    <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" Color="Color.Success" Class="diag-candidate__check"/>
+                                                }
+                                                <span>@c.Title</span>
+                                            </div>
+                                            <div class="diag-candidate__meta">
+                                                <span class="diag-candidate__id">@c.Id</span>
+                                                @if (!string.IsNullOrEmpty(c.SearchKey))
+                                                {
+                                                    <span class="diag-candidate__key">通过「@c.SearchKey」命中</span>
+                                                }
+                                                @if (!string.IsNullOrEmpty(c.Url))
+                                                {
+                                                    <MudLink Href="@c.Url" Target="_blank" Class="diag-candidate__url">打开</MudLink>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else if (a.Status != WebsiteAttemptStatus.Skipped
+                                 && a.Status != WebsiteAttemptStatus.Exception
+                                 && a.Status != WebsiteAttemptStatus.CacheHit
+                                 && (a.TotalCandidatesScanned > 0 || a.FilteredByMinSimilarityCount > 0))
+                        {
+                            <div class="diag-attempt__stats">
+                                共扫描 <strong>@a.TotalCandidatesScanned</strong> 条候选，过滤 <strong>@a.FilteredByMinSimilarityCount</strong> 条低分项
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+    </div>
+}

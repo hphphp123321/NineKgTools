@@ -1,0 +1,195 @@
+@using NineKgTools.Core.Models.Categories
+@using NineKgTools.Core.Models.Media.Source
+@using NineKgTools.Utils
+
+<MudDialog>
+    <DialogContent>
+        <div class="@FrameCssClass">
+            <!-- Hero：跟随 _selectedTopCategory 变色的分类感知横幅 -->
+            <div class="@HeroCssClass">
+                <div class="nk-dialog-hero__body">
+                    <div class="nk-dialog-hero__icon" aria-hidden="true">
+                        <MudIcon Icon="@HeroIcon" />
+                    </div>
+                    <div class="nk-dialog-hero__text">
+                        <h2 class="nk-dialog-hero__title">@Source.GetFileName()</h2>
+                        <MudTooltip Text="点击复制路径" Delay="300">
+                            <div class="nk-dialog-hero__subtitle manual-add-path"
+                                 role="button"
+                                 tabindex="0"
+                                 aria-label="@($"媒体源路径：{Source.FullPath}，点击复制")"
+                                 @onclick="CopyPathAsync"
+                                 @onkeydown="OnPathKeyDown">
+                                @Source.FullPath
+                            </div>
+                        </MudTooltip>
+                        <div class="nk-dialog-hero__chiprow">
+                            <span class="manual-add-meta-chip">
+                                <MudIcon Icon="@(Source.IsFolder ? Icons.Material.Filled.Folder : Icons.Material.Filled.InsertDriveFile)"
+                                         Size="Size.Small" aria-hidden="true"/>
+                                @(Source.IsFolder ? "文件夹" : "文件")
+                            </span>
+                            @if (_sourceKindHint is not null)
+                            {
+                                <span class="manual-add-meta-chip">@_sourceKindHint</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="nk-dialog-content manual-add-body">
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error"
+                              ShowCloseIcon="true"
+                              CloseIconClicked="@(() => _errorMessage = null)">
+                        @_errorMessage
+                    </MudAlert>
+                }
+
+                <!-- 标题 -->
+                <MudTextField @bind-Value="_title"
+                              Label="标题"
+                              Required="true"
+                              RequiredError="标题不能为空"
+                              Placeholder="为这个媒体起一个名字"
+                              Variant="Variant.Outlined"
+                              Immediate="true"
+                              Disabled="@_isSaving"
+                              MaxLength="200"
+                              Counter="200"/>
+
+                <!-- 媒体类型 -->
+                <div>
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">
+                        媒体类型 <span class="mud-error-text">*</span>
+                    </MudText>
+                    <div class="manual-add-category-row">
+                        @foreach (var top in _topCategoryOptions)
+                        {
+                            var selected = _selectedTopCategory == top;
+                            var topLocal = top;
+                            <MudChip T="string"
+                                     Variant="@(selected ? Variant.Filled : Variant.Outlined)"
+                                     Color="@MediaUIHelper.GetMediaColor(top)"
+                                     OnClick="@(() => SelectTopCategory(topLocal))"
+                                     Icon="@MediaUIHelper.GetCategoryIcon(top)"
+                                     Size="Size.Medium"
+                                     Disabled="@_isSaving"
+                                     Class="@(selected ? "manual-add-category-chip manual-add-category-chip--selected" : "manual-add-category-chip")"
+                                     Label="true">
+                                @GetTopCategoryName(top)
+                            </MudChip>
+                        }
+                    </div>
+                    @if (_selectedTopCategory == null)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Warning" Class="mt-1 d-block">
+                            请选择一个类型
+                        </MudText>
+                    }
+                </div>
+
+                <!-- 选填信息（手风琴） -->
+                <MudExpansionPanels Elevation="0" Class="manual-add-optional-panel">
+                    <MudExpansionPanel Expanded="_optionalExpanded"
+                                       ExpandedChanged="v => _optionalExpanded = v"
+                                       Disabled="@_isSaving">
+                        <TitleContent>
+                            <div class="d-flex align-center gap-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Tune"
+                                         Size="Size.Small"
+                                         Color="@(HasOptionalContent ? SelectedColor : Color.Default)"/>
+                                <MudText Typo="Typo.subtitle2">填更多信息（可选）</MudText>
+                                @if (HasOptionalContent)
+                                {
+                                    <MudChip T="string"
+                                             Size="Size.Small"
+                                             Color="@SelectedColor"
+                                             Variant="Variant.Filled">
+                                        已填 @OptionalFilledCount
+                                    </MudChip>
+                                }
+                            </div>
+                        </TitleContent>
+                        <ChildContent>
+                            <div class="d-flex flex-column gap-3 pt-2">
+                                <!-- 具体分类 -->
+                                <MudSelect T="Category"
+                                           @bind-Value="_selectedSubCategory"
+                                           Label="具体分类"
+                                           Variant="Variant.Outlined"
+                                           Clearable="true"
+                                           Disabled="@(_isSaving || _selectedTopCategory is null)"
+                                           HelperText="@(_selectedTopCategory is null ? "请先选择媒体类型" : "可留空，默认为\"其他" + GetTopCategoryName(_selectedTopCategory.Value) + "\"")">
+                                    @foreach (var cat in _availableSubCategories)
+                                    {
+                                        <MudSelectItem Value="@cat">@cat.Name</MudSelectItem>
+                                    }
+                                </MudSelect>
+
+                                <!-- 简介 -->
+                                <MudTextField @bind-Value="_summary"
+                                              Label="简介"
+                                              Variant="Variant.Outlined"
+                                              Lines="3"
+                                              Placeholder="这个媒体的大致内容"
+                                              Disabled="@_isSaving"
+                                              MaxLength="500"
+                                              Counter="500"/>
+
+                                <!-- 评分 -->
+                                <div class="d-flex align-center gap-3">
+                                    <MudText Typo="Typo.body2">评分</MudText>
+                                    <MudRating @bind-SelectedValue="_ratingInt"
+                                               Size="Size.Medium"
+                                               Disabled="@_isSaving"/>
+                                    @if (_ratingInt > 0)
+                                    {
+                                        <MudButton Size="Size.Small"
+                                                   Variant="Variant.Text"
+                                                   Color="Color.Default"
+                                                   OnClick="@(() => _ratingInt = 0)"
+                                                   Disabled="@_isSaving">
+                                            清除
+                                        </MudButton>
+                                    }
+                                </div>
+                            </div>
+                        </ChildContent>
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
+
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    @(HasOptionalContent
+                        ? "信息已足够，创建后直接进入媒体详情页"
+                        : "其余字段（简介、标签、封面…）可稍后在媒体详情页继续补充")
+                </MudAlert>
+            </div>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   OnClick="Cancel"
+                   Disabled="@_isSaving">
+            取消
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Success"
+                   OnClick="CreateAsync"
+                   Disabled="@(!CanSubmit || _isSaving)"
+                   StartIcon="@(_isSaving ? null : Icons.Material.Filled.PostAdd)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2"/>
+                <MudText>创建中...</MudText>
+            }
+            else
+            {
+                <MudText>@ConfirmButtonText</MudText>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>

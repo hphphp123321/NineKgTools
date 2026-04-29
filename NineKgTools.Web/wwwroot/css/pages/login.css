@@ -1,0 +1,189 @@
+/* ==============================================
+   登录页面样式
+   ============================================== */
+
+/* 登录布局 - 深色背景 + 点阵纹理 */
+.login-layout-content {
+    min-height: 100vh;
+    min-height: 100dvh; /* 现代移动端浏览器：正确排除地址栏高度 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--mud-palette-background);
+    position: relative;
+    overflow-y: auto; /* 允许在短视口（键盘弹出）时滚动 */
+}
+
+/* 点阵纹理层（与主应用保持一致） */
+.login-layout-content::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(139, 127, 255, 0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* 品牌聚光灯 - 使用 vmin 自适应尺寸，在任意屏幕上保持合适比例 */
+.login-layout-content::after {
+    content: '';
+    position: fixed;
+    width: min(800px, 85vmin);
+    height: min(800px, 85vmin);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(
+        ellipse at center,
+        rgba(126, 111, 255, 0.11) 0%,
+        rgba(126, 111, 255, 0.05) 40%,
+        transparent 70%
+    );
+    pointer-events: none;
+    z-index: 0;
+    border-radius: 50%;
+}
+
+/* 登录页面容器 */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    padding: var(--spacing-lg);
+    position: relative;
+    z-index: 1;
+}
+
+/* 登录卡片 - 继承 card-header，补全右/底边框 + 更强阴影 */
+.login-card {
+    width: 100%;
+    max-width: 440px;
+    padding: var(--spacing-2xl);
+    border-radius: var(--radius-xl) !important;
+    border-right: 1px solid rgba(var(--mud-palette-primary-rgb), 0.06) !important;
+    border-bottom: 1px solid rgba(var(--mud-palette-primary-rgb), 0.06) !important;
+    box-shadow: var(--shadow-2xl) !important;
+    animation: login-enter 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+/* Logo 区域 */
+.login-logo {
+    display: flex;
+    justify-content: center;
+    margin-bottom: var(--spacing-2xl);
+}
+
+/* 品牌锁定容器 - Logo + 下方装饰线 */
+.login-brand-lockup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Logo 下方横向品牌线 - 给 Logo 构图锚点 */
+.login-brand-lockup::after {
+    content: '';
+    display: block;
+    width: 48px;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--mud-palette-primary) 50%,
+        transparent 100%
+    );
+    margin-top: var(--spacing-lg);
+    opacity: 0.65;
+}
+
+.login-logo img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* 登录按钮 - 胶囊形态，代表唯一且决定性的操作 */
+.login-button {
+    height: 52px !important;
+    font-size: var(--font-size-base) !important;
+    font-weight: var(--font-weight-semibold) !important;
+    border-radius: var(--radius-full) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    letter-spacing: 0.025em !important;
+}
+
+/* 悬浮：柔和品牌色漫射阴影（物理真实的彩色光投影，非霓虹） */
+.login-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px -2px rgba(126, 111, 255, 0.38) !important;
+}
+
+/* ============================================
+   响应式适配
+   ============================================ */
+
+/* 移动端标准 (≤480px) - 卡片全宽，减少内边距 */
+@media (max-width: 480px) {
+    .login-card {
+        max-width: 100%;
+        padding: var(--spacing-lg);
+    }
+
+    .login-logo img {
+        width: 160px;
+    }
+}
+
+/* 极小屏 (≤360px) - 进一步压缩间距，确保表单可用 */
+@media (max-width: 360px) {
+    .login-container {
+        padding: var(--spacing-sm);
+    }
+
+    .login-card {
+        padding: var(--spacing-md);
+        border-radius: var(--radius-lg) !important;
+    }
+
+    .login-logo img {
+        width: 140px;
+    }
+}
+
+/* 短视口 (≤600px 高，如键盘弹出或横屏小屏幕) */
+@media (max-height: 600px) {
+    .login-layout-content {
+        align-items: flex-start; /* 顶部对齐，允许向上滚动 */
+        padding-block: var(--spacing-2xl);
+    }
+
+    .login-logo {
+        margin-bottom: var(--spacing-lg);
+    }
+
+    .login-brand-lockup::after {
+        display: none; /* 短屏省去装饰线节约纵向空间 */
+    }
+}
+
+/* ============================================
+   无障碍：减少动画偏好
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+    .login-card {
+        animation: none;
+    }
+}
+
+/* 卡片进场动画 - scale + translateY 复合，感知更强 */
+@keyframes login-enter {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}

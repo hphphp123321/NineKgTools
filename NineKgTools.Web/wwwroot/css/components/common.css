@@ -1,0 +1,83 @@
+/*
+ * common.css — Components/Common 下共享组件的样式
+ * 与具体业务解耦，所有类名统一带 "cmn-" 或组件语义前缀
+ */
+
+/* ========= Tip（问号提示图标） ========= */
+.tip-icon {
+    opacity: 0.7;
+    transition: all var(--transition-normal, 0.2s ease);
+    min-width: 24px !important;
+    min-height: 24px !important;
+    padding: 2px !important;
+}
+
+.tip-icon:hover,
+.tip-icon:focus-visible {
+    opacity: 1;
+    transform: scale(1.1);
+    color: var(--mud-palette-primary) !important;
+}
+
+.tip-icon .mud-icon-root {
+    font-size: inherit;
+}
+
+/*
+ * 触屏设备：触目标扩展至 WCAG 2.5.5 AAA 推荐的 44×44。
+ * 用 ::before 伪元素构造透明 hit area，视觉尺寸保持 24×24 不变，
+ * 也不会挤压相邻表单元素。
+ */
+@media (pointer: coarse) {
+    .tip-icon {
+        position: relative;
+    }
+
+    .tip-icon::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 44px;
+        height: 44px;
+        transform: translate(-50%, -50%);
+        /* 透明扩展 hit area，不影响布局也不拦截视觉 */
+    }
+
+    /* 触屏上 hover 放大动画无意义且可能卡顿，禁用 */
+    .tip-icon:hover,
+    .tip-icon:focus-visible {
+        transform: none;
+    }
+}
+
+/* ========= SectionCard ========= */
+.section-card-avatar {
+    box-shadow: var(--shadow-sm);
+}
+
+/* ========= ImageUploadDialog 预览区 ========= */
+.image-upload-preview {
+    position: relative;
+    width: 100%;
+    max-width: min(300px, 100%);
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    border-radius: var(--radius-lg, 12px);
+    border: var(--border-width-thin, 1px) solid var(--mud-palette-lines-default);
+    margin-bottom: var(--spacing-md);
+}
+
+.image-upload-preview__image {
+    width: 100%;
+    height: 100%;
+}
+
+.image-upload-preview__placeholder {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    color: var(--mud-palette-text-secondary);
+}

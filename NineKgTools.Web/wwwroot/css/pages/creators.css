@@ -1,0 +1,192 @@
+/* ============================================
+   Creators页面专用样式
+   ============================================ */
+
+/* 页面淡入效果 */
+.fade-in {
+    animation: fadeIn 0.6s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 左侧边栏样式 */
+.left-sidebar {
+    position: sticky;
+    top: var(--spacing-lg);
+    transition: all var(--transition-slow);
+}
+
+/* 在小屏幕时不应用sticky定位 */
+@media (max-width: 960px) {
+    .left-sidebar {
+        position: relative;
+        top: 0;
+    }
+}
+
+/* 头像容器样式 */
+.avatar-container {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+}
+
+.avatar-image {
+    transition: transform var(--transition-slower);
+}
+
+.avatar-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.6) 100%);
+    opacity: 0;
+    transition: all var(--transition-slow);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.avatar-container:hover .avatar-overlay {
+    opacity: 1;
+}
+
+.avatar-container:hover .avatar-image {
+    transform: scale(1.05);
+}
+
+.upload-avatar-button {
+    transform: translateY(20px);
+    transition: all var(--transition-slow);
+}
+
+.avatar-container:hover .upload-avatar-button {
+    transform: translateY(0);
+}
+
+/* 人物/社团标题动画 */
+.creator-title,
+.circle-title {
+    position: relative;
+    display: inline-block;
+}
+
+.creator-title:after,
+.circle-title:after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: 0;
+    left: 0;
+    background-color: var(--mud-palette-primary);
+    transition: width var(--transition-slower);
+}
+
+.creator-main-card:hover .creator-title:after,
+.circle-main-card:hover .circle-title:after {
+    width: 100%;
+}
+
+.creator-subtitle,
+.circle-subtitle {
+    opacity: 0.8;
+    transition: opacity var(--transition-slow);
+}
+
+.creator-main-card:hover .creator-subtitle,
+.circle-main-card:hover .circle-subtitle {
+    opacity: 1;
+}
+
+/* 类型标签容器效果 */
+.types-container {
+    transition: transform var(--transition-slow);
+    transform-origin: left center;
+}
+
+.creator-main-card:hover .types-container,
+.circle-main-card:hover .types-container {
+    transform: scale(1.01);
+}
+
+.type-chip {
+    transition: all var(--transition-slow);
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.3px;
+}
+
+.type-chip:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+/* 卡片样式 */
+.creator-main-card,
+.circle-main-card {
+    background-color: var(--mud-palette-surface);
+    border-left: var(--border-width-thick) solid var(--mud-palette-primary);
+    transition: all var(--transition-slow);
+}
+
+.creator-description-card,
+.circle-description-card {
+    background-color: var(--mud-palette-surface);
+    border-left: var(--border-width-thick) solid var(--mud-palette-success);
+    transition: all var(--transition-slow);
+}
+
+.related-works-card {
+    background-color: var(--mud-palette-surface);
+    border-left: var(--border-width-thick) solid var(--mud-palette-warning);
+    transition: all var(--transition-slow);
+}
+
+/* 描述容器样式 */
+.description-container {
+    border: 1px solid var(--mud-palette-lines-default);
+    transition: all var(--transition-slow);
+}
+
+.description-container:hover {
+    border-color: var(--mud-palette-success);
+    box-shadow: 0 0 0 1px var(--mud-palette-success-lighten);
+}
+
+/* 卡片hover效果 */
+.left-sidebar:hover,
+.creator-main-card:hover,
+.circle-main-card:hover,
+.creator-description-card:hover,
+.circle-description-card:hover,
+.related-works-card:hover {
+    box-shadow: var(--shadow-lg) !important;
+    transform: translateY(-2px);
+}
+
+.alias-section {
+    background-color: rgba(var(--mud-palette-surface-rgb), 0.5);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md);
+    border: 1px solid var(--mud-palette-lines-default);
+    transition: all var(--transition-slow);
+}
+
+.alias-section:hover {
+    border-color: var(--mud-palette-success);
+    box-shadow: 0 0 0 1px var(--mud-palette-success-lighten);
+    background-color: rgba(var(--mud-palette-success-rgb), 0.02);
+}
+

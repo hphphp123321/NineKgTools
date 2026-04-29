@@ -1,0 +1,455 @@
+@page "/sources"
+<PageTitle>媒体源管理</PageTitle>
+@using NineKgTools.Components.Common
+@using NineKgTools.Components.FileExplorer
+@using NineKgTools.Components.Medias
+
+<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="mt-4">
+    <MudGrid>
+        <!-- 页面标题 -->
+        <MudItem xs="12">
+            <PageHeader Icon="@Icons.Material.Filled.FolderSpecial"
+                        IconColor="Color.Primary"
+                        Title="媒体源管理"
+                        Subtitle="配置和管理媒体文件夹来源">
+                <Actions>
+                    <MudButton Disabled="@_saveProcessing" OnClick="SaveConfig"
+                               StartIcon="@(!_saveProcessing ? Icons.Material.Filled.Save : null)"
+                               Color="Color.Primary"
+                               Variant="Variant.Filled"
+                               Size="Size.Medium">
+                        @if (_saveProcessing)
+                        {
+                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                            <MudText Class="ms-2">保存中</MudText>
+                        }
+                        else
+                        {
+                            <MudText>保存配置</MudText>
+                        }
+                    </MudButton>
+                </Actions>
+            </PageHeader>
+        </MudItem>
+
+        <!-- 左侧：文件浏览区 -->
+        <MudItem xs="12" md="8">
+            <MudCard Elevation="2" Class="card-base card-bordered-primary sources-explorer-card">
+                <!-- 面包屑导航 + 刷新按钮 -->
+                <MudToolBar Dense="true" DisableGutters="true" Class="px-3 py-1 border-b">
+                    <MudIcon Icon="@Icons.Material.Filled.Folder" Color="Color.Primary" Size="Size.Small" Class="mr-1" />
+                    <MudBreadcrumbs Items="_breadcrumbs" MaxItems="5"
+                                   Separator="/" Class="my-0 mr-auto sources-breadcrumbs">
+                        <ItemTemplate Context="item">
+                            <MudChip T="string" Size="Size.Small"
+                                   Color="Color.Primary" Variant="Variant.Text"
+                                   OnClick="@(() => NavigateToPath(item.Href))"
+                                   Class="sources-breadcrumb-chip">
+                                @item.Text
+                            </MudChip>
+                        </ItemTemplate>
+                    </MudBreadcrumbs>
+
+                    <MudTooltip Text="刷新目录">
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                     Color="Color.Primary" Size="Size.Small"
+                                     aria-label="刷新目录"
+                                     OnClick="@RefreshCurrentDirectory" />
+                    </MudTooltip>
+                </MudToolBar>
+
+                <!-- 排序工具栏 -->
+                <MudToolBar Dense="true" DisableGutters="true" Class="px-3 py-1 border-b sources-sort-toolbar">
+                    <MudText Typo="Typo.caption" Class="mr-2 mud-text-secondary">排序:</MudText>
+                    <MudButtonGroup Variant="Variant.Text" Size="Size.Small" OverrideStyles="false">
+                        <MudButton StartIcon="@GetSortIcon(FileSortField.Name)"
+                                   Color="@(_sortField == FileSortField.Name ? Color.Primary : Color.Default)"
+                                   Size="Size.Small"
+                                   OnClick="@(() => SetSortField(FileSortField.Name))">
+                            名称
+                        </MudButton>
+                        <MudButton StartIcon="@GetSortIcon(FileSortField.Date)"
+                                   Color="@(_sortField == FileSortField.Date ? Color.Primary : Color.Default)"
+                                   Size="Size.Small"
+                                   OnClick="@(() => SetSortField(FileSortField.Date))">
+                            修改日期
+                        </MudButton>
+                        <MudButton StartIcon="@GetSortIcon(FileSortField.Type)"
+                                   Color="@(_sortField == FileSortField.Type ? Color.Primary : Color.Default)"
+                                   Size="Size.Small"
+                                   OnClick="@(() => SetSortField(FileSortField.Type))">
+                            类型
+                        </MudButton>
+                    </MudButtonGroup>
+                    <MudSpacer />
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="sources-count-chip">
+                        @_directories.Count 文件夹, @_files.Count 文件
+                    </MudChip>
+                </MudToolBar>
+
+                <!-- 文件列表 -->
+                <div class="sources-file-list">
+                    <MudList T="string" Clickable="true" Dense="true" Class="pa-0">
+                        <!-- 驱动器列表 -->
+                        @if (_drives.Count > 0)
+                        {
+                            <div class="sources-drive-bar">
+                                @foreach (var drive in _drives)
+                                {
+                                    <MudChip T="string" Color="@(drive.RootDirectory.FullName == _currentPathInfo?.Root?.FullName ? Color.Primary : Color.Default)"
+                                            Size="Size.Small"
+                                            OnClick="@(() => NavigateToDrive(drive))"
+                                            Icon="@Icons.Material.Filled.Storage"
+                                            aria-label="@($"切换到驱动器 {drive.Name}")">
+                                        @drive.Name (@FormatDriveSize(drive.TotalSize - drive.TotalFreeSpace)/@FormatDriveSize(drive.TotalSize))
+                                    </MudChip>
+                                }
+                            </div>
+                        }
+
+                        <!-- 上级目录 -->
+                        @if (_currentPathInfo?.Parent != null)
+                        {
+                            <MudListItem T="string" Icon="@Icons.Material.Filled.FolderOpen"
+                                       IconColor="Color.Info"
+                                       OnClick="@NavigateToParent"
+                                       HoverClass="mud-background-gray"
+                                       Class="px-3 py-2">
+                                <div class="d-flex align-center w-100">
+                                    <MudText Typo="Typo.body2" Class="sources-parent-dir">.. (上级目录)</MudText>
+                                </div>
+                            </MudListItem>
+                            <MudDivider />
+                        }
+
+                        <!-- 错误状态 -->
+                        @if (_directoryError != null)
+                        {
+                            <div class="sources-error-state">
+                                <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Error" Size="Size.Large" />
+                                <MudText Align="Align.Center" Color="Color.Error" Typo="Typo.body2">
+                                    @_directoryError
+                                </MudText>
+                                <MudButton StartIcon="@Icons.Material.Filled.Refresh"
+                                         Color="Color.Primary" Variant="Variant.Text" Size="Size.Small"
+                                         OnClick="@RefreshCurrentDirectory">
+                                    重新加载
+                                </MudButton>
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- 文件夹列表 -->
+                            @foreach (var directory in _directories)
+                            {
+                                <MudListItem T="string" Icon="@Icons.Material.Filled.Folder"
+                                           IconColor="Color.Warning"
+                                           HoverClass="mud-background-gray"
+                                           OnClick="@(() => NavigateToPath(directory.FullName))"
+                                           Class="px-3 py-2">
+                                    <div class="d-flex align-center w-100">
+                                        <MudText Class="sources-item-name">@directory.Name</MudText>
+                                        <MudSpacer />
+                                        <div class="sources-row-actions" @onclick:stopPropagation="true">
+                                            @{
+                                                var dirSourceLink = GetSourceDetailLink(directory.FullName);
+                                            }
+                                            @if (dirSourceLink != null)
+                                            {
+                                                <MudTooltip Text="查看媒体源详情">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
+                                                                 Color="Color.Primary" Size="Size.Small"
+                                                                 aria-label="@($"查看 {directory.Name} 的媒体源详情")"
+                                                                 Href="@dirSourceLink" />
+                                                </MudTooltip>
+                                            }
+                                            <MudTooltip Text="尝试识别此媒体">
+                                                <MudIconButton Icon="@Icons.Material.Filled.FindInPage"
+                                                             Color="Color.Info" Size="Size.Small"
+                                                             aria-label="@($"识别 {directory.Name}")"
+                                                             OnClick="@(() => HandleIdentifyMedia(directory.FullName))" />
+                                            </MudTooltip>
+                                            <MudTooltip Text="手动添加媒体">
+                                                <MudIconButton Icon="@Icons.Material.Filled.PostAdd"
+                                                             Color="Color.Success" Size="Size.Small"
+                                                             aria-label="@($"手动添加 {directory.Name} 为媒体")"
+                                                             OnClick="@(() => HandleManualAddFromPathAsync(directory.FullName))" />
+                                            </MudTooltip>
+                                            <MudTooltip Text="加入识别队列">
+                                                <MudIconButton Icon="@Icons.Material.Filled.PlaylistAdd"
+                                                             Color="Color.Secondary" Size="Size.Small"
+                                                             aria-label="@($"将 {directory.Name} 加入识别队列")"
+                                                             OnClick="@(() => HandleAddToIdentificationQueue(directory.FullName))" />
+                                            </MudTooltip>
+                                            <MudTooltip Text="添加到监控列表">
+                                                <MudIconButton Icon="@Icons.Material.Filled.MonitorHeart"
+                                                             Color="Color.Success" Size="Size.Small"
+                                                             aria-label="@($"监控 {directory.Name}")"
+                                                             OnClick="@(() => AddToWatchList(directory.FullName))" />
+                                            </MudTooltip>
+                                        </div>
+                                    </div>
+                                </MudListItem>
+                            }
+
+                            @if (_directories.Count > 0 && _files.Count > 0)
+                            {
+                                <MudDivider />
+                            }
+
+                            <!-- 文件列表 -->
+                            @foreach (var file in _files)
+                            {
+                                <MudListItem T="string" Icon="@GetFileIcon(file.Name)"
+                                           IconColor="Color.Default"
+                                           HoverClass="mud-background-gray"
+                                           Class="px-3 py-1">
+                                    <div class="d-flex align-center w-100">
+                                        <MudText Class="sources-file-name">@file.Name</MudText>
+                                        <MudSpacer />
+                                        <div class="sources-row-actions" @onclick:stopPropagation="true">
+                                            @{
+                                                var fileSourceLink = GetSourceDetailLink(file.FullName);
+                                            }
+                                            @if (fileSourceLink != null)
+                                            {
+                                                <MudTooltip Text="查看媒体源详情">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
+                                                                 Color="Color.Primary" Size="Size.Small"
+                                                                 aria-label="@($"查看 {file.Name} 的媒体源详情")"
+                                                                 Href="@fileSourceLink" />
+                                                </MudTooltip>
+                                            }
+                                            <MudTooltip Text="尝试识别此媒体">
+                                                <MudIconButton Icon="@Icons.Material.Filled.FindInPage"
+                                                             Color="Color.Info" Size="Size.Small"
+                                                             aria-label="@($"识别 {file.Name}")"
+                                                             OnClick="@(() => HandleIdentifyMedia(file.FullName))" />
+                                            </MudTooltip>
+                                            <MudTooltip Text="手动添加媒体">
+                                                <MudIconButton Icon="@Icons.Material.Filled.PostAdd"
+                                                             Color="Color.Success" Size="Size.Small"
+                                                             aria-label="@($"手动添加 {file.Name} 为媒体")"
+                                                             OnClick="@(() => HandleManualAddFromPathAsync(file.FullName))" />
+                                            </MudTooltip>
+                                            <MudTooltip Text="加入识别队列">
+                                                <MudIconButton Icon="@Icons.Material.Filled.PlaylistAdd"
+                                                             Color="Color.Secondary" Size="Size.Small"
+                                                             aria-label="@($"将 {file.Name} 加入识别队列")"
+                                                             OnClick="@(() => HandleAddToIdentificationQueue(file.FullName))" />
+                                            </MudTooltip>
+                                        </div>
+                                    </div>
+                                </MudListItem>
+                            }
+
+                            @if (_directories.Count == 0 && _files.Count == 0)
+                            {
+                                <div class="sources-empty-state">
+                                    <MudIcon Icon="@Icons.Material.Filled.FolderOff" Color="Color.Info" Size="Size.Large" />
+                                    <MudText Align="Align.Center" Color="Color.Info" Typo="Typo.body1" Class="mt-2">此目录为空</MudText>
+                                    <MudText Align="Align.Center" Typo="Typo.caption" Class="mt-1 mud-text-secondary">
+                                        请导航到包含媒体文件的目录
+                                    </MudText>
+                                </div>
+                            }
+                        }
+                    </MudList>
+                </div>
+            </MudCard>
+        </MudItem>
+
+        <!-- 右侧：监视列表和最近识别的媒体 -->
+        <MudItem xs="12" md="4">
+            <MudGrid>
+                <!-- 最近识别的媒体 -->
+                <MudItem xs="12" sm="6" md="12">
+                    <MudCard Elevation="2" Class="card-base card-bordered-secondary sources-recent-card mb-3">
+                        <MudToolBar Dense="true" DisableGutters="true" Class="px-3 py-1 border-b">
+                            <MudIcon Icon="@Icons.Material.Filled.History" Color="Color.Secondary" Size="Size.Small" Class="mr-1" />
+                            <MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mr-auto">
+                                最近识别的媒体
+                            </MudText>
+                            <MudTooltip Text="查看全部">
+                                <MudIconButton Icon="@Icons.Material.Filled.MoreHoriz"
+                                             Color="Color.Secondary" Size="Size.Small"
+                                             aria-label="查看全部识别记录"
+                                             Href="/" />
+                            </MudTooltip>
+                        </MudToolBar>
+
+                        <div class="sources-recent-content">
+                            @if (_isLoadingRecent)
+                            {
+                                <div class="d-flex flex-column gap-2 pa-1">
+                                    @for (var i = 0; i < 3; i++)
+                                    {
+                                        <div class="d-flex align-center gap-2">
+                                            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="32px" Height="32px" />
+                                            <div class="flex-grow-1">
+                                                <MudSkeleton Width="70%" Height="14px" />
+                                                <MudSkeleton Width="40%" Height="10px" Class="mt-1" />
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <MediaList Medias="@_recentIdentifiedMedia"
+                                          Simple="true"
+                                          EmptyStateText="暂无识别记录" />
+                            }
+                        </div>
+                    </MudCard>
+                </MudItem>
+
+                <!-- 监控文件夹列表 -->
+                <MudItem xs="12" sm="6" md="12">
+                    <MudCard Elevation="2" Class="card-base card-bordered-success sources-watch-card">
+                        <MudToolBar Dense="true" DisableGutters="true" Class="px-3 py-1 border-b">
+                            <MudIcon Icon="@Icons.Material.Filled.FolderSpecial" Color="Color.Success" Size="Size.Small" Class="mr-1" />
+                            <MudText Typo="Typo.subtitle1" Color="Color.Success" Class="mr-auto">
+                                监控文件夹列表
+                            </MudText>
+                            <MudChip T="string" Color="Color.Default" Size="Size.Small" Class="sources-count-chip">
+                                共 @(_sourceConfig.WatchFolders.Count) 个
+                            </MudChip>
+                        </MudToolBar>
+
+                        <!-- 监控文件夹列表 -->
+                        <div class="sources-watch-content">
+                            @if (_sourceConfig.WatchFolders.Count == 0)
+                            {
+                                <div class="sources-empty-state">
+                                    <MudIcon Icon="@Icons.Material.Filled.CreateNewFolder" Color="Color.Success" Size="Size.Large" />
+                                    <MudText Align="Align.Center" Color="Color.Default" Typo="Typo.body1" Class="mt-2">
+                                        暂无监控文件夹
+                                    </MudText>
+                                    <MudText Align="Align.Center" Typo="Typo.caption" Class="mt-1 mud-text-secondary">
+                                        添加文件夹后，系统将自动扫描并识别其中的媒体
+                                    </MudText>
+                                    <div class="d-flex flex-column align-center gap-1 mt-3">
+                                        <div class="d-flex align-center gap-1">
+                                            <MudIcon Icon="@Icons.Material.Filled.MonitorHeart" Color="Color.Success" Size="Size.Small" />
+                                            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                                                从左侧文件夹行的 <MudIcon Icon="@Icons.Material.Filled.MonitorHeart" Size="Size.Small" Class="mx-n1 sources-inline-icon" /> 按钮快速添加
+                                            </MudText>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <MudList T="string" Dense="true" DisablePadding="true" Class="mt-1">
+                                    @foreach (var folder in _sourceConfig.WatchFolders)
+                                    {
+                                        <div class="sources-watch-item">
+                                            <div class="d-flex align-center">
+                                                <MudIcon Icon="@Icons.Material.Filled.Folder" Color="Color.Success" Size="Size.Small" Class="mr-2" />
+                                                <MudText Typo="Typo.body2" Class="sources-folder-path">
+                                                    @folder
+                                                </MudText>
+                                                <MudTooltip Text="移除监控">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                 Color="Color.Error" Size="Size.Small"
+                                                                 aria-label="@($"移除监控 {folder}")"
+                                                                 OnClick="@(() => OnDeleteFolder(folder))" />
+                                                </MudTooltip>
+                                            </div>
+                                        </div>
+                                    }
+                                </MudList>
+                            }
+                        </div>
+
+                        <!-- 添加按钮 -->
+                        <div class="sources-watch-footer">
+                            <MudButton OnClick="OnAddFolder"
+                                     StartIcon="@Icons.Material.Filled.CreateNewFolder"
+                                     IconColor="Color.Success"
+                                     Color="Color.Success"
+                                     Variant="Variant.Outlined"
+                                     FullWidth="true"
+                                     Class="py-2">
+                                添加新监控文件夹
+                            </MudButton>
+                        </div>
+                    </MudCard>
+                </MudItem>
+            </MudGrid>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    bool _saveProcessing;
+
+    private async Task OnAddFolder()
+    {
+        var parameters = new DialogParameters<FileExplorer>
+        {
+            { x => x.SelectFolderMode, FileSelectMode.Folder },
+            { x => x.AllowEdit, true },
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true,
+            CloseButton = true,
+        };
+
+        var dialog = await DialogService.ShowAsync<FileExplorer>("选择文件夹", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            var data = result.Data;
+            var selectedFolder = data?.ToString();
+            if (!string.IsNullOrEmpty(selectedFolder))
+                await _addSourceFolder(selectedFolder);
+            else
+                Snackbar.Add("选择文件夹格式错误", Severity.Error);
+        }
+    }
+
+    private async Task OnDeleteFolder(string folder)
+    {
+        var confirmed = await NineKgConfirmDialog.ShowAsync(
+            DialogService,
+            "取消监控文件夹",
+            "解除监控后，此文件夹下新增的文件不再自动成为媒体源。已入库的媒体不受影响。",
+            intent: ConfirmIntent.Destructive,
+            confirmText: "取消监控",
+            cancelText: "保持监控",
+            targetName: folder,
+            targetIcon: Icons.Material.Filled.FolderOff,
+            icon: Icons.Material.Filled.FolderDelete,
+            warningLine: "可以随时重新添加");
+
+        if (confirmed)
+        {
+            await _deleteSourceFolder(folder);
+        }
+    }
+
+    private async Task SaveConfig()
+    {
+        _saveProcessing = true;
+        try
+        {
+            await _saveConfig();
+        }
+        finally
+        {
+            _saveProcessing = false;
+        }
+    }
+
+    private string FormatDriveSize(long bytes)
+    {
+        var gb = (double)bytes / 1024 / 1024 / 1024;
+        return gb >= 1000 ? $"{gb / 1024:F1}TB" : $"{gb:F1}GB";
+    }
+}

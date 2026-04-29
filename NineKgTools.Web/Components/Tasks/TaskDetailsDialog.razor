@@ -1,0 +1,240 @@
+@using NineKgTools.Core.Models.Tasks
+@using NineKgTools.Core.Models.Tasks.Diagnostics
+@using NineKgTools.Core.Services.Progress
+@using NineKgTools.Utils
+@inject TaskProgressService ProgressService
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center">
+            <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2"/>
+            <MudText Typo="Typo.h6">任务详情</MudText>
+        </div>
+    </TitleContent>
+
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <div class="d-flex justify-center align-center py-8">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true"/>
+            </div>
+        }
+        else if (_taskProgress == null)
+        {
+            <MudAlert Severity="Severity.Warning">
+                无法找到任务信息，任务可能已完成或被清理。
+            </MudAlert>
+        }
+        else
+        {
+            <!-- 基础信息 -->
+            <MudPaper Class="pa-4 mb-3" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.h6" Class="mb-3">基础信息</MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="12">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">任务名称</MudText>
+                        <MudText Typo="Typo.body1">@_taskProgress.TaskName</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">任务ID</MudText>
+                        <MudText Typo="Typo.body2" Style="word-break: break-all;">@_taskProgress.TaskId</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">任务状态</MudText>
+                        <MudChip T="string" Size="Size.Small" Color="@TaskUIHelper.GetStatusColor(_taskProgress.Status)">
+                            @TaskUIHelper.GetStatusText(_taskProgress.Status)
+                        </MudChip>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <!-- 进度信息 -->
+            @if (_taskProgress.Status == TaskExecutionStatus.Running)
+            {
+                <MudPaper Class="pa-4 mb-3" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.h6" Class="mb-3">进度信息</MudText>
+                    <MudProgressLinear Value="@_taskProgress.ProgressPercentage"
+                                      Color="Color.Primary"
+                                      Size="Size.Large"
+                                      Class="mb-2"/>
+                    <MudText Typo="Typo.h6" Align="Align.Center" Class="mb-3">
+                        @_taskProgress.ProgressPercentage.ToString("F1")%
+                    </MudText>
+
+                    @if (!string.IsNullOrEmpty(_taskProgress.CurrentPhase))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">当前阶段</MudText>
+                        <MudText Typo="Typo.body1" Class="mb-2">@_taskProgress.CurrentPhase</MudText>
+                    }
+
+                    @if (!string.IsNullOrEmpty(_taskProgress.CurrentMessage))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">当前消息</MudText>
+                        <MudText Typo="Typo.body1">@_taskProgress.CurrentMessage</MudText>
+                    }
+                </MudPaper>
+            }
+
+            <!-- 统计信息 -->
+            @if (_taskProgress.TotalItems > 0)
+            {
+                <MudPaper Class="pa-4 mb-3" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.h6" Class="mb-3">统计信息</MudText>
+                    <MudGrid Spacing="2">
+                        <MudItem xs="4">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">总数</MudText>
+                            <MudText Typo="Typo.h5">@_taskProgress.TotalItems</MudText>
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">已处理</MudText>
+                            <MudText Typo="Typo.h5" Color="Color.Primary">@_taskProgress.ProcessedItems</MudText>
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">失败</MudText>
+                            <MudText Typo="Typo.h5" Color="@(_taskProgress.FailedItems > 0 ? Color.Error : Color.Default)">
+                                @_taskProgress.FailedItems
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            }
+
+            <!-- 时间信息 -->
+            <MudPaper Class="pa-4 mb-3" Elevation="0" Outlined="true">
+                <MudText Typo="Typo.h6" Class="mb-3">时间信息</MudText>
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">开始时间</MudText>
+                        <MudText Typo="Typo.body1">@TaskUIHelper.FormatDateTime(_taskProgress.StartTime)</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">结束时间</MudText>
+                        <MudText Typo="Typo.body1">@TaskUIHelper.FormatDateTime(_taskProgress.EndTime)</MudText>
+                    </MudItem>
+                    @if (_taskProgress.EstimatedTimeRemaining.HasValue)
+                    {
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">预计剩余时间</MudText>
+                            <MudText Typo="Typo.body1">@TaskUIHelper.FormatTimeSpan(_taskProgress.EstimatedTimeRemaining)</MudText>
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudPaper>
+
+            <!-- 执行日志 -->
+            @if (_taskProgress.LogEntries.Any())
+            {
+                <MudExpansionPanel Text="@($"执行日志 ({_taskProgress.LogEntries.Count})")" Icon="@Icons.Material.Filled.Description"
+                                   IsInitiallyExpanded="false" Class="mb-3">
+                    <TaskLogViewer LogEntries="@_taskProgress.LogEntries" Style="max-height: 300px;"/>
+                </MudExpansionPanel>
+            }
+
+            <!-- 识别诊断（仅识别类任务有） -->
+            @if (_taskProgress.IdentificationDiagnostics is { } diag)
+            {
+                <MudPaper Class="pa-4 mb-3" Elevation="0" Outlined="true">
+                    <div class="d-flex align-center mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Insights" Color="Color.Info" Class="mr-2"/>
+                        <MudText Typo="Typo.h6">识别诊断</MudText>
+                    </div>
+                    <IdentificationDiagnosticsView Diagnostics="diag"/>
+                </MudPaper>
+            }
+
+            <!-- 子任务信息 -->
+            @if (_taskProgress.IsParentTask && _taskProgress.ChildTasks.Any())
+            {
+                <MudPaper Class="pa-4 mb-3" Elevation="0" Outlined="true">
+                    <MudText Typo="Typo.h6" Class="mb-3">
+                        子任务信息 (@_taskProgress.ChildrenStats.TotalCount 个)
+                    </MudText>
+
+                    <MudGrid Spacing="2" Class="mb-3">
+                        <MudItem xs="3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">运行中</MudText>
+                            <MudText Typo="Typo.h6" Color="Color.Primary">@_taskProgress.ChildrenStats.RunningCount</MudText>
+                        </MudItem>
+                        <MudItem xs="3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">待处理</MudText>
+                            <MudText Typo="Typo.h6">@_taskProgress.ChildrenStats.PendingCount</MudText>
+                        </MudItem>
+                        <MudItem xs="3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">成功</MudText>
+                            <MudText Typo="Typo.h6" Color="Color.Success">@_taskProgress.ChildrenStats.SucceededCount</MudText>
+                        </MudItem>
+                        <MudItem xs="3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">失败</MudText>
+                            <MudText Typo="Typo.h6" Color="Color.Error">@_taskProgress.ChildrenStats.FailedCount</MudText>
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudDivider Class="my-3"/>
+
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">子任务列表</MudText>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        @foreach (var child in _taskProgress.ChildTasks)
+                        {
+                            <MudPaper Class="pa-2 mb-2" Elevation="1">
+                                <div class="d-flex align-center">
+                                    <MudText Typo="Typo.body2" Class="flex-grow-1">@child.TaskName</MudText>
+                                    <MudChip T="string" Size="Size.Small" Color="@TaskUIHelper.GetStatusColor(child.Status)">
+                                        @TaskUIHelper.GetStatusText(child.Status)
+                                    </MudChip>
+                                </div>
+                                @if (child.Status == TaskExecutionStatus.Running)
+                                {
+                                    <MudProgressLinear Value="@child.ProgressPercentage"
+                                                      Color="Color.Primary"
+                                                      Size="Size.Small"
+                                                      Class="mt-1"/>
+                                }
+                            </MudPaper>
+                        }
+                    </div>
+                </MudPaper>
+            }
+        }
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton OnClick="Close" Color="Color.Primary" Variant="Variant.Filled">
+            关闭
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public string TaskId { get; set; } = null!;
+
+    private TaskProgress? _taskProgress;
+    private bool _isLoading = true;
+
+    protected override void OnInitialized()
+    {
+        LoadTaskDetails();
+    }
+
+    private void LoadTaskDetails()
+    {
+        try
+        {
+            _isLoading = true;
+            _taskProgress = ProgressService.GetTaskTree(TaskId);
+        }
+        catch (Exception)
+        {
+            _taskProgress = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void Close()
+    {
+        MudDialog.Close();
+    }
+}

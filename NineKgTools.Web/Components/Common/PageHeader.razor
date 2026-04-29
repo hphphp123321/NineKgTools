@@ -1,0 +1,30 @@
+@using MudBlazor
+
+<MudCard Elevation="4" Class="card-base card-header mb-4">
+    <MudCardContent>
+        <div class="d-flex align-center page-header-row">
+            <div class="d-flex align-center flex-grow-1">
+                <MudAvatar Size="Size.Large" Color="@IconColor" Class="mr-4 header-icon">
+                    <MudIcon Icon="@Icon" Size="Size.Large"/>
+                </MudAvatar>
+                <div>
+                    <MudText Typo="@TitleTypo" Class="card-title mb-1">@Title</MudText>
+                    @if (SubtitleContent != null)
+                    {
+                        @SubtitleContent
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body1" Class="card-subtitle">@Subtitle</MudText>
+                    }
+                </div>
+            </div>
+            @if (Actions != null)
+            {
+                <div class="d-flex gap-3 page-header-actions">
+                    @Actions
+                </div>
+            }
+        </div>
+    </MudCardContent>
+</MudCard>

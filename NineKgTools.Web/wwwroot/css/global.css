@@ -1,0 +1,162 @@
+/* ==============================================
+   全局基础样式
+   项目级别的通用样式定义
+   ============================================== */
+
+/* 玻璃形态效果 */
+.frosted-glass {
+    position: relative;
+    backdrop-filter: blur(var(--blur-lg));
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+}
+
+/* AppBar 底部渐变发光线 */
+.mud-appbar.frosted-glass::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(139, 127, 255, 0.6) 20%,
+        rgba(192, 132, 252, 0.8) 50%,
+        rgba(139, 127, 255, 0.6) 80%,
+        transparent 100%
+    );
+    pointer-events: none;
+}
+
+/* 侧边栏渐变光晕 + 右侧微边线 */
+.mud-drawer .mud-drawer-content {
+    background: radial-gradient(
+        ellipse 200px 200px at 50% 0%,
+        rgba(139, 127, 255, 0.08) 0%,
+        transparent 70%
+    ), var(--mud-palette-drawer-background);
+    border-right: 1px solid rgba(139, 127, 255, 0.08);
+}
+
+/* NavLink active 状态：渐变背景 + 左侧发光条 */
+.mud-nav-link.active {
+    background: linear-gradient(
+        90deg,
+        rgba(139, 127, 255, 0.18) 0%,
+        rgba(139, 127, 255, 0.06) 100%
+    ) !important;
+    border-left: 3px solid rgba(139, 127, 255, 0.9) !important;
+}
+
+.mud-nav-link.active .mud-icon-root {
+    color: #a99fff !important;
+    filter: drop-shadow(0 0 4px rgba(139, 127, 255, 0.5));
+}
+
+/* NavLink hover 状态 */
+.mud-nav-link:not(.active):hover {
+    background: rgba(139, 127, 255, 0.07) !important;
+    transition: background var(--transition-fast);
+}
+
+/* 主内容区背景点阵纹理（极低透明度） */
+.mud-main-content::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(139, 127, 255, 0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(139, 127, 255, 0.25);
+    border-radius: var(--radius-full);
+    transition: background var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(139, 127, 255, 0.5);
+}
+
+/* 选中文字颜色 */
+::selection {
+    background: rgba(139, 127, 255, 0.35);
+    color: inherit;
+}
+
+/* 焦点样式（无障碍 + 紫色主题统一） */
+*:focus-visible {
+    outline: 2px solid rgba(139, 127, 255, 0.7);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+/* 粘性定位工具类 */
+.affix-top {
+    position: sticky;
+    top: 60px;
+    backdrop-filter: blur(var(--blur-lg));
+    z-index: var(--z-sticky);
+}
+
+/* 边框发光效果 */
+.border-box-success {
+    border: var(--border-width-medium) solid var(--mud-palette-success);
+    box-shadow: var(--glow-success);
+    background-color: transparent;
+    animation: glowSuccess 0.75s infinite alternate;
+}
+
+.border-box-error {
+    border: var(--border-width-medium) solid var(--mud-palette-error);
+    box-shadow: var(--glow-error);
+    background-color: transparent;
+    animation: glowError 0.75s infinite alternate;
+}
+
+/* 页面标题卡片样式 - 迁移到cards.css */
+/* 这些样式已迁移到 /css/components/cards.css */
+
+/* 媒体卡片和动画样式已迁移 */
+/* 媒体卡片样式已迁移到 /css/components/cards.css */
+/* 动画效果已迁移到 /css/components/animations.css */
+
+/* 边框、动画和组件样式已迁移 */
+/* 边框效果已迁移到 /css/utilities.css */
+/* 动画效果已迁移到 /css/components/animations.css */
+/* 卡片和标签样式已迁移到对应组件文件 */
+
+/* 响应式容器 */
+.responsive-container {
+    width: 100%;
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-slow);
+}
+
+@media (max-width: 600px) {
+    .responsive-container {
+        padding: var(--spacing-sm);
+    }
+}
+
+/* 圆角图片 */
+.rounded-image {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+} 

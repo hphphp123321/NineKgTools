@@ -1,0 +1,56 @@
+@* 
+    Tip组件 - 用于显示提示信息的问号图标
+    支持悬停和点击显示提示内容
+*@
+
+@using MudBlazor
+@inherits ComponentBase
+
+<MudTooltip Text="@Text" Placement="@Placement" Arrow="true" Delay="300">
+    <MudIconButton Icon="@Icons.Material.Filled.HelpOutline"
+                   Size="@IconSize"
+                   Color="@IconColor"
+                   Class="@($"tip-icon {Class}".Trim())"
+                   Style="@Style"
+                   aria-label="@(string.IsNullOrEmpty(Text) ? "提示" : Text)"
+                   OnClick="@OnClick" />
+</MudTooltip>
+
+@* 所有样式已迁移到 /css/components/common.css *@
+
+@code {
+    /// <summary>
+    /// 提示文本内容
+    /// </summary>
+    [Parameter] public string Text { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 提示显示位置
+    /// </summary>
+    [Parameter] public Placement Placement { get; set; } = Placement.Top;
+
+    /// <summary>
+    /// 图标大小
+    /// </summary>
+    [Parameter] public Size IconSize { get; set; } = Size.Small;
+
+    /// <summary>
+    /// 图标颜色
+    /// </summary>
+    [Parameter] public Color IconColor { get; set; } = Color.Default;
+
+    /// <summary>
+    /// 自定义CSS类
+    /// </summary>
+    [Parameter] public string Class { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 自定义样式
+    /// </summary>
+    [Parameter] public string Style { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 点击事件回调
+    /// </summary>
+    [Parameter] public EventCallback OnClick { get; set; }
+}

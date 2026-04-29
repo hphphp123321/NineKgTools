@@ -1,0 +1,182 @@
+@using MudBlazor
+@using NineKgTools.Core.Models.Favorites
+@using NineKgTools.Core.Services.Favorites
+@using Serilog
+@inject FavoriteService FavoriteService
+
+<div class="favorite-selector">
+    <MudPopover Open="@IsOpen" Fixed="true" TransformOrigin="Origin.BottomCenter" AnchorOrigin="Origin.TopCenter" Class="rounded-lg">
+        <MudPaper Elevation="3" Class="pa-4 rounded-lg" Style="min-width: 300px;">
+            <MudText Typo="Typo.h6" Class="mb-3 d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Bookmark" Class="mr-2" Color="Color.Secondary" />
+                收藏夹
+            </MudText>
+            
+            @if (_isLoading)
+            {
+                <div class="d-flex justify-center py-4">
+                    <MudProgressCircular Indeterminate="true" Color="Color.Secondary" />
+                </div>
+            }
+            else
+            {
+                <MudList T="Favorite" Clickable="true" Dense="true" DisableGutters="true" Class="mb-4 favorite-list">
+                    @foreach (var favorite in _allFavorites)
+                    {
+                        <MudListItem T="Favorite" Value="favorite" Class="px-2 py-1 rounded-lg favorite-item">
+                            <div class="d-flex align-center">
+                                <MudCheckBox T="bool" 
+                                            Color="Color.Secondary"
+                                            ValueChanged="@(async (bool value) => await ToggleFavorite(favorite, value))"
+                                            Value="@(_selectedFavoriteIds.Contains(favorite.Id))" />
+                                <MudText Typo="Typo.body1" Class="ml-2">@favorite.Name</MudText>
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+
+                @if (!HideCreateNew)
+                {
+                    <MudDivider Class="mb-4" />
+
+                    <MudTextField @bind-Value="_newFavoriteName"
+                                 Label="新建收藏夹"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 Adornment="Adornment.End"
+                                 AdornmentIcon="@Icons.Material.Filled.Add"
+                                 OnAdornmentClick="AddNewFavorite"
+                                 OnKeyUp="@HandleKeyPress"
+                                 Class="mb-3" />
+                }
+            }
+            
+            <div class="d-flex justify-end mt-3">
+                <MudButton Color="Color.Secondary" 
+                          Variant="Variant.Text" 
+                          OnClick="@(() => IsOpen = false)">
+                    关闭
+                </MudButton>
+            </div>
+        </MudPaper>
+    </MudPopover>
+   
+    @if (!SimpleMode)
+    {
+        <MudButton StartIcon="@(_mediaHasAnyFavorites ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)"
+                  Color="Color.Secondary"
+                  Variant="@(_mediaHasAnyFavorites ? Variant.Filled : Variant.Outlined)"
+                  OnClick="@(() => IsOpen = !IsOpen)"
+                  Class="favorite-button">
+            @(_mediaHasAnyFavorites ? "已收藏" : "收藏")
+        </MudButton>
+    }
+    else
+    {
+        <MudIconButton Icon="@(_mediaHasAnyFavorites ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)"
+                      Size="Size.Small"
+                      Color="Color.Secondary"
+                      Variant="@(_mediaHasAnyFavorites ? Variant.Filled : Variant.Outlined)"
+                      OnClick="@(() => IsOpen = !IsOpen)"
+                      aria-label="@(_mediaHasAnyFavorites ? "管理收藏" : "添加到收藏")"
+                      Class="favorite-icon-button pa-1">
+        </MudIconButton>
+    }
+</div>
+
+@* 所有样式已迁移到 /css/components/medias.css *@
+
+@code {
+    [Parameter]
+    public int MediaId { get; set; }
+
+    [Parameter]
+    public EventCallback OnFavoritesChanged { get; set; }
+
+    [Parameter]
+    public bool SimpleMode { get; set; } = false; // 是否简化显示模式
+
+    [Parameter]
+    public bool HideCreateNew { get; set; } = false; // 是否隐藏新建收藏夹功能
+    
+    private bool IsOpen { get; set; }
+    private bool _isLoading = true;
+    private string _newFavoriteName = "";
+    private List<Favorite> _allFavorites = new();
+    private HashSet<int> _selectedFavoriteIds = new();
+    private bool _mediaHasAnyFavorites => _selectedFavoriteIds.Count > 0;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadData();
+    }
+    
+    private async Task LoadData()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            // GetAllFavoritesAsync 已经 .Include(f => f.Medias)，关联数据在首次查询时就已加载。
+            // 之前的 foreach+GetMediaFavoritesAsync 循环是典型 N+1，N 个收藏夹触发 N+1 次数据库往返；
+            // 改为内存里过滤 already-loaded 的 Medias，整个 LoadData 降为单次查询。
+            _allFavorites = await FavoriteService.GetAllFavoritesAsync();
+
+            _selectedFavoriteIds = _allFavorites
+                .Where(f => f.Medias.Any(m => m.Id == MediaId))
+                .Select(f => f.Id)
+                .ToHashSet();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "加载收藏夹数据失败 MediaId={MediaId}", MediaId);
+            _selectedFavoriteIds = new HashSet<int>();
+        }
+
+        _isLoading = false;
+        StateHasChanged();
+    }
+    
+    private async Task ToggleFavorite(Favorite favorite, bool isChecked)
+    {
+        if (isChecked)
+        {
+            await FavoriteService.AddMediaToFavoriteAsync(favorite.Id, MediaId);
+            _selectedFavoriteIds.Add(favorite.Id);
+        }
+        else
+        {
+            await FavoriteService.RemoveMediaFromFavoriteAsync(favorite.Id, MediaId);
+            _selectedFavoriteIds.Remove(favorite.Id);
+        }
+        
+        await OnFavoritesChanged.InvokeAsync();
+        StateHasChanged();
+    }
+    
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await AddNewFavorite();
+        }
+    }
+    
+    private async Task AddNewFavorite()
+    {
+        if (string.IsNullOrWhiteSpace(_newFavoriteName))
+            return;
+            
+        var newFavorite = new Favorite { Name = _newFavoriteName };
+        await FavoriteService.AddFavoriteAsync(newFavorite);
+        
+        _newFavoriteName = "";
+        await LoadData();
+    }
+} 
