@@ -33,8 +33,8 @@ Database/*
 # 文件夹 VS Code
 .vscode/
 
-# Publish 产物（dotnet publish / scripts/publish/build-windows.*）
-publish/
+# dotnet publish 产物（仅根目录的 publish/，不影响 scripts/publish/ 等同名子目录）
+/publish/
 
 # Windows 图片缓存
 Thumbs.db

@@ -26,7 +26,7 @@ body:
     attributes:
       label: 版本
       description: NineKgTools 的版本号（git tag 或 commit hash）
-      placeholder: "v1.0.0 / commit abc1234"
+      placeholder: "v0.1.0 / commit abc1234"
     validations:
       required: true
 

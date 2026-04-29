@@ -29,9 +29,10 @@
 
 ---
 
-## [1.0.0] - 待定
+## [0.1.0] - 待定
 
 > 首次公开发布。发布前把"待定"改为实际日期（YYYY-MM-DD）。
+> 按 SemVer 0.x 表示 API 仍在迭代，破坏性变更在 0.2 / 0.3 等小版本里允许。
 
 ### Added
 
@@ -77,7 +78,7 @@
 #### 部署
 
 - Docker 容器化部署：多阶段 Dockerfile + docker-compose.yml + .env.example
-- **Windows 便携版**（self-contained single-file，~75 MB zip）：解压双击即用，不依赖系统 .NET 安装
+- **Windows 便携版**（self-contained multi-file + ReadyToRun，~120 MB zip）：解压双击即用，不依赖系统 .NET 安装；启动无解压等待
 - 启动账号默认 `admin / admin`，可通过 `NT_USER` / `NT_PASSWORD` 环境变量覆盖
 - GHCR 镜像自动发布（tag 触发）
 
@@ -96,11 +97,11 @@
 
 ### Notes
 
-- **桌面端（NineKgTools.Desktop, MAUI Blazor Hybrid）本版本编译通过但未发布二进制**，计划在 v1.1 以 Windows MSIX + portable zip 形式发布
+- **桌面端（NineKgTools.Desktop, MAUI Blazor Hybrid）本版本编译通过但未发布二进制**，计划在后续小版本里以 Windows MSIX + portable zip 形式发布
 - Docker 镜像不内置 Chromium（体积考量）；`config.yaml` 的 `dlsite.use_selenium_for_rating` 在容器内不可用，主流程用 HTML / REST API 直抓不受影响
 - 内置 `tags.yaml` 标签字典源自老版本 DLsite 网站爬取整理（含 R18 标签），用作一般媒体管理建议替换；详见 [`docs/reference/tags-yaml.md`](docs/reference/tags-yaml.md)
 
 ---
 
-[Unreleased]: https://github.com/hphphp123321/NineKgTools/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/hphphp123321/NineKgTools/releases/tag/v1.0.0
+[Unreleased]: https://github.com/hphphp123321/NineKgTools/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/hphphp123321/NineKgTools/releases/tag/v0.1.0

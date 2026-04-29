@@ -17,7 +17,7 @@
 
 services:
   web:
-    # 生产用：从 GHCR 拉镜像（v1.0.0 发布后可用）
+    # 生产用：从 GHCR 拉镜像（v0.1.0 发布后可用）
     image: ghcr.io/hphphp123321/nine-kg-tools:latest
     # 本地开发：注释掉 image，启用下面 build 段从源码构建
     # build:

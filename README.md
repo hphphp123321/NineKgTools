@@ -306,7 +306,7 @@ NineKgTools/
 
 ## 🗺 路线图
 
-### ✅ v1.0.0（首次公开发布）
+### ✅ v0.1.0（首次公开发布）
 - [x] 三大识别源（DLsite / Bangumi / Steam）
 - [x] 五类媒体的完整 CRUD + 搜索 + 标签
 - [x] Hangfire 任务系统 + 识别诊断
@@ -316,7 +316,7 @@ NineKgTools/
 - [x] Docker 容器化部署
 - [x] 自动化截图 CI 
 
-### 🚧 v1.1 规划中
+### 🚧 后续小版本规划
 - [ ] **桌面端发布**（MAUI Windows MSIX + portable zip）
 - [ ] **Chromium 变种镜像**（`ghcr.io/hphphp123321/ninekg-tools:full`），Selenium 抓取全可用
 - [ ] 新识别源
