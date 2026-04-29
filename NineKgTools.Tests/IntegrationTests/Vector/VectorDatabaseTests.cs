@@ -50,8 +50,10 @@ public class VectorDatabaseTests : IAsyncLifetime
         services.AddSingleton(_config);
         
         // 添加数据库上下文（使用内存数据库）
+        // 每个测试实例用独立的 db name —— xUnit 对每个 [Fact] 都会重新调 InitializeAsync，
+        // 共享名字会让 InitializeTestData 第二次插入 Id=1 的 TopTag 时撞 "key 已存在"
         services.AddDbContext<MediaDbContext>(options =>
-            options.UseInMemoryDatabase("TestDb"));
+            options.UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString()));
         
         // 添加向量数据库服务（如果启用）
         if (_config.Ai?.UseAi == true && _config.Ai?.Vector?.Enable == true && _config.Ai?.Vector?.Db != null)
