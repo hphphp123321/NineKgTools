@@ -16,7 +16,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim AS build
 WORKDIR /src
 
-# 利用 Docker 层缓存：先复制 csproj 做 restore，再复制源码做 build
+# 利用 Docker 层缓存：先复制 csproj + Directory.Build.props 做 restore，再复制源码做 build
+# Directory.Build.props 必须 COPY——里面有全局 ImplicitUsings / Nullable 开关，
+# 缺了它源码大量 BCL 类型（List<> / Task<> / CancellationToken 等）都会编译失败
+COPY ["Directory.Build.props", "./"]
 COPY ["NineKgTools.Core/NineKgTools.Core.csproj", "NineKgTools.Core/"]
 COPY ["NineKgTools.Web/NineKgTools.Web.csproj",   "NineKgTools.Web/"]
 
