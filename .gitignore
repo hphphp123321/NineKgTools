@@ -138,6 +138,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 package-lock.json
+# 例外：截图脚本的 lock 文件要进版本控制（CI setup-node@v4 cache 依赖它）
+!scripts/screenshots/package-lock.json
 
 # Playwright 截图任务（scripts/screenshots/）
 scripts/screenshots/auth.json
