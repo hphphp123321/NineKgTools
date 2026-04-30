@@ -15,19 +15,28 @@
 
 ## 刷新截图
 
+**推荐（CI 自动跑 + push 回 main）**：去 [Actions → Screenshots](https://github.com/hphphp123321/NineKgTools/actions/workflows/screenshots.yml) 点 "Run workflow"，或：
+
+```bash
+gh workflow run screenshots.yml
+```
+
+跑完 CI 自动 commit 刷新的 PNG 回 main（commit message 带 `[skip ci]` 防递归）。
+
+**本地手动**：
+
 ```bash
 cd scripts/screenshots
 npm install
 npx playwright install chromium
-npx playwright test
+npm run capture
 ```
 
-详细脚本说明见 [`scripts/screenshots/README.md`](../../../scripts/screenshots/README.md)。
+详细脚本说明见 [`scripts/screenshots/README.md`](../../../scripts/screenshots/README.md)。CI workflow 配置见 [`.github/workflows/screenshots.yml`](../../../.github/workflows/screenshots.yml)。
 
 ## 规格
 
 - 视口：1440×900，`deviceScaleFactor: 2`（Retina 清晰）
-- 输出：PNG，`fullPage: true`
-- 主题：浅色（暗色模式变种暂未启用）
-
-> 当前截图占位 — 将在 v0.1.0 发布前由 CI 生成真实截图。
+- 输出：PNG，`fullPage: false`（仅截视口，避免长页面体积爆炸）
+- 主题：跟随系统（CI 上是 Linux Chromium 默认 light）
+- 字体：本地用 Windows 微软雅黑；CI 上用 `fonts-noto-cjk`，CJK 字形会跟本地不同（可接受）
