@@ -29,6 +29,8 @@ StyleCopReport.xml
 data/*
 Database/*
 *.db*
+# 例外：截图 CI 用的脱敏 demo 数据库要进版本控制
+!docs/assets/seed/demo.db
 
 # 文件夹 VS Code
 .vscode/
