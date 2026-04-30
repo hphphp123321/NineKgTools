@@ -30,12 +30,16 @@ public class ImageService(MediaDbContext dbContext, Config config, HttpService h
             return null;
         }
 
-        // 如果图片的本地文件路径不为空，表示图片存储在本地
+        // 优先级：本地文件（生产正常路径）→ 嵌入式 BLOB（demo seed / 历史导入数据）→ 远程 URL
         if (image.File != null && File.Exists(image.File.FullName))
         {
             return new FileStream(image.File.FullName, FileMode.Open, FileAccess.Read);
         }
 
+        if (image.Content is { Length: > 0 })
+        {
+            return new MemoryStream(image.Content);
+        }
 
         if (image.Url == null) return null;
 
