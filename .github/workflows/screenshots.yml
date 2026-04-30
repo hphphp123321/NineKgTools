@@ -67,13 +67,15 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Seed Database with demo data
-        # 把脱敏的 demo.db 复制成 NineKgTools.Web 启动时会读的路径
-        # 这样 CI 截图有真实的媒体卡片、社团、收藏夹，而不是空状态
+        # 把脱敏的 demo.db 复制成 NineKgTools.Web 启动时会读的路径。
+        # 注意：dotnet run --project NineKgTools.Web 会把进程 cwd 切到 NineKgTools.Web/，
+        # 所以 config.yaml 里的相对路径 "Database/database.db" 实际指
+        # NineKgTools.Web/Database/database.db —— 不是仓库根的 Database/。
         # 重新生成 demo.db 见 docs/assets/seed/README.md
         run: |
-          mkdir -p Database
-          cp docs/assets/seed/demo.db Database/database.db
-          ls -lh Database/database.db
+          mkdir -p NineKgTools.Web/Database
+          cp docs/assets/seed/demo.db NineKgTools.Web/Database/database.db
+          ls -lh NineKgTools.Web/Database/database.db
 
       - name: Run capture
         working-directory: scripts/screenshots
