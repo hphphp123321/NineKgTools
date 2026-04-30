@@ -101,9 +101,15 @@ public class Config
         }
 
         var targetPath = Path.Combine(dir, "config.yaml");
-        if (!File.Exists(targetPath))
+        try
         {
-            File.Copy(examplePath, targetPath);
+            // overwrite:false——文件已存在直接抛 IOException
+            File.Copy(examplePath, targetPath, overwrite: false);
+        }
+        catch (IOException) when (File.Exists(targetPath))
+        {
+            // 并发安全：xUnit 默认 test class 间并行，多测试同时 InitConfig 时
+            // File.Exists+File.Copy 之间会有竞态，输给其他线程没关系，沿用就好
         }
         return targetPath;
     }
