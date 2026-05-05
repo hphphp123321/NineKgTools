@@ -1,8 +1,8 @@
 {
   "profiles": {
-    "Windows Machine": {
+    "NineKgTools.Desktop": {
       "commandName": "Project",
-      "nativeDebugging": false
+      "dotnetRunMessages": true
     }
   }
 }

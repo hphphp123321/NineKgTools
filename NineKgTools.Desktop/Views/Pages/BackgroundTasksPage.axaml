@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Pages"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="NineKgTools.Desktop.Views.Pages.BackgroundTasksPage"
+             x:DataType="vm:BackgroundTasksViewModel">
+    <StackPanel Margin="32,24,32,32" Spacing="16">
+        <TextBlock Text="任务" Theme="{StaticResource TitleLargeTextBlockStyle}" />
+        <ui:InfoBar Severity="Informational" IsOpen="True" IsClosable="False"
+                    Title="Phase 1.4 待实现"
+                    Message="状态过滤 chip + 任务行卡片三态（运行 / 完成 / 失败）+ 实时进度 + 批量操作。" />
+    </StackPanel>
+</UserControl>

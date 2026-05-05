@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Pages"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="NineKgTools.Desktop.Views.Pages.CreatorsPage"
+             x:DataType="vm:CreatorsViewModel">
+    <StackPanel Margin="32,24,32,32" Spacing="16">
+        <TextBlock Text="创作者" Theme="{StaticResource TitleLargeTextBlockStyle}" />
+        <ui:InfoBar Severity="Informational" IsOpen="True" IsClosable="False"
+                    Title="Phase 2.5 待实现"
+                    Message="创作者 / 社团列表 + 详情 + 合并对话框。" />
+    </StackPanel>
+</UserControl>

@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Pages"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="NineKgTools.Desktop.Views.Pages.SourcesPage"
+             x:DataType="vm:SourcesViewModel">
+    <StackPanel Margin="32,24,32,32" Spacing="16">
+        <TextBlock Text="媒体源" Theme="{StaticResource TitleLargeTextBlockStyle}" />
+        <ui:InfoBar Severity="Informational" IsOpen="True" IsClosable="False"
+                    Title="后续 Phase 实现"
+                    Message="监视文件夹列表 + 添加/删除 + 拖拽接收（Phase 3 任务 2）。" />
+    </StackPanel>
+</UserControl>

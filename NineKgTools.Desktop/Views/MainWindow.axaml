@@ -1,0 +1,89 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:NineKgTools.Desktop.ViewModels"
+        xmlns:ui="using:FluentAvalonia.UI.Controls"
+        mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
+        x:Class="NineKgTools.Desktop.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="NineKgTools"
+        Width="1280" Height="800"
+        MinWidth="640" MinHeight="480"
+        TransparencyLevelHint="Mica,AcrylicBlur,Blur"
+        Background="Transparent">
+
+    <ui:NavigationView x:Name="NavView"
+                       PaneDisplayMode="Auto"
+                       CompactModeThresholdWidth="640"
+                       ExpandedModeThresholdWidth="1008"
+                       OpenPaneLength="240"
+                       IsBackButtonVisible="False"
+                       IsSettingsVisible="True"
+                       PaneTitle="NineKgTools"
+                       SelectionChanged="OnNavigationSelectionChanged">
+
+        <ui:NavigationView.MenuItems>
+            <ui:NavigationViewItem Content="首页" Tag="HomeViewModel" IsSelected="True">
+                <ui:NavigationViewItem.IconSource>
+                    <ui:PathIconSource Data="{StaticResource IconHome}" />
+                </ui:NavigationViewItem.IconSource>
+            </ui:NavigationViewItem>
+
+            <ui:NavigationViewItem Content="媒体库" Tag="MediaOverviewViewModel">
+                <ui:NavigationViewItem.IconSource>
+                    <ui:PathIconSource Data="{StaticResource IconLibrary}" />
+                </ui:NavigationViewItem.IconSource>
+            </ui:NavigationViewItem>
+
+            <ui:NavigationViewItem Content="待处理" Tag="PendingMediaViewModel">
+                <ui:NavigationViewItem.IconSource>
+                    <ui:PathIconSource Data="{StaticResource IconInbox}" />
+                </ui:NavigationViewItem.IconSource>
+            </ui:NavigationViewItem>
+
+            <ui:NavigationViewItem Content="媒体源" Tag="SourcesViewModel">
+                <ui:NavigationViewItem.IconSource>
+                    <ui:PathIconSource Data="{StaticResource IconFolderOpen}" />
+                </ui:NavigationViewItem.IconSource>
+            </ui:NavigationViewItem>
+
+            <ui:NavigationViewItem Content="任务" Tag="BackgroundTasksViewModel">
+                <ui:NavigationViewItem.IconSource>
+                    <ui:PathIconSource Data="{StaticResource IconTasks}" />
+                </ui:NavigationViewItem.IconSource>
+            </ui:NavigationViewItem>
+
+            <ui:NavigationViewItemSeparator />
+
+            <ui:NavigationViewItem Content="标签" Tag="TagsViewModel">
+                <ui:NavigationViewItem.IconSource>
+                    <ui:PathIconSource Data="{StaticResource IconTags}" />
+                </ui:NavigationViewItem.IconSource>
+            </ui:NavigationViewItem>
+
+            <ui:NavigationViewItem Content="创作者" Tag="CreatorsViewModel">
+                <ui:NavigationViewItem.IconSource>
+                    <ui:PathIconSource Data="{StaticResource IconCreators}" />
+                </ui:NavigationViewItem.IconSource>
+            </ui:NavigationViewItem>
+
+            <ui:NavigationViewItem Content="收藏夹" Tag="FavoritesViewModel">
+                <ui:NavigationViewItem.IconSource>
+                    <ui:PathIconSource Data="{StaticResource IconStar}" />
+                </ui:NavigationViewItem.IconSource>
+            </ui:NavigationViewItem>
+
+            <ui:NavigationViewItem Content="网站" Tag="WebsitesViewModel">
+                <ui:NavigationViewItem.IconSource>
+                    <ui:PathIconSource Data="{StaticResource IconWeb}" />
+                </ui:NavigationViewItem.IconSource>
+            </ui:NavigationViewItem>
+        </ui:NavigationView.MenuItems>
+
+        <!-- 主内容区：ViewLocator 自动把 PageViewModelBase 渲染为对应 View -->
+        <ContentControl Content="{Binding CurrentPage}" />
+
+    </ui:NavigationView>
+
+</Window>

@@ -1,0 +1,26 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fluent="using:FluentAvalonia.Styling"
+             xmlns:local="using:NineKgTools.Desktop"
+             xmlns:conv="using:NineKgTools.Desktop.Converters"
+             x:Class="NineKgTools.Desktop.App"
+             RequestedThemeVariant="Default">
+    <Application.DataTemplates>
+        <local:ViewLocator />
+    </Application.DataTemplates>
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://NineKgTools.Desktop/Themes/BrandResources.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <conv:BitmapAsyncConverter x:Key="BitmapAsyncConverter" />
+        </ResourceDictionary>
+    </Application.Resources>
+    <Application.Styles>
+        <fluent:FluentAvaloniaTheme PreferUserAccentColor="True" />
+        <!-- 全局把字体切换到 Inter（比 Segoe UI 更具品牌识别度，与 Win11 Fluent 兼容） -->
+        <Style Selector="Window">
+            <Setter Property="FontFamily" Value="{StaticResource BrandFontFamily}" />
+        </Style>
+    </Application.Styles>
+</Application>

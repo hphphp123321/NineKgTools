@@ -1,0 +1,227 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Pages"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="NineKgTools.Desktop.Views.Pages.HomePage"
+             x:DataType="vm:HomeViewModel">
+
+    <UserControl.Styles>
+        <!-- Stat card hover：抬高 2px + 加深阴影 + 边框颜色更明显 -->
+        <Style Selector="Border.stat-card">
+            <Setter Property="Background" Value="{DynamicResource LayerFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="{StaticResource OverlayCornerRadius}" />
+            <Setter Property="Padding" Value="24" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.stat-card:pointerover">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+            <Setter Property="RenderTransform" Value="translateY(-2px)" />
+        </Style>
+
+        <!-- Category swatch card：每张卡用自己的类别色作背景 + 边框 -->
+        <Style Selector="Border.cat-card">
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="CornerRadius" Value="{StaticResource OverlayCornerRadius}" />
+            <Setter Property="Padding" Value="16,14" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.cat-card:pointerover">
+            <Setter Property="RenderTransform" Value="translateY(-2px) scale(1.02)" />
+        </Style>
+    </UserControl.Styles>
+
+    <ScrollViewer>
+        <StackPanel Margin="32,24,32,32" Spacing="28">
+
+            <!-- ========== 标题区，带 Hero 渐变背景 ========== -->
+            <Border Padding="32,28"
+                    CornerRadius="{StaticResource BrandLargeCornerRadius}"
+                    Background="{DynamicResource BrandHeroGradient}">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="首页"
+                               Theme="{StaticResource TitleLargeTextBlockStyle}"
+                               FontWeight="SemiBold" />
+                    <TextBlock Text="欢迎回来，下面是你的库概览。"
+                               Theme="{StaticResource BodyTextBlockStyle}"
+                               Opacity="0.75" />
+                </StackPanel>
+            </Border>
+
+            <!-- ========== 统计卡片栏（3 列） ========== -->
+            <Grid ColumnDefinitions="*,16,*,16,*">
+
+                <Border Grid.Column="0" Classes="stat-card">
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource IconLibrary}" Width="18" Height="18"
+                                         Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+                            <TextBlock Text="媒体总数" Opacity="0.7" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding MediaCount}"
+                                   Theme="{StaticResource DisplayTextBlockStyle}"
+                                   FontWeight="SemiBold" />
+                        <TextBlock Text="点击进入媒体库" Opacity="0.5" FontSize="12" />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="2" Classes="stat-card">
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource IconInbox}" Width="18" Height="18"
+                                         Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                            <TextBlock Text="待识别" Opacity="0.7" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding PendingIdentifyCount}"
+                                   Theme="{StaticResource DisplayTextBlockStyle}"
+                                   FontWeight="SemiBold" />
+                        <TextBlock Text="（待 Phase 1.5 接入）" Opacity="0.5" FontSize="12" />
+                    </StackPanel>
+                </Border>
+
+                <Border Grid.Column="4" Classes="stat-card">
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource IconTasks}" Width="18" Height="18"
+                                         Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
+                            <TextBlock Text="待入库" Opacity="0.7" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding PendingDatabaseCount}"
+                                   Theme="{StaticResource DisplayTextBlockStyle}"
+                                   FontWeight="SemiBold" />
+                        <TextBlock Text="（待 Phase 1.5 接入）" Opacity="0.5" FontSize="12" />
+                    </StackPanel>
+                </Border>
+
+            </Grid>
+
+            <!-- ========== 媒体类型预览（5 类别色系展示） ========== -->
+            <StackPanel Spacing="12">
+                <TextBlock Text="媒体类型"
+                           Theme="{StaticResource SubtitleTextBlockStyle}"
+                           FontWeight="SemiBold" />
+
+                <Grid ColumnDefinitions="*,12,*,12,*,12,*,12,*">
+
+                    <Border Grid.Column="0" Classes="cat-card"
+                            Background="{DynamicResource BrandCategoryVideoFillBrush}"
+                            BorderBrush="{DynamicResource BrandCategoryVideoBrush}">
+                        <StackPanel Spacing="8" HorizontalAlignment="Center">
+                            <PathIcon Data="{StaticResource IconCategoryVideo}" Width="24" Height="24"
+                                         Foreground="{DynamicResource BrandCategoryVideoBrush}" />
+                            <TextBlock Text="视频" HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource BrandCategoryVideoBrush}"
+                                       FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2" Classes="cat-card"
+                            Background="{DynamicResource BrandCategoryAudioFillBrush}"
+                            BorderBrush="{DynamicResource BrandCategoryAudioBrush}">
+                        <StackPanel Spacing="8" HorizontalAlignment="Center">
+                            <PathIcon Data="{StaticResource IconCategoryAudio}" Width="24" Height="24"
+                                         Foreground="{DynamicResource BrandCategoryAudioBrush}" />
+                            <TextBlock Text="音频" HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource BrandCategoryAudioBrush}"
+                                       FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="4" Classes="cat-card"
+                            Background="{DynamicResource BrandCategoryGameFillBrush}"
+                            BorderBrush="{DynamicResource BrandCategoryGameBrush}">
+                        <StackPanel Spacing="8" HorizontalAlignment="Center">
+                            <PathIcon Data="{StaticResource IconCategoryGame}" Width="24" Height="24"
+                                         Foreground="{DynamicResource BrandCategoryGameBrush}" />
+                            <TextBlock Text="游戏" HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource BrandCategoryGameBrush}"
+                                       FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="6" Classes="cat-card"
+                            Background="{DynamicResource BrandCategoryPictureFillBrush}"
+                            BorderBrush="{DynamicResource BrandCategoryPictureBrush}">
+                        <StackPanel Spacing="8" HorizontalAlignment="Center">
+                            <PathIcon Data="{StaticResource IconCategoryPicture}" Width="24" Height="24"
+                                         Foreground="{DynamicResource BrandCategoryPictureBrush}" />
+                            <TextBlock Text="图片" HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource BrandCategoryPictureBrush}"
+                                       FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="8" Classes="cat-card"
+                            Background="{DynamicResource BrandCategoryTextFillBrush}"
+                            BorderBrush="{DynamicResource BrandCategoryTextBrush}">
+                        <StackPanel Spacing="8" HorizontalAlignment="Center">
+                            <PathIcon Data="{StaticResource IconCategoryText}" Width="24" Height="24"
+                                         Foreground="{DynamicResource BrandCategoryTextBrush}" />
+                            <TextBlock Text="文本" HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource BrandCategoryTextBrush}"
+                                       FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Border>
+
+                </Grid>
+            </StackPanel>
+
+            <!-- ========== Phase 1.7 对话框预览 ========== -->
+            <StackPanel Spacing="12">
+                <TextBlock Text="对话框预览（Phase 1.7）"
+                           Theme="{StaticResource SubtitleTextBlockStyle}"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="点击按钮查看 4 种 Intent 的视觉差异——后续删除/批量操作页面都会复用这套对话框。"
+                           Opacity="0.7" FontSize="13" TextWrapping="Wrap" />
+
+                <Grid ColumnDefinitions="*,12,*,12,*,12,*">
+                    <Button Grid.Column="0" Command="{Binding ShowInfoDialogCommand}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="ⓘ" FontSize="16" HorizontalAlignment="Center" />
+                            <TextBlock Text="Info" HorizontalAlignment="Center" FontSize="12" />
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="2" Command="{Binding ShowAffirmativeDialogCommand}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="✓" FontSize="16" HorizontalAlignment="Center" />
+                            <TextBlock Text="Affirmative" HorizontalAlignment="Center" FontSize="12" />
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="4" Command="{Binding ShowDestructiveDialogCommand}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="⚠" FontSize="16" HorizontalAlignment="Center" />
+                            <TextBlock Text="Destructive" HorizontalAlignment="Center" FontSize="12" />
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="6" Command="{Binding ShowDestructiveBatchDialogCommand}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="⚠×N" FontSize="16" HorizontalAlignment="Center" />
+                            <TextBlock Text="DestructiveBatch" HorizontalAlignment="Center" FontSize="12" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </StackPanel>
+
+            <!-- ========== Phase 状态提示 ========== -->
+            <ui:InfoBar Severity="Informational" IsOpen="True" IsClosable="False"
+                        Title="Phase 1.1 / 1.6 / 1.7 / 1.8 / 1.9 已完成"
+                        Message="主窗框架 + Hangfire 持久化 + 共享对话框 + 视觉 token + 图片 LRU 缓存。后续 Phase 1.2–1.5 接入业务页面。" />
+
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>

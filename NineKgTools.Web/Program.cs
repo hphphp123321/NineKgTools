@@ -1,40 +1,23 @@
 using System.Net;
-using NineKgTools.Core.DbContexts;
-using NineKgTools.Core.Services;
+using NineKgTools.Core.Hosting;
 using NineKgTools.Core.Services.Auth;
-using NineKgTools.Core.Services.Configs;
-using NineKgTools.Core.Services.Files;
-using NineKgTools.Core.Services.Logger;
 using MudBlazor.Services;
 using Hangfire;
 using Hangfire.MemoryStorage;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.FileProviders;
 using MudBlazor;
 using NineKgTools;
 using NineKgTools.Auth;
 using Serilog;
 
-// 创建 Config 实例并同步初始化配置
-var config = new Config();
-config.InitConfig().GetAwaiter().GetResult(); // 使用 GetAwaiter().GetResult() 避免死锁
-
-var logger = new LoggerService(config);
-logger.ConfigureLogger();
-Log.Information("初始化日志完成");
-
+// Config + Logger 由 AppBootstrap 统一初始化（与 Desktop 共享）
+var config = await AppBootstrap.InitializeConfigAsync();
+var logger = AppBootstrap.ConfigureLogger(config);
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
-
-// 注册 Config 服务
-builder.Services.AddSingleton<Config>(_ => config);
-
-// 注册日志
-builder.Services.AddSingleton<LoggerService>(_ => logger);
 
 // 配置端口等信息
 builder.WebHost.ConfigureKestrel(serverOptions =>
@@ -42,29 +25,8 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     serverOptions.Listen(IPAddress.Parse(config.App.WebHost), config.App.WebPort);
 });
 
-// 从配置文件获取连接字符串
-var connectionString = config.Database.GetConnectionString();
-
-// 确保数据库文件夹存在
-var dbPath = config.Database.Path;
-var dbDir = Path.GetDirectoryName(dbPath);
-if (!string.IsNullOrEmpty(dbDir))
-{
-    Directory.CreateDirectory(dbDir);
-}
-
-builder.Services.AddDbContext<MediaDbContext>(options =>
-        options.UseSqlite(connectionString,
-                o => o.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
-            .EnableSensitiveDataLogging()
-    , contextLifetime: ServiceLifetime.Scoped);
-
-// 为并发操作注册 DbContextFactory（Blazor 组件中使用 Task.WhenAll 时需要）
-builder.Services.AddDbContextFactory<MediaDbContext>(options =>
-        options.UseSqlite(connectionString,
-                o => o.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
-            .EnableSensitiveDataLogging()
-    , lifetime: ServiceLifetime.Scoped);
+// 注册 Config / Logger / MediaDbContext / 业务服务
+AppBootstrap.ConfigureCoreServices(builder.Services, config, logger);
 
 // 配置hangfire后台服务
 // var hangfireConnectionString = builder.Configuration.GetConnectionString("HangfireConnection");
@@ -130,9 +92,8 @@ builder.Services.AddScoped(sp => new HttpClient
 builder.Services.AddControllers()
     .AddApplicationPart(typeof(NineKgTools.Core.Controllers.Auth.AuthController).Assembly);
 
-// 添加项目相关服务
+// 添加项目相关服务（业务服务由 AppBootstrap.ConfigureCoreServices 注册，这里只补 Web 特有项）
 builder.Services.AddHttpContextAccessor(); // 添加 HttpContextAccessor 支持本地/远程访问判断
-builder.Services.AddNineKgToolsService();
 
 // 添加认证服务
 builder.Services.AddSingleton<PasswordService>();
@@ -223,29 +184,15 @@ app.MapRazorComponents<App>()
 // 用于调试
 app.UseHangfireDashboard();
 
-// =====================================================================================================
-// 数据库 schema 初始化 / 迁移
-//   全部分支逻辑在 MediaDbContextMigrator.EnsureSchemaAsync：
-//     · 库不存在        → EnsureCreated + 把全部已知 migrations 标为已应用
-//     · 库存在但无 history → 旧版 EnsureCreated 库，盖 baseline（写满 history，不重跑 SQL）
-//     · 库存在且有 history → MigrateAsync 应用 pending
-//   环境变量：
-//     · NINEKG_RESET_DB=true        → 先删库再走"库不存在"分支
-//     · NINEKG_DB_AUTO_MIGRATE=false → 已有 history 时禁用自动 Migrate（生产手动控时机）
-//   团队加迁移流程：见 docs/development/README.md "数据库迁移" 章节
-// =====================================================================================================
+// 数据库 schema 迁移 + Core 业务初始化（标签/分类/收藏夹/媒体源/向量库等）
+// 全部分支逻辑见 NineKgTools.Core.Hosting.AppBootstrap.RunStartupAsync 与 MediaDbContextMigrator.EnsureSchemaAsync
+await AppBootstrap.RunStartupAsync(app.Services);
+
+// Web 端独有：初始化默认用户（认证服务）
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
-    var dbContext = services.GetRequiredService<MediaDbContext>();
-
-    await MediaDbContextMigrator.EnsureSchemaAsync(dbContext);
-
-    // 初始化默认用户
-    var userInitService = services.GetRequiredService<UserInitializationService>();
+    var userInitService = scope.ServiceProvider.GetRequiredService<UserInitializationService>();
     await userInitService.InitializeDefaultUserAsync();
-
-    await services.InitNineKgToolsService();
 }
 
 
@@ -253,11 +200,7 @@ app.Lifetime.ApplicationStarted.Register(async void () =>
 {
     try
     {
-        using (var scope = app.Services.CreateScope())
-        {
-            var services = scope.ServiceProvider;
-            await services.AfterAppStartup();
-        }
+        await AppBootstrap.RunAfterStartupAsync(app.Services);
 
         Log.Information("网页服务运行在 {WebHost}:{WebPort}", config.App.WebHost, config.App.WebPort);
         Log.Information("应用已启动...");
@@ -268,25 +211,7 @@ app.Lifetime.ApplicationStarted.Register(async void () =>
     }
 });
 
-app.Lifetime.ApplicationStopping.Register(() =>
-{
-    Log.Information("应用正在停止...");
-
-    try
-    {
-        // 停止所有文件夹监控
-        using var scope = app.Services.CreateScope();
-        var monitorService = scope.ServiceProvider.GetRequiredService<MonitorService>();
-        monitorService.StopAllMonitoring();
-        Log.Information("已停止所有文件夹监控");
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "停止文件夹监控时发生错误");
-    }
-
-    Log.CloseAndFlush();
-});
+app.Lifetime.ApplicationStopping.Register(() => AppBootstrap.ShutdownCleanup(app.Services));
 
 
 app.Run();
