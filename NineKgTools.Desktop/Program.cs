@@ -3,6 +3,7 @@ using Avalonia;
 using Hangfire;
 using Hangfire.SQLite;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using NineKgTools.Core.Hosting;
 using NineKgTools.Desktop.Services;
 using NineKgTools.Desktop.ViewModels;
@@ -53,6 +54,11 @@ internal static class Program
         {
             BootstrapAsync().GetAwaiter().GetResult();
 
+            // 启动所有 IHostedService（关键：Hangfire.NetCore 的 BackgroundJobServer 是 IHostedService，
+            // ASP.NET 下由 WebApplication.Run 自动 Start，Avalonia 没有 IHost runner 必须手动驱动，
+            // 否则任务能 enqueue 进 SQLite 但永远不会被 worker 取出执行）
+            StartHostedServicesAsync().GetAwaiter().GetResult();
+
             // IPC server 启动（接收后续 --identify 等转发）
             try { Services.GetService<IpcService>()?.StartServer(); }
             catch (Exception ex) { Log.Warning(ex, "IpcService 启动失败"); }
@@ -64,6 +70,10 @@ internal static class Program
             }
 
             var exitCode = BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+
+            // 反向停止 IHostedService（让 Hangfire BackgroundJobServer 优雅退出，
+            // 进行中的 job 会被标记为 Aborted，重启后自动 retry 续跑）
+            StopHostedServices();
 
             AppBootstrap.ShutdownCleanup(Services);
             mutex.ReleaseMutex();
@@ -84,8 +94,51 @@ internal static class Program
     public static IpcCommand? Pending { get; private set; }
 
     /// <summary>
+    /// 启动所有通过 DI 注册的 IHostedService。Hangfire.NetCore 的
+    /// BackgroundJobServerHostedService 在此被驱动起来——没有这步，任务能
+    /// enqueue 进 SQLite 但永远不会被 worker 取出执行。
+    /// </summary>
+    private static async Task StartHostedServicesAsync()
+    {
+        var hosted = Services.GetServices<IHostedService>().ToList();
+        var started = 0;
+        foreach (var svc in hosted)
+        {
+            try
+            {
+                await svc.StartAsync(CancellationToken.None);
+                started++;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "IHostedService 启动失败：{Type}", svc.GetType().Name);
+            }
+        }
+        Log.Information("已启动 {Started}/{Total} 个 IHostedService（含 Hangfire BackgroundJobServer）",
+            started, hosted.Count);
+    }
+
+    /// <summary>
+    /// 反向停止所有 IHostedService。让 Hangfire 进行中的 job 优雅 abort（重启后会被
+    /// SQLite 存储里的 ProcessingState 检测到并自动 retry）。
+    /// </summary>
+    private static void StopHostedServices()
+    {
+        try
+        {
+            var hosted = Services.GetServices<IHostedService>().Reverse().ToList();
+            foreach (var svc in hosted)
+            {
+                try { svc.StopAsync(CancellationToken.None).GetAwaiter().GetResult(); }
+                catch (Exception ex) { Log.Warning(ex, "IHostedService 停止失败：{Type}", svc.GetType().Name); }
+            }
+        }
+        catch (Exception ex) { Log.Warning(ex, "StopHostedServices 异常"); }
+    }
+
+    /// <summary>
     /// 把命令行参数解析为 IpcCommand。识别：
-    /// `--identify &lt;path&gt;` / `--quit` / `--show-main`
+    /// <c>--identify &lt;path&gt;</c> / <c>--quit</c> / <c>--show-main</c>
     /// 不识别返回 null。
     /// </summary>
     private static IpcCommand? ParseCliCommand(string[] args)

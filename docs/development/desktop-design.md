@@ -698,6 +698,27 @@ WPF/WinUI 有，**Avalonia 11 没有**。用 gutter 列代替：
 
 不要 `Task.Run(() => _mediaService.GetPagedMediaList(...))` 这样把 EF 调用扔到非 UI 线程——MediaService 持有的 DbContext 是 Scoped，多个 Task.Run 并发会冲突。改为 UI 线程同步调（分页 24 条 + AsNoTracking + Includes 在中等库 < 100ms，可接受）；万条级以上库再考虑切 `IDbContextFactory<MediaDbContext>` + Task.Run。
 
+### 🔴 IHostedService 在 Avalonia 不会自动启动
+
+**现象**：`services.AddHangfireServer(...)` 注册成功 + Hangfire SQLite 表都建好 + 任务能 enqueue 进 `hangfire.db`，但**永远不会被 worker 取出执行**——日志卡在"任务已提交"之后没下文。
+
+**根因**：`AddHangfireServer` 内部注册的是 `BackgroundJobServerHostedService`，它是 `IHostedService`。ASP.NET 下 `WebApplication.Run()` 自动遍历所有 `IHostedService.StartAsync`；Avalonia 用普通 `IServiceProvider` 没有 IHost runner，**没人调 StartAsync**，BackgroundJobServer 永远不启动。
+
+**修法**：手动驱动 IHostedService 生命周期。`Program.Main` 在 `BuildAvaloniaApp().StartWithClassicDesktopLifetime` 之前调：
+
+```csharp
+private static async Task StartHostedServicesAsync()
+{
+    var hosted = Services.GetServices<IHostedService>().ToList();
+    foreach (var svc in hosted)
+        await svc.StartAsync(CancellationToken.None);
+}
+```
+
+退出时反向 `StopAsync`——Hangfire 进行中的 job 优雅 abort，重启后由 SQLite 存储的 ProcessingState 检测自动 retry。
+
+**判定指标**：日志里有 `Server xxx successfully announced` + `all the dispatchers started`（Worker / DelayedJobScheduler / RecurringJobScheduler 等）才算真启动。
+
 ### ⚠ ViewLocator 类型解析
 
 `Type.GetType(string)` 不带 assembly 限定符时只在调用栈所在 assembly 找——从 Avalonia 内部跨 assembly 调用时找不到我们的 View 类型。改用 `vmType.Assembly.GetType(viewName)`：
