@@ -698,6 +698,64 @@ WPF/WinUI 有，**Avalonia 11 没有**。用 gutter 列代替：
 
 不要 `Task.Run(() => _mediaService.GetPagedMediaList(...))` 这样把 EF 调用扔到非 UI 线程——MediaService 持有的 DbContext 是 Scoped，多个 Task.Run 并发会冲突。改为 UI 线程同步调（分页 24 条 + AsNoTracking + Includes 在中等库 < 100ms，可接受）；万条级以上库再考虑切 `IDbContextFactory<MediaDbContext>` + Task.Run。
 
+### 🔴 Hangfire 持久化 + TaskMetadataStore 内存 = 孤儿 job 雪崩
+
+**现象**：日志启动后立刻刷出大量
+
+```
+[WARN] GetTaskAsync: 未找到任务元数据: c6ed0a91-...
+[EROR] ExecuteTaskAsync: 未找到任务元数据: c6ed0a91-...
+[EROR] : Failed to process the job '71': an exception occurred.
+```
+
+同一 jobId 重复 5–10 次，启动后 30–60 秒内打满日志，但用户其实**没新提交任何任务**。
+
+**根因**：
+
+- `TaskMetadataStore` 用 `IMemoryCache` 存 `(taskId → ITask 实例)`——in-memory，**重启即丢**
+- Hangfire 用 `SQLiteStorage`——`hangfire.db` 持久化所有 enqueued / processing / scheduled / retrying / failed job
+- 桌面端"关窗"=应用进程退出（即便 close-to-tray 模式下，进程总会某天退出）
+- 重启后 BackgroundJobServer 启动 → 把旧 job 取出 → `ExecuteTaskAsync(taskId, ctx)` → metadata 已不在 → 抛异常
+- 同一 job 重复出错是因为 Hangfire SQLite 的 invisibility timeout：fetch 失败后 job 被释放，下一秒可能被另一个 worker 拾取再失败。双 BackgroundJobServer × 64+8 worker 加剧该效应
+
+之前测试期间用户多次提交任务、应用关闭、再提交，hangfire.db 就堆了上百个非终态孤儿。一次启动作 smoke test 就触发了 104 个孤儿 job 同时跑。
+
+**修法**：
+
+1. **启动时清理孤儿**——`Program.CleanupOrphanHangfireJobs()` 在 `StartHostedServicesAsync` **之前**调用，遍历所有非终态 job (`EnqueuedJobs / ProcessingJobs / ScheduledJobs / FailedJobs`) 调 `BackgroundJob.Delete(jobId)` 删除
+2. 保留 Succeeded / Deleted 历史不动
+3. 调用前 `JobStorage.Current = Services.GetRequiredService<JobStorage>()` 强制初始化（`BackgroundJob.Delete` 走 Current）
+
+**长期防护方案**（未实施）：让 `TaskMetadataStore` 持久化（SQLite / 文件 / IDistributedCache）让 metadata 跨重启。但 ITask 实例序列化复杂（含 lambda、closure），不如启动清理简单可靠。
+
+**判定**：清理后启动日志应有 `启动清理: 删除 N 个 Hangfire 孤儿 job` 或 `无 Hangfire 孤儿 job`，**不应该**有 `未找到任务元数据`。
+
+### 🔴 System.Text.Json 反序列化要求构造参数对应 public property
+
+**现象**：`DesktopPreferences 加载失败，回退默认值` 每次启动 Warning，附 `InvalidOperationException: Each parameter in the deserialization constructor must bind to an object property or field`。
+
+**根因**：定义类时用主构造 `public DesktopPreferences(string filePath)` 把 `filePath` 存进 private field `_filePath`。System.Text.Json 反序列化时挑构造函数 → 看到唯一的有参构造 → 试图把 JSON 里的 `filePath` 字段映射给 ctor 参数 → 但类本身没有 `FilePath` public property → 报错。
+
+**修法**：把"运行期注入"字段（路径 / 文件句柄 / 临时上下文）从构造参数移出，改用：
+- 加无参 `public DesktopPreferences() { }` 给反序列化用
+- field 标 `[JsonIgnore]` 不参与序列化
+- `Load` 静态方法反序列化后**手动赋值**给 `_filePath`：
+
+```csharp
+public DesktopPreferences() { }  // JSON 用
+
+public static DesktopPreferences Load(string dataDir)
+{
+    var filePath = Path.Combine(dataDir, "desktop-preferences.json");
+    var loaded = ... JsonSerializer.Deserialize<DesktopPreferences>(json) ...;
+    var result = loaded ?? new DesktopPreferences();
+    result._filePath = filePath; // 反序列化后注入
+    return result;
+}
+```
+
+任何"非数据状态"的字段都该走这个模式——不要让序列化感知它们。
+
 ### 🔴 IHostedService 在 Avalonia 不会自动启动
 
 **现象**：`services.AddHangfireServer(...)` 注册成功 + Hangfire SQLite 表都建好 + 任务能 enqueue 进 `hangfire.db`，但**永远不会被 worker 取出执行**——日志卡在"任务已提交"之后没下文。

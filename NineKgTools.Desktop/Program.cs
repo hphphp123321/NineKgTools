@@ -54,6 +54,13 @@ internal static class Program
         {
             BootstrapAsync().GetAwaiter().GetResult();
 
+            // 启动 BackgroundJobServer 之前清理 hangfire.db 里的孤儿 job——
+            // TaskMetadataStore 是 in-memory（IMemoryCache）重启即丢，但 Hangfire SQLite
+            // 持久化所有 enqueued/processing/scheduled/retrying job。重启后这些旧 job 被
+            // worker 取出时找不到 metadata 会无限报错。Desktop 关窗即"应用重启"，孤儿 job
+            // 必然出现，必须开机一并清理。
+            CleanupOrphanHangfireJobs();
+
             // 启动所有 IHostedService（关键：Hangfire.NetCore 的 BackgroundJobServer 是 IHostedService，
             // ASP.NET 下由 WebApplication.Run 自动 Start，Avalonia 没有 IHost runner 必须手动驱动，
             // 否则任务能 enqueue 进 SQLite 但永远不会被 worker 取出执行）
@@ -92,6 +99,94 @@ internal static class Program
     /// 启动时携带的命令——由 App.OnFrameworkInitializationCompleted 在主窗显示后消费。
     /// </summary>
     public static IpcCommand? Pending { get; private set; }
+
+    /// <summary>
+    /// 清理 hangfire.db 里所有非终态 job（Enqueued/Processing/Scheduled/Retrying/Awaiting/Failed）。
+    ///
+    /// 桌面端 TaskMetadataStore 用 IMemoryCache 存 ITask 实例，重启即丢；但 Hangfire SQLite
+    /// 把 jobId 持久化在 hangfire.db。重启后 BackgroundJobServer 会把旧 job 取出送进
+    /// `UnifiedTaskService.ExecuteTaskAsync(taskId)`，metadata 已不在 → 抛
+    /// `InvalidOperationException("未找到任务元数据")` → 触发 SQLite invisibility timeout 重新拾取
+    /// → 同 job 多次失败日志爆炸。Desktop 关窗就是"应用重启"，所以必须每次启动清。
+    ///
+    /// 保留 Succeeded / Deleted 状态作历史；只清还没跑完的非终态 job——它们已经无法恢复。
+    /// </summary>
+    private static void CleanupOrphanHangfireJobs()
+    {
+        try
+        {
+            var storage = Services.GetService<JobStorage>();
+            if (storage is null)
+            {
+                Log.Debug("CleanupOrphanHangfireJobs: 找不到 JobStorage，跳过");
+                return;
+            }
+            // 强制赋给 Current（BackgroundJob.Delete 走 JobStorage.Current）
+            JobStorage.Current = storage;
+
+            var monitor = storage.GetMonitoringApi();
+            var deleted = 0;
+            const int batch = 1000; // 单批最多 1000，避免一次拉太多
+
+            // 1. Enqueued 队列里的 job
+            foreach (var queue in monitor.Queues())
+            {
+                int offset = 0;
+                while (true)
+                {
+                    var page = monitor.EnqueuedJobs(queue.Name, offset, batch);
+                    if (page.Count == 0) break;
+                    foreach (var entry in page)
+                    {
+                        if (BackgroundJob.Delete(entry.Key)) deleted++;
+                    }
+                    if (page.Count < batch) break;
+                    offset += batch;
+                }
+            }
+
+            // 2. Processing/Scheduled/Retrying/Failed/Awaiting —— 全是非终态遗留
+            DeletePagedState(monitor.ProcessingJobs, ref deleted, batch);
+            DeletePagedState(monitor.ScheduledJobs, ref deleted, batch);
+            DeletePagedState(monitor.FailedJobs, ref deleted, batch);
+            // Hangfire 没有公开的 RetryingJobs / AwaitingJobs API（不同版本差异），
+            // 上面 Failed 抓一遍已经覆盖大部分卡死 job
+
+            if (deleted > 0)
+                Log.Information("启动清理: 删除 {Count} 个 Hangfire 孤儿 job（重启后 metadata 已丢失）", deleted);
+            else
+                Log.Debug("启动清理: 无 Hangfire 孤儿 job");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "CleanupOrphanHangfireJobs 失败——可能 hangfire.db 还未初始化");
+        }
+    }
+
+    private static void DeletePagedState<TJob>(
+        Func<int, int, Hangfire.Storage.Monitoring.JobList<TJob>> fetcher,
+        ref int deletedCounter, int batch)
+    {
+        try
+        {
+            int offset = 0;
+            while (true)
+            {
+                var page = fetcher(offset, batch);
+                if (page.Count == 0) break;
+                foreach (var entry in page)
+                {
+                    if (BackgroundJob.Delete(entry.Key)) deletedCounter++;
+                }
+                if (page.Count < batch) break;
+                offset += batch;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "DeletePagedState 子清理失败");
+        }
+    }
 
     /// <summary>
     /// 启动所有通过 DI 注册的 IHostedService。Hangfire.NetCore 的

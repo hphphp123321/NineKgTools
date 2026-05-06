@@ -12,8 +12,14 @@ namespace NineKgTools.Desktop.Services;
 /// </summary>
 public class DesktopPreferences
 {
-    private readonly string _filePath;
+    /// <summary>落盘路径——Load 后由静态方法塞值。`[JsonIgnore]` 不参与序列化。</summary>
+    [JsonIgnore]
+    private string? _filePath;
+
+    [JsonIgnore]
     private readonly object _saveLock = new();
+
+    [JsonIgnore]
     private CancellationTokenSource? _saveDebounceCts;
 
     /// <summary>
@@ -42,10 +48,11 @@ public class DesktopPreferences
     /// </summary>
     public Dictionary<string, WindowState> WindowStates { get; set; } = new();
 
-    public DesktopPreferences(string filePath)
-    {
-        _filePath = filePath;
-    }
+    /// <summary>
+    /// 无参构造——给 System.Text.Json 反序列化用（构造参数必须能映射到 public property，
+    /// 我们的 _filePath 是 JsonIgnore 的字段，所以反序列化时必须走无参构造）。
+    /// </summary>
+    public DesktopPreferences() { }
 
     /// <summary>
     /// 同步加载——构造在启动期，首次读为 null 时返回默认实例。
@@ -53,31 +60,23 @@ public class DesktopPreferences
     public static DesktopPreferences Load(string dataDir)
     {
         var filePath = Path.Combine(dataDir, "desktop-preferences.json");
+        DesktopPreferences? loaded = null;
         try
         {
             if (File.Exists(filePath))
             {
                 var json = File.ReadAllText(filePath);
-                var loaded = JsonSerializer.Deserialize<DesktopPreferences>(json, JsonOpts);
-                if (loaded is not null)
-                {
-                    // 反序列化的对象 _filePath 是空，需要补上
-                    return new DesktopPreferences(filePath)
-                    {
-                        CloseAction = loaded.CloseAction,
-                        Theme = loaded.Theme,
-                        TrayHintShown = loaded.TrayHintShown,
-                        ShellIntegrationRegistered = loaded.ShellIntegrationRegistered,
-                        WindowStates = loaded.WindowStates ?? new Dictionary<string, WindowState>(),
-                    };
-                }
+                loaded = JsonSerializer.Deserialize<DesktopPreferences>(json, JsonOpts);
             }
         }
         catch (Exception ex)
         {
             Log.Warning(ex, "DesktopPreferences 加载失败，回退默认值：{Path}", filePath);
         }
-        return new DesktopPreferences(filePath);
+        var result = loaded ?? new DesktopPreferences();
+        result._filePath = filePath;
+        result.WindowStates ??= new Dictionary<string, WindowState>();
+        return result;
     }
 
     /// <summary>500ms 防抖落盘。</summary>
@@ -102,6 +101,11 @@ public class DesktopPreferences
     /// <summary>立即落盘（用于退出前等场景）。</summary>
     public async Task SaveAsync()
     {
+        if (string.IsNullOrEmpty(_filePath))
+        {
+            Log.Warning("DesktopPreferences._filePath 未初始化，跳过落盘（应通过 Load 获取实例）");
+            return;
+        }
         try
         {
             string json;
