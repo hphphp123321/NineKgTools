@@ -818,6 +818,57 @@ return new WindowIcon(ms);
 
 **`ShutdownMode = OnExplicitShutdown`** 是这个机制的前提——默认 `OnLastWindowClose` 会在 `window.Hide()` 后误判为"无窗口"直接退出整个 App。
 
+### 媒体源页（SourcesPage，Phase 3）
+
+监视文件夹的"中心管理页"。**展示** `Config.Source.WatchFolders`（配置项，长期持久化）+ MonitorService 实时状态。
+
+**结构**：
+
+```
+┌────────────────────────────────────────────────────────┐
+│  媒体源              [+ 添加监视文件夹] [↻ 刷新]       │
+│  长期跟踪的文件夹列表 · 新文件加入会自动触发识别        │
+├────────────────────────────────────────────────────────┤
+│  📥  拖拽快捷方式                                       │
+│     把文件夹拖到主窗任意位置 → 弹双卡片选择            │
+├────────────────────────────────────────────────────────┤
+│  ●  Inbox                          [监控中]            │
+│     D:\Media\Inbox                                     │
+│     已处理 142 · 失败 3 · 启动于 14:32                 │
+│                              [📂] [↻] [✕]              │
+│  ⚠  OldArchive                  [路径不存在]            │
+│     E:\Media\OldArchive (已断开盘符)                   │
+│     请检查路径是否被移动 / 删除                         │
+│                                  [✕]                   │
+├────────────────────────────────────────────────────────┤
+│  已加入监视：Inbox（任务 abc123）            ← Status  │
+└────────────────────────────────────────────────────────┘
+```
+
+**实现要点**：
+
+- **数据源 = 配置 + 状态**：列表来自 `Config.Source.WatchFolders`（持久化的"应该监控什么"）；每行状态来自 `MonitorService.IsMonitoring/GetMonitoringStats`（运行时的"实际在监控吗"）。两者**不一定一致** —— 比如盘符断开 / 启动失败，配置里有但 MonitorService 没挂上 watcher
+- **4 状态视觉**：
+  - `Active` 绿 ● + "监控中"
+  - `Stopped` 灰 ○ + "已停止"（配置存在但 watcher 没起）
+  - `Missing` 红 ⚠ + "路径不存在"（盘符断 / 文件夹被删）
+  - `Pending` 蓝 · + "等待启动"（启动期还没跑到 StartProcessConfiguredFolders）
+- **5s 轮询**：进入页面起 `DispatcherTimer`，离开 `OnLeaveAsync` 停。状态变化（启动 / 暂停 / 断盘）跟手刷新；配置变化（用户在 Settings 加监视）需手动点"刷新"重读
+- **差量更新**：`Refresh()` 保留现有 `WatchFolderItemViewModel` 实例（按 Path 去重），只增减；防止 ItemsControl 全量重渲闪屏
+- **添加流程**：FolderPicker → 加入 `WatchFolders` → `SaveConfig` → `IdentifyBatchMedia(path, startMonitoringAfterCompletion: true)` —— 与 `DragDropDispatcher.AddToWatchAsync` 一致路径
+- **移除流程**：`NineKgConfirmDialog Destructive` → `MonitorService.StopMonitoring(path)` → `WatchFolders.RemoveAll` → `SaveConfig`。文案明示"已识别入库的媒体不会被删除"
+- **重新扫描**：`IdentifyBatchMedia(path, startMonitoringAfterCompletion: false)` 触发一次性识别，**不影响**当前监视状态——纯补扫
+- **拖拽快捷方式 InfoBar**：明示"拖拽到主窗任意位置即可加入监视"，避免用户找不到拖入位置（拖到 SourcesPage 内也可，因为 MainWindow 全局接受）
+
+**与 BackgroundTasksPage 的分工**：
+
+| 页面 | 数据源 | 用途 |
+|---|---|---|
+| **SourcesPage** | `Config.Source.WatchFolders` + `MonitorService.IsMonitoring` | 编辑"应该监控什么" |
+| **BackgroundTasksPage** | `TaskProgressService.GetAllRootTasks()` | 看实时识别 / 监控任务进度 |
+
+修改 SourcesPage 的添加 / 删除逻辑时**必须**两边对齐——Settings"媒体源"分组的列表编辑器走同一份 `_config.Source.WatchFolders`，行为保持一致。
+
 ### 拖拽接收（DragDropDispatcher + Overlay）
 
 **入口**：MainWindow ctor `DragDrop.SetAllowDrop(this, true)` + `AddHandler(DragEnterEvent / DragLeaveEvent / DropEvent)`。
