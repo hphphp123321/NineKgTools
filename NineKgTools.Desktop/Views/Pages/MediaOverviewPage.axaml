@@ -6,76 +6,190 @@
              x:Class="NineKgTools.Desktop.Views.Pages.MediaOverviewPage"
              x:DataType="vm:MediaOverviewViewModel">
 
+    <UserControl.Styles>
+        <!-- 类别切换按钮：默认透明背景 + 1px 边框；切换时 220ms 平滑过渡 -->
+        <Style Selector="Button.cat-tab">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.22" Easing="CubicEaseOut" />
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.22" Easing="CubicEaseOut" />
+                    <ThicknessTransition Property="BorderThickness" Duration="0:0:0.22" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <!-- 底部 indicator 横条：默认 0 宽 + 透明，选中态展开 -->
+        <Style Selector="Border.cat-indicator">
+            <Setter Property="Height" Value="3" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+            <Setter Property="Margin" Value="14,0,14,0" />
+            <Setter Property="CornerRadius" Value="2,2,0,0" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="RenderTransform" Value="scaleX(0.2)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.22" Easing="CubicEaseOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.28" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.cat-indicator.active">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="RenderTransform" Value="scaleX(1.0)" />
+        </Style>
+        <!-- 选中态："全部"用系统 accent，5 类别用各自的签名色 + 同色 2px 边框 -->
+        <Style Selector="Button.cat-tab.sel-all">
+            <Setter Property="Background" Value="{DynamicResource BrandCategoryAllFillBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BrandCategoryAllBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="Button.cat-tab.sel-video">
+            <Setter Property="Background" Value="{DynamicResource BrandCategoryVideoFillBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BrandCategoryVideoBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="Button.cat-tab.sel-audio">
+            <Setter Property="Background" Value="{DynamicResource BrandCategoryAudioFillBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BrandCategoryAudioBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="Button.cat-tab.sel-game">
+            <Setter Property="Background" Value="{DynamicResource BrandCategoryGameFillBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BrandCategoryGameBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="Button.cat-tab.sel-picture">
+            <Setter Property="Background" Value="{DynamicResource BrandCategoryPictureFillBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BrandCategoryPictureBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="Button.cat-tab.sel-text">
+            <Setter Property="Background" Value="{DynamicResource BrandCategoryTextFillBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BrandCategoryTextBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <!-- 选中态文字加粗 -->
+        <Style Selector="Button.cat-tab.sel-all TextBlock,
+                         Button.cat-tab.sel-video TextBlock,
+                         Button.cat-tab.sel-audio TextBlock,
+                         Button.cat-tab.sel-game TextBlock,
+                         Button.cat-tab.sel-picture TextBlock,
+                         Button.cat-tab.sel-text TextBlock">
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+    </UserControl.Styles>
+
     <Grid RowDefinitions="Auto,Auto,*,Auto">
 
-        <!-- ========== Row 0: 分类切换栏（5 张大卡） ========== -->
+        <!-- ========== Row 0: 分类切换栏（"全部" + 5 类别 = 6 列） ========== -->
         <Grid Grid.Row="0" Margin="32,24,32,12"
-              ColumnDefinitions="*,12,*,12,*,12,*,12,*">
+              ColumnDefinitions="*,12,*,12,*,12,*,12,*,12,*">
 
-            <Button Grid.Column="0"
-                    Command="{Binding SelectCategoryCommand}" CommandParameter="Video"
-                    HorizontalAlignment="Stretch" Padding="14,12"
-                    BorderBrush="{DynamicResource BrandCategoryVideoBrush}">
-                <StackPanel Spacing="8">
-                    <PathIcon Data="{StaticResource IconCategoryVideo}" Width="22" Height="22"
-                              Foreground="{DynamicResource BrandCategoryVideoBrush}" />
-                    <TextBlock Text="视频" HorizontalAlignment="Center"
-                               Foreground="{DynamicResource BrandCategoryVideoBrush}"
-                               FontWeight="SemiBold" />
-                </StackPanel>
-            </Button>
+            <Grid Grid.Column="0">
+                <Button Classes="cat-tab"
+                        Classes.sel-all="{Binding IsCategoryAll}"
+                        Command="{Binding SelectCategoryCommand}" CommandParameter="All"
+                        HorizontalAlignment="Stretch" Padding="14,12">
+                    <StackPanel Spacing="8">
+                        <PathIcon Data="{StaticResource IconLibrary}" Width="22" Height="22"
+                                  Foreground="{DynamicResource BrandCategoryAllBrush}" />
+                        <TextBlock Text="全部" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource BrandCategoryAllBrush}"
+                                   FontWeight="SemiBold" />
+                    </StackPanel>
+                </Button>
+                <Border Classes="cat-indicator" Classes.active="{Binding IsCategoryAll}"
+                        Background="{DynamicResource BrandCategoryAllBrush}" />
+            </Grid>
 
-            <Button Grid.Column="2"
-                    Command="{Binding SelectCategoryCommand}" CommandParameter="Audio"
-                    HorizontalAlignment="Stretch" Padding="14,12"
-                    BorderBrush="{DynamicResource BrandCategoryAudioBrush}">
-                <StackPanel Spacing="8">
-                    <PathIcon Data="{StaticResource IconCategoryAudio}" Width="22" Height="22"
-                              Foreground="{DynamicResource BrandCategoryAudioBrush}" />
-                    <TextBlock Text="音频" HorizontalAlignment="Center"
-                               Foreground="{DynamicResource BrandCategoryAudioBrush}"
-                               FontWeight="SemiBold" />
-                </StackPanel>
-            </Button>
+            <Grid Grid.Column="2">
+                <Button Classes="cat-tab"
+                        Classes.sel-video="{Binding IsCategoryVideo}"
+                        Command="{Binding SelectCategoryCommand}" CommandParameter="Video"
+                        HorizontalAlignment="Stretch" Padding="14,12">
+                    <StackPanel Spacing="8">
+                        <PathIcon Data="{StaticResource IconCategoryVideo}" Width="22" Height="22"
+                                  Foreground="{DynamicResource BrandCategoryVideoBrush}" />
+                        <TextBlock Text="视频" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource BrandCategoryVideoBrush}"
+                                   FontWeight="SemiBold" />
+                    </StackPanel>
+                </Button>
+                <Border Classes="cat-indicator" Classes.active="{Binding IsCategoryVideo}"
+                        Background="{DynamicResource BrandCategoryVideoBrush}" />
+            </Grid>
 
-            <Button Grid.Column="4"
-                    Command="{Binding SelectCategoryCommand}" CommandParameter="Game"
-                    HorizontalAlignment="Stretch" Padding="14,12"
-                    BorderBrush="{DynamicResource BrandCategoryGameBrush}">
-                <StackPanel Spacing="8">
-                    <PathIcon Data="{StaticResource IconCategoryGame}" Width="22" Height="22"
-                              Foreground="{DynamicResource BrandCategoryGameBrush}" />
-                    <TextBlock Text="游戏" HorizontalAlignment="Center"
-                               Foreground="{DynamicResource BrandCategoryGameBrush}"
-                               FontWeight="SemiBold" />
-                </StackPanel>
-            </Button>
+            <Grid Grid.Column="4">
+                <Button Classes="cat-tab"
+                        Classes.sel-audio="{Binding IsCategoryAudio}"
+                        Command="{Binding SelectCategoryCommand}" CommandParameter="Audio"
+                        HorizontalAlignment="Stretch" Padding="14,12">
+                    <StackPanel Spacing="8">
+                        <PathIcon Data="{StaticResource IconCategoryAudio}" Width="22" Height="22"
+                                  Foreground="{DynamicResource BrandCategoryAudioBrush}" />
+                        <TextBlock Text="音频" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource BrandCategoryAudioBrush}"
+                                   FontWeight="SemiBold" />
+                    </StackPanel>
+                </Button>
+                <Border Classes="cat-indicator" Classes.active="{Binding IsCategoryAudio}"
+                        Background="{DynamicResource BrandCategoryAudioBrush}" />
+            </Grid>
 
-            <Button Grid.Column="6"
-                    Command="{Binding SelectCategoryCommand}" CommandParameter="Picture"
-                    HorizontalAlignment="Stretch" Padding="14,12"
-                    BorderBrush="{DynamicResource BrandCategoryPictureBrush}">
-                <StackPanel Spacing="8">
-                    <PathIcon Data="{StaticResource IconCategoryPicture}" Width="22" Height="22"
-                              Foreground="{DynamicResource BrandCategoryPictureBrush}" />
-                    <TextBlock Text="图片" HorizontalAlignment="Center"
-                               Foreground="{DynamicResource BrandCategoryPictureBrush}"
-                               FontWeight="SemiBold" />
-                </StackPanel>
-            </Button>
+            <Grid Grid.Column="6">
+                <Button Classes="cat-tab"
+                        Classes.sel-game="{Binding IsCategoryGame}"
+                        Command="{Binding SelectCategoryCommand}" CommandParameter="Game"
+                        HorizontalAlignment="Stretch" Padding="14,12">
+                    <StackPanel Spacing="8">
+                        <PathIcon Data="{StaticResource IconCategoryGame}" Width="22" Height="22"
+                                  Foreground="{DynamicResource BrandCategoryGameBrush}" />
+                        <TextBlock Text="游戏" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource BrandCategoryGameBrush}"
+                                   FontWeight="SemiBold" />
+                    </StackPanel>
+                </Button>
+                <Border Classes="cat-indicator" Classes.active="{Binding IsCategoryGame}"
+                        Background="{DynamicResource BrandCategoryGameBrush}" />
+            </Grid>
 
-            <Button Grid.Column="8"
-                    Command="{Binding SelectCategoryCommand}" CommandParameter="Text"
-                    HorizontalAlignment="Stretch" Padding="14,12"
-                    BorderBrush="{DynamicResource BrandCategoryTextBrush}">
-                <StackPanel Spacing="8">
-                    <PathIcon Data="{StaticResource IconCategoryText}" Width="22" Height="22"
-                              Foreground="{DynamicResource BrandCategoryTextBrush}" />
-                    <TextBlock Text="文本" HorizontalAlignment="Center"
-                               Foreground="{DynamicResource BrandCategoryTextBrush}"
-                               FontWeight="SemiBold" />
-                </StackPanel>
-            </Button>
+            <Grid Grid.Column="8">
+                <Button Classes="cat-tab"
+                        Classes.sel-picture="{Binding IsCategoryPicture}"
+                        Command="{Binding SelectCategoryCommand}" CommandParameter="Picture"
+                        HorizontalAlignment="Stretch" Padding="14,12">
+                    <StackPanel Spacing="8">
+                        <PathIcon Data="{StaticResource IconCategoryPicture}" Width="22" Height="22"
+                                  Foreground="{DynamicResource BrandCategoryPictureBrush}" />
+                        <TextBlock Text="图片" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource BrandCategoryPictureBrush}"
+                                   FontWeight="SemiBold" />
+                    </StackPanel>
+                </Button>
+                <Border Classes="cat-indicator" Classes.active="{Binding IsCategoryPicture}"
+                        Background="{DynamicResource BrandCategoryPictureBrush}" />
+            </Grid>
+
+            <Grid Grid.Column="10">
+                <Button Classes="cat-tab"
+                        Classes.sel-text="{Binding IsCategoryText}"
+                        Command="{Binding SelectCategoryCommand}" CommandParameter="Text"
+                        HorizontalAlignment="Stretch" Padding="14,12">
+                    <StackPanel Spacing="8">
+                        <PathIcon Data="{StaticResource IconCategoryText}" Width="22" Height="22"
+                                  Foreground="{DynamicResource BrandCategoryTextBrush}" />
+                        <TextBlock Text="文本" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource BrandCategoryTextBrush}"
+                                   FontWeight="SemiBold" />
+                    </StackPanel>
+                </Button>
+                <Border Classes="cat-indicator" Classes.active="{Binding IsCategoryText}"
+                        Background="{DynamicResource BrandCategoryTextBrush}" />
+            </Grid>
 
         </Grid>
 
@@ -97,7 +211,7 @@
             </ComboBox>
             <Button Grid.Column="4" Command="{Binding LoadCommand}">
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                    <PathIcon Data="{StaticResource IconTasks}" Width="14" Height="14" />
+                    <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
                     <TextBlock Text="刷新" />
                 </StackPanel>
             </Button>
@@ -168,12 +282,19 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:MediaCardViewModel">
+                            <!-- Button 包裹整张卡 → 整卡可点击；Padding/Background 清零让 Button 视觉等于内层 Border -->
+                            <Button Command="{Binding OpenDetailCommand}"
+                                    Padding="0" Background="Transparent" BorderThickness="0"
+                                    HorizontalContentAlignment="Stretch"
+                                    VerticalContentAlignment="Stretch"
+                                    Margin="0,0,12,12"
+                                    CornerRadius="8"
+                                    ClipToBounds="True">
                             <Border Width="180" Height="320"
                                     Background="{DynamicResource LayerFillColorDefaultBrush}"
                                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                                     BorderThickness="1"
                                     CornerRadius="8"
-                                    Margin="0,0,12,12"
                                     ClipToBounds="True">
                                 <Grid RowDefinitions="*,Auto">
                                     <Grid Grid.Row="0" Background="{DynamicResource SubtleFillColorTertiaryBrush}">
@@ -208,6 +329,7 @@
                                     </Border>
                                 </Grid>
                             </Border>
+                            </Button>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

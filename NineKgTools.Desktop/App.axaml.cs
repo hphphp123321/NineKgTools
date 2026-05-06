@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
 using NineKgTools.Core.Hosting;
+using NineKgTools.Desktop.Services;
 using NineKgTools.Desktop.ViewModels;
 using NineKgTools.Desktop.Views;
 using Serilog;
@@ -35,6 +36,13 @@ public partial class App : Application
                 {
                     Log.Error(ex, "应用启动后初始化失败");
                 }
+            };
+
+            // 主窗关闭时把所有子窗（媒体详情等）一并关闭
+            window.Closing += (_, _) =>
+            {
+                try { Program.Services.GetService<WindowManager>()?.CloseAll(); }
+                catch (Exception ex) { Log.Warning(ex, "关闭子窗时异常"); }
             };
 
             desktop.MainWindow = window;

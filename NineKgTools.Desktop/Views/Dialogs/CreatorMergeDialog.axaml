@@ -1,0 +1,61 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:media="using:NineKgTools.Core.Models.Media"
+             x:Class="NineKgTools.Desktop.Views.Dialogs.CreatorMergeDialog"
+             x:Name="DialogRoot"
+             MinWidth="460" MaxWidth="600">
+
+    <StackPanel Spacing="14">
+
+        <!-- 来源描述 -->
+        <Border Padding="14,10"
+                CornerRadius="6"
+                Background="{DynamicResource LayerFillColorAltBrush}">
+            <StackPanel Spacing="2">
+                <TextBlock Text="将合并以下创作者" FontSize="11" Opacity="0.65" />
+                <TextBlock Text="{Binding #DialogRoot.SourceName}"
+                           FontWeight="SemiBold" FontSize="14" />
+                <TextBlock Text="{Binding #DialogRoot.SourceMediaCountText}"
+                           FontSize="12" Opacity="0.7" />
+            </StackPanel>
+        </Border>
+
+        <!-- 目标选择 -->
+        <StackPanel Spacing="6">
+            <TextBlock Text="合并到（保留为主创作者）" FontSize="11" Opacity="0.7" />
+            <ComboBox ItemsSource="{Binding #DialogRoot.AllTargets}"
+                      SelectedItem="{Binding #DialogRoot.SelectedTarget, Mode=TwoWay}"
+                      PlaceholderText="选择另一个创作者..."
+                      MaxDropDownHeight="320"
+                      HorizontalAlignment="Stretch">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="media:Creator">
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </StackPanel>
+
+        <!-- 影响预览（动态） -->
+        <Border IsVisible="{Binding #DialogRoot.ShowPreview}"
+                Padding="14,12"
+                CornerRadius="6"
+                Background="{DynamicResource LayerFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource SystemFillColorCriticalBrush}"
+                BorderThickness="1">
+            <StackPanel Spacing="8">
+                <TextBlock Text="影响预览" FontSize="11" Opacity="0.7" />
+                <TextBlock Text="{Binding #DialogRoot.PreviewText}"
+                           FontWeight="SemiBold"
+                           TextWrapping="Wrap" />
+                <TextBlock Text="此操作不可撤销。"
+                           FontSize="12"
+                           Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                           FontWeight="SemiBold" />
+            </StackPanel>
+        </Border>
+
+    </StackPanel>
+
+</UserControl>

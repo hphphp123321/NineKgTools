@@ -35,13 +35,15 @@ public partial class MediaOverviewViewModel : PageViewModelBase
         new SortChoice(MediaSortOption.LastOpenDateDesc, "最近打开"),
     };
 
+    /// <summary>nullable：null 表示"全部"（不按顶级分类筛选），否则筛选指定分类</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCategoryAll))]
     [NotifyPropertyChangedFor(nameof(IsCategoryVideo))]
     [NotifyPropertyChangedFor(nameof(IsCategoryAudio))]
     [NotifyPropertyChangedFor(nameof(IsCategoryGame))]
     [NotifyPropertyChangedFor(nameof(IsCategoryPicture))]
     [NotifyPropertyChangedFor(nameof(IsCategoryText))]
-    private TopCategory _selectedCategory = TopCategory.Video;
+    private TopCategory? _selectedCategory; // 默认 null = "全部"
 
     [ObservableProperty]
     private string _searchText = "";
@@ -88,6 +90,7 @@ public partial class MediaOverviewViewModel : PageViewModelBase
     }
 
     // 给 AXAML 简化绑定用——避免在 XAML 写 enum 比较 converter
+    public bool IsCategoryAll => SelectedCategory is null;
     public bool IsCategoryVideo => SelectedCategory == TopCategory.Video;
     public bool IsCategoryAudio => SelectedCategory == TopCategory.Audio;
     public bool IsCategoryGame => SelectedCategory == TopCategory.Game;
@@ -151,18 +154,33 @@ public partial class MediaOverviewViewModel : PageViewModelBase
     /// <summary>
     /// 接受 string 参数（不是 TopCategory enum）——AXAML 里 CommandParameter="Video" 是 string 字面量，
     /// 编译绑定无法自动转 enum，会让整个 View 静默渲染失败。这里手动 parse 一次。
+    ///
+    /// Toggle 语义：
+    /// - "All"（或空字符串）→ 切到全部（null）
+    /// - 与当前选中相同 → 取消选择，切到全部（null）
+    /// - 其他 → 切到指定分类
     /// </summary>
     [RelayCommand]
     private Task SelectCategoryAsync(string? categoryName)
     {
-        if (string.IsNullOrEmpty(categoryName)) return Task.CompletedTask;
-        if (!Enum.TryParse<TopCategory>(categoryName, ignoreCase: true, out var cat))
+        TopCategory? target;
+        if (string.IsNullOrEmpty(categoryName) || categoryName.Equals("All", StringComparison.OrdinalIgnoreCase))
+        {
+            target = null;
+        }
+        else if (!Enum.TryParse<TopCategory>(categoryName, ignoreCase: true, out var cat))
         {
             Log.Warning("SelectCategoryAsync 收到非法 categoryName='{Name}'", categoryName);
             return Task.CompletedTask;
         }
-        if (SelectedCategory == cat) return Task.CompletedTask;
-        SelectedCategory = cat;
+        else
+        {
+            // Toggle：再次点击当前选中的分类 → 切回"全部"
+            target = SelectedCategory == cat ? null : cat;
+        }
+
+        if (SelectedCategory == target) return Task.CompletedTask;
+        SelectedCategory = target;
         PageNumber = 1;
         return LoadAsync();
     }

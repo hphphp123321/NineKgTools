@@ -1,13 +1,351 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:NineKgTools.Desktop.ViewModels.Pages"
+             xmlns:conv="using:NineKgTools.Desktop.Converters"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
              x:Class="NineKgTools.Desktop.Views.Pages.CreatorsPage"
-             x:DataType="vm:CreatorsViewModel">
-    <StackPanel Margin="32,24,32,32" Spacing="16">
-        <TextBlock Text="创作者" Theme="{StaticResource TitleLargeTextBlockStyle}" />
-        <ui:InfoBar Severity="Informational" IsOpen="True" IsClosable="False"
-                    Title="Phase 2.5 待实现"
-                    Message="创作者 / 社团列表 + 详情 + 合并对话框。" />
-    </StackPanel>
+             x:DataType="vm:CreatorsViewModel"
+             x:Name="PageRoot">
+
+    <Grid>
+
+        <!-- ==================== 列表态 ==================== -->
+        <Grid IsVisible="{Binding ShowList}" RowDefinitions="Auto,Auto,*,Auto">
+
+            <!-- 头部 -->
+            <Grid Grid.Row="0" Margin="32,24,32,12" ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Spacing="4">
+                    <TextBlock Text="创作者" FontSize="28" FontWeight="SemiBold" />
+                    <TextBlock Text="项目里收录的全部创作者 · 作者 / 画师 / 声优 / 音乐 等"
+                               Opacity="0.7" FontSize="13" />
+                </StackPanel>
+                <Button Grid.Column="1" Command="{Binding LoadCommand}" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
+                        <TextBlock Text="刷新" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- 搜索栏 -->
+            <Grid Grid.Row="1" Margin="32,8,32,16" ColumnDefinitions="*">
+                <TextBox Watermark="搜索创作者名 / 别名..."
+                         Text="{Binding SearchText, Mode=TwoWay}" />
+            </Grid>
+
+            <!-- 主内容 -->
+            <Grid Grid.Row="2" Margin="32,0,32,16">
+
+                <!-- 空状态 -->
+                <Border IsVisible="{Binding ShowEmpty}"
+                        Background="{DynamicResource LayerFillColorAltBrush}"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="48,40"
+                        Margin="0,16"
+                        MaxWidth="480"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                    <StackPanel Spacing="16" HorizontalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconCreators}" Width="64" Height="64"
+                                  Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                  Opacity="0.5" HorizontalAlignment="Center" />
+                        <TextBlock Text="暂无创作者"
+                                   HorizontalAlignment="Center"
+                                   FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="识别媒体入库时会自动建立创作者关联。批量识别一些媒体后，这里会自动出现作者 / 画师 / 声优等。"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center"
+                                   Opacity="0.7"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- 卡片网格 -->
+                <ScrollViewer IsVisible="{Binding !ShowEmpty}">
+                    <ItemsControl ItemsSource="{Binding Items}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:CreatorItemViewModel">
+                                <Button Padding="0"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Margin="0,0,12,12"
+                                        Command="{Binding #PageRoot.((vm:CreatorsViewModel)DataContext).OpenCreatorDetailCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Border Width="180" Height="220"
+                                            Background="{DynamicResource LayerFillColorDefaultBrush}"
+                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            ClipToBounds="True">
+                                        <StackPanel Margin="14,18,14,14" Spacing="10" HorizontalAlignment="Center">
+
+                                            <!-- 头像（80x80 圆形） -->
+                                            <Border Width="80" Height="80" CornerRadius="40"
+                                                    ClipToBounds="True"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    HorizontalAlignment="Center">
+                                                <Grid>
+                                                    <Image Source="{Binding Avatar}"
+                                                           Stretch="UniformToFill"
+                                                           IsVisible="{Binding Avatar, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                    <TextBlock Text="{Binding AvatarFallback}"
+                                                               FontSize="32" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               Opacity="0.5"
+                                                               IsVisible="{Binding Avatar, Converter={x:Static ObjectConverters.IsNull}}" />
+                                                </Grid>
+                                            </Border>
+
+                                            <TextBlock Text="{Binding Name}"
+                                                       FontWeight="SemiBold"
+                                                       FontSize="14"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       HorizontalAlignment="Center"
+                                                       ToolTip.Tip="{Binding Name}" />
+
+                                            <ItemsControl ItemsSource="{Binding TopTypes}"
+                                                          IsVisible="{Binding HasTopTypes}"
+                                                          HorizontalAlignment="Center">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel HorizontalAlignment="Center" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Padding="6,1" Margin="2,0"
+                                                                Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                                BorderThickness="1"
+                                                                CornerRadius="8">
+                                                            <TextBlock Text="{Binding}" FontSize="10" Opacity="0.75" />
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+
+                                            <TextBlock Text="{Binding MediaCountText}"
+                                                       FontSize="11" Opacity="0.55"
+                                                       HorizontalAlignment="Center" />
+
+                                        </StackPanel>
+                                    </Border>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+            </Grid>
+
+            <!-- 分页栏 -->
+            <Border Grid.Row="3" Padding="32,12"
+                    Background="{DynamicResource LayerFillColorAltBrush}"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                    BorderThickness="0,1,0,0"
+                    IsVisible="{Binding !ShowEmpty}">
+                <Grid ColumnDefinitions="*,Auto,*">
+                    <TextBlock Grid.Column="0" VerticalAlignment="Center" Opacity="0.7">
+                        <Run Text="共" />
+                        <Run Text="{Binding TotalCount}" />
+                        <Run Text="位创作者 ·" />
+                        <Run Text="第" />
+                        <Run Text="{Binding PageNumber}" />
+                        <Run Text="/" />
+                        <Run Text="{Binding TotalPages}" />
+                        <Run Text="页" />
+                    </TextBlock>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                        <Button Command="{Binding PrevPageCommand}" Content="上一页" />
+                        <Button Command="{Binding NextPageCommand}" Content="下一页" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+        </Grid>
+
+        <!-- ==================== 详情态 ==================== -->
+        <Grid IsVisible="{Binding ShowDetail}" RowDefinitions="Auto,Auto,*">
+
+            <!-- Hero 区 -->
+            <Grid Grid.Row="0" Margin="32,24,32,16" ColumnDefinitions="Auto,20,*,Auto">
+
+                <!-- 大头像（96x96 圆形） -->
+                <Border Grid.Column="0"
+                        Width="96" Height="96"
+                        CornerRadius="48"
+                        ClipToBounds="True"
+                        Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                        VerticalAlignment="Center">
+                    <Grid>
+                        <Image Source="{Binding DetailAvatar}"
+                               Stretch="UniformToFill"
+                               IsVisible="{Binding DetailAvatar, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                        <TextBlock Text="{Binding DetailAvatarFallback}"
+                                   FontSize="40" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                   Opacity="0.5"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   IsVisible="{Binding DetailAvatar, Converter={x:Static ObjectConverters.IsNull}}" />
+                    </Grid>
+                </Border>
+
+                <!-- 信息 -->
+                <StackPanel Grid.Column="2" Spacing="6" VerticalAlignment="Center">
+                    <Button Command="{Binding GoBackToListCommand}"
+                            Padding="10,6"
+                            Background="Transparent"
+                            HorizontalAlignment="Left">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="←" FontSize="13" />
+                            <TextBlock Text="返回列表" FontSize="12" Opacity="0.7" />
+                        </StackPanel>
+                    </Button>
+                    <TextBlock Text="{Binding DetailName}"
+                               FontSize="28" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding DetailTypesText}"
+                               FontSize="13" Opacity="0.7" />
+                    <StackPanel Orientation="Horizontal" Spacing="6"
+                                IsVisible="{Binding HasAlias}">
+                        <TextBlock Text="别名:" FontSize="12" Opacity="0.55" />
+                        <TextBlock Text="{Binding DetailAliasText}"
+                                   FontSize="12" Opacity="0.75"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTip.Tip="{Binding DetailAliasText}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- 操作按钮 -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <Button Command="{Binding MergeSelectedCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="⇨" FontSize="13" />
+                            <TextBlock Text="合并到..." />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding DeleteSelectedCommand}"
+                            Foreground="{DynamicResource SystemFillColorCriticalBrush}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="✕" FontSize="13" />
+                            <TextBlock Text="删除" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- 描述（如有） -->
+            <Border Grid.Row="1" Margin="32,0,32,16"
+                    Padding="14,12"
+                    CornerRadius="8"
+                    Background="{DynamicResource LayerFillColorAltBrush}"
+                    IsVisible="{Binding HasDescription}">
+                <TextBlock Text="{Binding DetailDescription}"
+                           FontSize="13"
+                           TextWrapping="Wrap"
+                           MaxWidth="900"
+                           Opacity="0.85" />
+            </Border>
+
+            <!-- 关联媒体 -->
+            <Grid Grid.Row="2" Margin="32,0,32,16">
+
+                <Border IsVisible="{Binding !DetailHasMedias}"
+                        Background="{DynamicResource LayerFillColorAltBrush}"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="36,32"
+                        Margin="0,16"
+                        MaxWidth="440"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                    <StackPanel Spacing="12" HorizontalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconLibrary}" Width="48" Height="48"
+                                  Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                  Opacity="0.5" HorizontalAlignment="Center" />
+                        <TextBlock Text="此创作者还没有关联作品"
+                                   HorizontalAlignment="Center"
+                                   FontSize="15" FontWeight="SemiBold" />
+                        <TextBlock Text="一般出现在合并后没媒体的孤立创作者，或刚刚识别出的孤立条目。可考虑直接删除。"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center"
+                                   FontSize="12" Opacity="0.7"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <ScrollViewer IsVisible="{Binding DetailHasMedias}">
+                    <ItemsControl ItemsSource="{Binding CreatorMedias}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:MediaCardViewModel">
+                                <Button Command="{Binding OpenDetailCommand}"
+                                        Padding="0" Background="Transparent" BorderThickness="0"
+                                        HorizontalContentAlignment="Stretch"
+                                        VerticalContentAlignment="Stretch"
+                                        Margin="0,0,12,12"
+                                        CornerRadius="8"
+                                        ClipToBounds="True">
+                                    <Border Width="180" Height="320"
+                                            Background="{DynamicResource LayerFillColorDefaultBrush}"
+                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            ClipToBounds="True">
+                                        <Grid RowDefinitions="*,Auto">
+                                            <Grid Grid.Row="0" Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                                                <Image Source="{Binding Cover}"
+                                                       Stretch="UniformToFill"
+                                                       IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                <Border IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNull}}"
+                                                        Background="{Binding TopCategory, Converter={x:Static conv:CategoryFillBrushConverter.Instance}}">
+                                                    <PathIcon Data="{Binding CategoryIcon}"
+                                                              Width="48" Height="48"
+                                                              Foreground="{Binding CategoryBrush}"
+                                                              Opacity="0.6"
+                                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                            </Grid>
+                                            <Border Grid.Row="1" Padding="10,8">
+                                                <StackPanel Spacing="3">
+                                                    <TextBlock Text="{Binding Title}"
+                                                               FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip.Tip="{Binding Title}" />
+                                                    <TextBlock Text="{Binding CircleName}"
+                                                               FontSize="11" Opacity="0.6"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               IsVisible="{Binding CircleName, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                    <TextBlock Text="{Binding RatingText}"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource SystemFillColorAttentionBrush}"
+                                                               IsVisible="{Binding HasRating}" />
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+            </Grid>
+        </Grid>
+
+    </Grid>
+
 </UserControl>

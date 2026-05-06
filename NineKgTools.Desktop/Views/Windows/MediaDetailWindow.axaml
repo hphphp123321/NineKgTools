@@ -1,0 +1,250 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:NineKgTools.Desktop.ViewModels.Pages"
+        xmlns:ui="using:FluentAvalonia.UI.Controls"
+        mc:Ignorable="d" d:DesignWidth="1024" d:DesignHeight="720"
+        x:Class="NineKgTools.Desktop.Views.Windows.MediaDetailWindow"
+        x:DataType="vm:MediaDetailViewModel"
+        Title="{Binding WindowTitle, FallbackValue='媒体详情'}"
+        Width="1024" Height="720"
+        MinWidth="720" MinHeight="540"
+        TransparencyLevelHint="Mica,AcrylicBlur,Blur"
+        Background="Transparent">
+
+    <Grid RowDefinitions="*,Auto">
+
+        <!-- 加载态 -->
+        <Border Grid.Row="0" Grid.RowSpan="2"
+                IsVisible="{Binding IsLoading}"
+                HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel Spacing="12" HorizontalAlignment="Center">
+                <ui:ProgressRing IsIndeterminate="True" Width="48" Height="48" />
+                <TextBlock Text="加载中..." Opacity="0.7" HorizontalAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <!-- 错误态 -->
+        <Border Grid.Row="0" Grid.RowSpan="2"
+                IsVisible="{Binding LoadError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel Spacing="12" HorizontalAlignment="Center" MaxWidth="320">
+                <PathIcon Data="{StaticResource IconInbox}" Width="56" Height="56"
+                          Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                          HorizontalAlignment="Center" />
+                <TextBlock Text="{Binding LoadError}"
+                           HorizontalAlignment="Center" TextAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <!-- 主内容 -->
+        <ScrollViewer Grid.Row="0"
+                      IsVisible="{Binding !IsLoading}"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+
+                <!-- ========== Hero 区（封面 + 标题 + 操作） ========== -->
+                <Border Background="{DynamicResource BrandHeroGradient}"
+                        Padding="32,24,32,24"
+                        MinHeight="280">
+                    <Grid ColumnDefinitions="Auto,32,*">
+
+                        <!-- 大封面 200x280 -->
+                        <Border Grid.Column="0"
+                                Width="200" Height="280"
+                                CornerRadius="12"
+                                ClipToBounds="True"
+                                Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                            <Grid>
+                                <Image Source="{Binding Cover}"
+                                       Stretch="UniformToFill"
+                                       IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                <PathIcon Data="{Binding CategoryIcon}"
+                                          Width="64" Height="64"
+                                          Foreground="{Binding CategoryBrush}"
+                                          Opacity="0.5"
+                                          IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNull}}"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
+                        <!-- 右侧文字 + 操作 -->
+                        <StackPanel Grid.Column="2" Spacing="14" VerticalAlignment="Center">
+
+                            <!-- 类别 + 标题 -->
+                            <StackPanel Spacing="6">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <PathIcon Data="{Binding CategoryIcon}" Width="14" Height="14"
+                                              Foreground="{Binding CategoryBrush}" />
+                                    <TextBlock Text="{Binding CategoryDisplayName}"
+                                               FontSize="12"
+                                               Foreground="{Binding CategoryBrush}"
+                                               FontWeight="SemiBold" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding Title}"
+                                           FontSize="28"
+                                           FontWeight="SemiBold"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <!-- 副标题：创作者 · 社团 -->
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="{Binding CircleName}"
+                                           FontSize="14"
+                                           Opacity="0.85"
+                                           IsVisible="{Binding CircleName, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                <TextBlock Text="·" Opacity="0.4"
+                                           IsVisible="{Binding CircleName, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                <TextBlock Text="{Binding CreatorsText}"
+                                           FontSize="14"
+                                           Opacity="0.85" />
+                            </StackPanel>
+
+                            <!-- 评分 -->
+                            <TextBlock Text="{Binding RatingText}"
+                                       FontSize="20"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SystemFillColorAttentionBrush}"
+                                       IsVisible="{Binding HasRating}" />
+
+                            <!-- 主操作按钮组 -->
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0">
+                                <Button Command="{Binding OpenInExplorerCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <PathIcon Data="{StaticResource IconFolderOpen}" Width="14" Height="14" />
+                                        <TextBlock Text="文件管理器打开" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding ReidentifyCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
+                                        <TextBlock Text="重新识别" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- ========== 主内容区：左右分栏 ========== -->
+                <Grid Margin="32,24,32,32" ColumnDefinitions="*,32,320">
+
+                    <!-- 左侧：简介 / 描述 / 别名 / 文件 -->
+                    <StackPanel Grid.Column="0" Spacing="24">
+
+                        <!-- 简介 -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="简介" FontSize="16" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Summary}"
+                                       FontSize="14"
+                                       LineHeight="22"
+                                       Opacity="0.85"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- 描述（如果与简介不同） -->
+                        <StackPanel Spacing="8"
+                                    IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <TextBlock Text="详细描述" FontSize="16" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding Description}"
+                                       FontSize="13"
+                                       LineHeight="20"
+                                       Opacity="0.75"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- 别名 -->
+                        <StackPanel Spacing="8" IsVisible="{Binding HasAlias}">
+                            <TextBlock Text="别名" FontSize="16" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding AliasText}"
+                                       FontSize="13"
+                                       Opacity="0.75"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <!-- 文件 -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="文件" FontSize="16" FontWeight="SemiBold" />
+                            <Border Padding="12,10"
+                                    Background="{DynamicResource LayerFillColorAltBrush}"
+                                    CornerRadius="6">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="{Binding FilePath}"
+                                               FontSize="12"
+                                               TextWrapping="Wrap"
+                                               FontFamily="Consolas, Courier New, monospace" />
+                                    <TextBlock Text="{Binding FileSize, StringFormat='大小: {0}'}"
+                                               FontSize="11"
+                                               Opacity="0.65" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                    </StackPanel>
+
+                    <!-- 右侧栏：标签 / 收藏夹 / 元数据 -->
+                    <StackPanel Grid.Column="2" Spacing="24">
+
+                        <!-- 标签 -->
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="标签" FontSize="14" FontWeight="SemiBold" Opacity="0.8" />
+                            <ItemsControl ItemsSource="{Binding Tags}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="10,4" Margin="0,0,6,6"
+                                                Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="12">
+                                            <TextBlock Text="{Binding}" FontSize="12" />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <!-- 收藏夹 -->
+                        <StackPanel Spacing="10" IsVisible="{Binding HasFavorites}">
+                            <TextBlock Text="收藏夹" FontSize="14" FontWeight="SemiBold" Opacity="0.8" />
+                            <ItemsControl ItemsSource="{Binding Favorites}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,2">
+                                            <PathIcon Data="{StaticResource IconStar}" Width="12" Height="12"
+                                                      Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                                            <TextBlock Text="{Binding}" FontSize="13" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <!-- 元数据 -->
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="元数据" FontSize="14" FontWeight="SemiBold" Opacity="0.8" />
+                            <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,4,Auto,4,Auto">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="发布日期" FontSize="12" Opacity="0.6" />
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding ReleaseDateText}" FontSize="12" />
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="入库时间" FontSize="12" Opacity="0.6" />
+                                <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding StoreDateText}" FontSize="12" />
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="文件大小" FontSize="12" Opacity="0.6" />
+                                <TextBlock Grid.Row="4" Grid.Column="2" Text="{Binding FileSize}" FontSize="12" />
+                            </Grid>
+                        </StackPanel>
+
+                    </StackPanel>
+                </Grid>
+
+            </StackPanel>
+        </ScrollViewer>
+
+    </Grid>
+
+</Window>

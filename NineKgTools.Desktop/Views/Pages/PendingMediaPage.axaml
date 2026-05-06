@@ -3,11 +3,240 @@
              xmlns:vm="using:NineKgTools.Desktop.ViewModels.Pages"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
              x:Class="NineKgTools.Desktop.Views.Pages.PendingMediaPage"
-             x:DataType="vm:PendingMediaViewModel">
-    <StackPanel Margin="32,24,32,32" Spacing="16">
-        <TextBlock Text="待处理" Theme="{StaticResource TitleLargeTextBlockStyle}" />
-        <ui:InfoBar Severity="Informational" IsOpen="True" IsClosable="False"
-                    Title="Phase 1.5 待实现"
-                    Message="双 Tab 待识别 / 待入库 + 行级动作（识别 / 手动添加 / 丢弃）+ 批量操作。" />
-    </StackPanel>
+             x:DataType="vm:PendingMediaViewModel"
+             x:Name="PageRoot">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- ========== Row 0: 头部（标题 + 刷新） ========== -->
+        <Grid Grid.Row="0" Margin="32,24,32,12" ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0" Spacing="4">
+                <TextBlock Text="待处理" FontSize="28" FontWeight="SemiBold" />
+                <TextBlock Text="处理还未识别或已识别但尚未入库的媒体源"
+                           Opacity="0.7" FontSize="13" />
+            </StackPanel>
+            <Button Grid.Column="1" Command="{Binding RefreshCommand}" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
+                    <TextBlock Text="刷新" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- ========== Row 1: 双 Tab ========== -->
+        <TabControl Grid.Row="1"
+                    SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
+                    Margin="32,0,32,16">
+
+            <!-- ========== Tab 1: 待识别 ========== -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource IconInbox}" Width="14" Height="14" />
+                        <TextBlock VerticalAlignment="Center">
+                            <Run Text="待识别 (" />
+                            <Run Text="{Binding PendingIdentifyCount}" />
+                            <Run Text=")" />
+                        </TextBlock>
+                    </StackPanel>
+                </TabItem.Header>
+
+                <Grid>
+                    <!-- 空状态 -->
+                    <Border IsVisible="{Binding ShowIdentifyEmpty}"
+                            Background="{DynamicResource LayerFillColorAltBrush}"
+                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="48,40"
+                            Margin="0,16"
+                            MaxWidth="480"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                        <StackPanel Spacing="16" HorizontalAlignment="Center">
+                            <PathIcon Data="{StaticResource IconInbox}" Width="64" Height="64"
+                                      Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                      Opacity="0.6" HorizontalAlignment="Center" />
+                            <TextBlock Text="没有待识别的媒体源"
+                                       HorizontalAlignment="Center"
+                                       FontSize="18"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Text="去媒体源页面添加监视文件夹，新文件出现时会自动出现在这里。"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       Opacity="0.7"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 列表 -->
+                    <ScrollViewer IsVisible="{Binding !ShowIdentifyEmpty}">
+                        <ItemsControl ItemsSource="{Binding PendingIdentifyItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PendingMediaItemViewModel">
+                                    <Border Padding="16,12" Margin="0,0,0,8"
+                                            Background="{DynamicResource LayerFillColorDefaultBrush}"
+                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8">
+                                        <Grid ColumnDefinitions="Auto,16,*,Auto">
+                                            <!-- 分类图标 -->
+                                            <Border Grid.Column="0" Width="40" Height="40"
+                                                    CornerRadius="6"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    VerticalAlignment="Center">
+                                                <PathIcon Data="{Binding CategoryIcon}"
+                                                          Width="22" Height="22"
+                                                          Foreground="{Binding CategoryBrush}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+
+                                            <!-- 主信息 -->
+                                            <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock FontSize="12" Opacity="0.65">
+                                                    <Run Text="{Binding PathPreview}" />
+                                                    <Run Text=" · " />
+                                                    <Run Text="{Binding SizeText}" />
+                                                </TextBlock>
+                                            </StackPanel>
+
+                                            <!-- 操作按钮组 -->
+                                            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6"
+                                                        VerticalAlignment="Center">
+                                                <Button Command="{Binding #PageRoot.((vm:PendingMediaViewModel)DataContext).IdentifyCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Content="识别" />
+                                                <Button Command="{Binding #PageRoot.((vm:PendingMediaViewModel)DataContext).ManualAddCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Content="手动添加" />
+                                                <Button Command="{Binding #PageRoot.((vm:PendingMediaViewModel)DataContext).DiscardIdentifyCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Content="丢弃" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- ========== Tab 2: 待入库 ========== -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{StaticResource IconInboxArrowDown}" Width="14" Height="14" />
+                        <TextBlock VerticalAlignment="Center">
+                            <Run Text="待入库 (" />
+                            <Run Text="{Binding PendingDatabaseCount}" />
+                            <Run Text=")" />
+                        </TextBlock>
+                    </StackPanel>
+                </TabItem.Header>
+
+                <Grid>
+                    <!-- 空状态 -->
+                    <Border IsVisible="{Binding ShowDatabaseEmpty}"
+                            Background="{DynamicResource LayerFillColorAltBrush}"
+                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="48,40"
+                            Margin="0,16"
+                            MaxWidth="480"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                        <StackPanel Spacing="16" HorizontalAlignment="Center">
+                            <PathIcon Data="{StaticResource IconInboxArrowDown}" Width="64" Height="64"
+                                      Foreground="{DynamicResource SystemFillColorSuccessBrush}"
+                                      Opacity="0.6" HorizontalAlignment="Center" />
+                            <TextBlock Text="没有待入库的识别结果"
+                                       HorizontalAlignment="Center"
+                                       FontSize="18"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Text="关闭&quot;自动入库&quot;后，识别完成的媒体会先停在这里供你审核。"
+                                       HorizontalAlignment="Center"
+                                       TextAlignment="Center"
+                                       Opacity="0.7"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 列表 -->
+                    <ScrollViewer IsVisible="{Binding !ShowDatabaseEmpty}">
+                        <ItemsControl ItemsSource="{Binding PendingDatabaseItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PendingMediaItemViewModel">
+                                    <Border Padding="16,12" Margin="0,0,0,8"
+                                            Background="{DynamicResource LayerFillColorDefaultBrush}"
+                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8">
+                                        <Grid ColumnDefinitions="Auto,16,*,Auto">
+                                            <Border Grid.Column="0" Width="40" Height="40"
+                                                    CornerRadius="6"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    VerticalAlignment="Center">
+                                                <PathIcon Data="{Binding CategoryIcon}"
+                                                          Width="22" Height="22"
+                                                          Foreground="{Binding CategoryBrush}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+
+                                            <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <TextBlock Text="{Binding DisplayName}"
+                                                               FontSize="12"
+                                                               Opacity="0.6"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               MaxWidth="240" />
+                                                    <TextBlock Text="→" Opacity="0.4" />
+                                                    <TextBlock Text="{Binding IdentifiedTitle}"
+                                                               FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="{Binding IdentifiedRatingText}"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource SystemFillColorAttentionBrush}"
+                                                               IsVisible="{Binding HasIdentifiedRating}" />
+                                                    <TextBlock Text="{Binding PathPreview}"
+                                                               FontSize="11"
+                                                               Opacity="0.55" />
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6"
+                                                        VerticalAlignment="Center">
+                                                <Button Command="{Binding #PageRoot.((vm:PendingMediaViewModel)DataContext).PreviewDatabaseCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Content="预览" />
+                                                <Button Command="{Binding #PageRoot.((vm:PendingMediaViewModel)DataContext).ApproveDatabaseCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Content="入库"
+                                                        Theme="{DynamicResource AccentButtonTheme}" />
+                                                <Button Command="{Binding #PageRoot.((vm:PendingMediaViewModel)DataContext).ReidentifyCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Content="重新识别" />
+                                                <Button Command="{Binding #PageRoot.((vm:PendingMediaViewModel)DataContext).DiscardDatabaseCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Content="丢弃" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+        </TabControl>
+
+    </Grid>
+
 </UserControl>

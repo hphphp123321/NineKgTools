@@ -1,0 +1,335 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Components"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="NineKgTools.Desktop.Views.Components.IdentificationDiagnosticsView"
+             x:DataType="vm:IdentificationDiagnosticsViewModel">
+
+    <UserControl.Styles>
+        <!-- 网站尝试卡 -->
+        <Style Selector="Border.attempt-card">
+            <Setter Property="Background" Value="{DynamicResource LayerFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="14,12" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+        <!-- final attempt 强调 -->
+        <Style Selector="Border.attempt-card.final">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorSuccessBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <!-- 状态 chip -->
+        <Style Selector="Border.status-chip">
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+        <!-- 候选行 -->
+        <Style Selector="Border.candidate-row">
+            <Setter Property="Background" Value="{DynamicResource LayerFillColorAltBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="Border.candidate-row.chosen">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorSuccessBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SystemFillColorSuccessBackgroundBrush}" />
+        </Style>
+        <!-- 关键词 K-V -->
+        <Style Selector="TextBlock.kv-key">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="Width" Value="92" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+
+        <!-- 空状态 -->
+        <Border IsVisible="{Binding ShowEmpty}"
+                Background="{DynamicResource LayerFillColorAltBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="36,28"
+                Margin="0,16"
+                MaxWidth="520"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+            <StackPanel Spacing="12" HorizontalAlignment="Center">
+                <TextBlock Text="?" FontSize="42"
+                           Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                           Opacity="0.5"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="本次任务没有识别诊断"
+                           FontSize="15" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="只有运行在 SingleSourceIdentificationTask 上下文中的任务才会上报诊断信息。批量任务、定时任务、监控任务等不会有诊断数据。"
+                           FontSize="12" Opacity="0.7"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <!-- 主体 -->
+        <ScrollViewer IsVisible="{Binding HasDiagnostics}">
+            <StackPanel Spacing="14" Margin="0,0,0,16">
+
+                <!-- ===== Hero ===== -->
+                <Border Padding="14,12"
+                        CornerRadius="8"
+                        Background="{DynamicResource LayerFillColorDefaultBrush}"
+                        BorderBrush="{Binding HeroAccentBrush}"
+                        BorderThickness="1">
+                    <StackPanel Spacing="6">
+                        <Grid ColumnDefinitions="Auto,12,*">
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding HeroIcon}"
+                                       FontSize="22"
+                                       Foreground="{Binding HeroAccentBrush}"
+                                       VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="{Binding HeroVerdict}"
+                                               FontSize="15" FontWeight="SemiBold"
+                                               Foreground="{Binding HeroAccentBrush}" />
+                                    <TextBlock Text="·" Opacity="0.4"
+                                               IsVisible="{Binding IsSuccess}"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding HeroChosenWebsite}"
+                                               FontSize="13" FontWeight="SemiBold"
+                                               IsVisible="{Binding IsSuccess}"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Text="·" Opacity="0.4"
+                                               IsVisible="{Binding IsSuccess}"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding HeroChosenTitle}"
+                                               FontSize="13"
+                                               Opacity="0.85"
+                                               IsVisible="{Binding IsSuccess}"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding HeroChosenScore}"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                               IsVisible="{Binding IsSuccess}"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding HeroFailureReason}"
+                                               FontSize="13"
+                                               Opacity="0.85"
+                                               IsVisible="{Binding IsFailure}"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Spacing="14" Opacity="0.65">
+                                    <TextBlock Text="{Binding HeroCategory}" FontSize="11" />
+                                    <TextBlock Text="{Binding HeroDuration}" FontSize="11" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding HeroPathTruncated}"
+                                           FontSize="11"
+                                           Opacity="0.55"
+                                           ToolTip.Tip="{Binding HeroPath}"
+                                           TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- ===== 关键词 ===== -->
+                <Border Padding="14,12"
+                        CornerRadius="8"
+                        Background="{DynamicResource LayerFillColorAltBrush}"
+                        IsVisible="{Binding HasKeywords}">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="关键词解析" FontSize="13" FontWeight="SemiBold" />
+
+                        <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding HasProductCode}">
+                            <TextBlock Grid.Column="0" Classes="kv-key" Text="产品代码" />
+                            <Border Grid.Column="1"
+                                    HorizontalAlignment="Left"
+                                    Padding="6,2" CornerRadius="10"
+                                    Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                <TextBlock Text="{Binding Keywords.ProductCode}"
+                                           FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+                            </Border>
+                        </Grid>
+
+                        <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding HasCircleName}">
+                            <TextBlock Grid.Column="0" Classes="kv-key" Text="社团 / 制作者" />
+                            <TextBlock Grid.Column="1" Text="{Binding Keywords.CircleName}" FontSize="13" />
+                        </Grid>
+
+                        <Grid ColumnDefinitions="Auto,*">
+                            <TextBlock Grid.Column="0" Classes="kv-key" Text="主关键词" />
+                            <TextBlock Grid.Column="1" Text="{Binding PrimaryKeyword}"
+                                       FontSize="13" FontWeight="SemiBold" />
+                        </Grid>
+
+                        <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding HasSecondaryKeywords}">
+                            <TextBlock Grid.Column="0" Classes="kv-key" Text="次要关键词" />
+                            <TextBlock Grid.Column="1" Text="{Binding SecondaryKeywordsText}"
+                                       FontSize="12" Opacity="0.85" TextWrapping="Wrap" />
+                        </Grid>
+
+                        <Grid ColumnDefinitions="Auto,*">
+                            <TextBlock Grid.Column="0" Classes="kv-key" Text="清理后标题" />
+                            <TextBlock Grid.Column="1" Text="{Binding CleanedTitle}"
+                                       FontSize="12" Opacity="0.85" TextWrapping="Wrap" />
+                        </Grid>
+
+                        <Grid ColumnDefinitions="Auto,*">
+                            <TextBlock Grid.Column="0" Classes="kv-key" Text="检测语言" />
+                            <TextBlock Grid.Column="1" Text="{Binding DetectedLanguage}"
+                                       FontSize="12" Opacity="0.65" />
+                        </Grid>
+
+                        <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding HasVersion}">
+                            <TextBlock Grid.Column="0" Classes="kv-key" Text="版本" />
+                            <TextBlock Grid.Column="1" Text="{Binding Keywords.Version}"
+                                       FontSize="12" Opacity="0.65" />
+                        </Grid>
+
+                        <Grid ColumnDefinitions="Auto,*" IsVisible="{Binding HasDate}">
+                            <TextBlock Grid.Column="0" Classes="kv-key" Text="日期" />
+                            <TextBlock Grid.Column="1" Text="{Binding Keywords.Date}"
+                                       FontSize="12" Opacity="0.65" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- ===== 网站尝试 ===== -->
+                <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding AttemptsCountText}" FontSize="13" FontWeight="SemiBold" />
+
+                    <TextBlock IsVisible="{Binding ShowEmptyAttempts}"
+                               Text="尚未尝试任何网站。"
+                               FontSize="12" Opacity="0.6" Margin="0,4" />
+
+                    <ItemsControl ItemsSource="{Binding Attempts}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:WebsiteAttemptItemViewModel">
+                                <Border Classes="attempt-card"
+                                        Classes.final="{Binding IsFinal}">
+                                    <StackPanel Spacing="8">
+
+                                        <!-- 头部一行 -->
+                                        <Grid ColumnDefinitions="Auto,8,Auto,12,Auto,8,Auto,*,Auto">
+                                            <TextBlock Grid.Column="0" Text="{Binding IndexText}"
+                                                       FontSize="12" Opacity="0.55" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="2" Text="{Binding WebsiteName}"
+                                                       FontSize="14" FontWeight="SemiBold"
+                                                       VerticalAlignment="Center" />
+                                            <Border Grid.Column="4" Classes="status-chip"
+                                                    Background="{Binding StatusFillBrush}"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding StatusText}"
+                                                           FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{Binding StatusBrush}" />
+                                            </Border>
+                                            <Border Grid.Column="6" Classes="status-chip"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding SourceText}"
+                                                           FontSize="11" Opacity="0.75" />
+                                            </Border>
+                                            <TextBlock Grid.Column="8" Text="{Binding DurationText}"
+                                                       FontSize="11" Opacity="0.55"
+                                                       VerticalAlignment="Center" />
+                                        </Grid>
+
+                                        <!-- 命中结果 -->
+                                        <StackPanel Spacing="2"
+                                                    IsVisible="{Binding IsSuccessOrCache}">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="✓" FontSize="13"
+                                                           Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
+                                                <TextBlock Text="{Binding ResultTitle}"
+                                                           FontSize="13" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <TextBlock Text="{Binding ResultId}"
+                                                           FontSize="11"
+                                                           FontFamily="Consolas, monospace"
+                                                           Opacity="0.6" />
+                                                <TextBlock Text="{Binding ResultScoreText}"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                           IsVisible="{Binding HasResultScore}" />
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- 失败原因 -->
+                                        <TextBlock Text="{Binding Reason}"
+                                                   FontSize="12"
+                                                   Opacity="0.75"
+                                                   TextWrapping="Wrap"
+                                                   IsVisible="{Binding HasReason}" />
+
+                                        <!-- 候选统计 + 列表 -->
+                                        <StackPanel Spacing="6" IsVisible="{Binding ShowStats}">
+                                            <TextBlock Text="{Binding StatsText}"
+                                                       FontSize="11" Opacity="0.55" />
+                                            <ItemsControl ItemsSource="{Binding Candidates}"
+                                                          IsVisible="{Binding HasCandidates}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:CandidateItemViewModel">
+                                                        <Border Classes="candidate-row"
+                                                                Classes.chosen="{Binding Chosen}">
+                                                            <Grid ColumnDefinitions="48,12,*">
+                                                                <TextBlock Grid.Column="0"
+                                                                           Text="{Binding ScoreText}"
+                                                                           FontSize="13" FontWeight="SemiBold"
+                                                                           FontFamily="Consolas, monospace"
+                                                                           HorizontalAlignment="Right"
+                                                                           VerticalAlignment="Center" />
+                                                                <StackPanel Grid.Column="2" Spacing="2">
+                                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                                        <TextBlock Text="✓"
+                                                                                   FontSize="12"
+                                                                                   Foreground="{DynamicResource SystemFillColorSuccessBrush}"
+                                                                                   IsVisible="{Binding Chosen}"
+                                                                                   VerticalAlignment="Center" />
+                                                                        <TextBlock Text="{Binding Title}"
+                                                                                   FontSize="13"
+                                                                                   FontWeight="SemiBold"
+                                                                                   TextTrimming="CharacterEllipsis"
+                                                                                   ToolTip.Tip="{Binding Title}" />
+                                                                    </StackPanel>
+                                                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                                                        <TextBlock Text="{Binding Id}"
+                                                                                   FontSize="11"
+                                                                                   FontFamily="Consolas, monospace"
+                                                                                   Opacity="0.55" />
+                                                                        <TextBlock Text="{Binding SearchKey, StringFormat='通过「{0}」'}"
+                                                                                   FontSize="11"
+                                                                                   Opacity="0.55"
+                                                                                   IsVisible="{Binding HasSearchKey}" />
+                                                                    </StackPanel>
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+
+    </Grid>
+
+</UserControl>

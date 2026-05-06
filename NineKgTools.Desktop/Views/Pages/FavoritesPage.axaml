@@ -1,13 +1,226 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:NineKgTools.Desktop.ViewModels.Pages"
+             xmlns:conv="using:NineKgTools.Desktop.Converters"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
              x:Class="NineKgTools.Desktop.Views.Pages.FavoritesPage"
-             x:DataType="vm:FavoritesViewModel">
-    <StackPanel Margin="32,24,32,32" Spacing="16">
-        <TextBlock Text="收藏夹" Theme="{StaticResource TitleLargeTextBlockStyle}" />
-        <ui:InfoBar Severity="Informational" IsOpen="True" IsClosable="False"
-                    Title="Phase 2.6 待实现"
-                    Message="左右分栏 + 收藏夹列表 + 多选 + 拖拽到 sidebar。" />
-    </StackPanel>
+             x:DataType="vm:FavoritesViewModel"
+             x:Name="PageRoot">
+
+    <UserControl.Styles>
+        <!-- 收藏夹列表项（与 SettingsPage 的 nav-item 同款，但 active 切换由代码绑定 IsSelected） -->
+        <Style Selector="Button.fav-item">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.15" />
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.fav-item.selected">
+            <Setter Property="Background" Value="{DynamicResource BrandCategoryAllFillBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BrandCategoryAllBrush}" />
+        </Style>
+        <Style Selector="Button.fav-item.selected TextBlock.name">
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ColumnDefinitions="240,1,*">
+
+        <!-- ========== 左侧：收藏夹列表 ========== -->
+        <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto" Background="{DynamicResource LayerFillColorAltBrush}">
+
+            <StackPanel Grid.Row="0" Margin="20,24,20,12" Spacing="2">
+                <TextBlock Text="收藏夹" FontSize="22" FontWeight="SemiBold" />
+                <TextBlock Text="按主题组织你的媒体收藏"
+                           FontSize="11" Opacity="0.6" />
+            </StackPanel>
+
+            <ScrollViewer Grid.Row="1" Padding="12,8,12,8">
+                <ItemsControl ItemsSource="{Binding Favorites}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:FavoriteItemViewModel">
+                            <Button Classes="fav-item"
+                                    Classes.selected="{Binding IsSelected}"
+                                    Margin="0,2"
+                                    Command="{Binding #PageRoot.((vm:FavoritesViewModel)DataContext).SelectFavoriteCommand}"
+                                    CommandParameter="{Binding}">
+                                <Grid ColumnDefinitions="Auto,10,*,Auto">
+                                    <PathIcon Grid.Column="0" Width="14" Height="14"
+                                              Foreground="{DynamicResource SystemFillColorAttentionBrush}"
+                                              Data="{StaticResource IconStar}" />
+                                    <TextBlock Grid.Column="2" Classes="name"
+                                               Text="{Binding Name}"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" />
+                                    <Border Grid.Column="3"
+                                            Padding="6,2"
+                                            CornerRadius="10"
+                                            Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding MediaCount}"
+                                                   FontSize="11" Opacity="0.75" />
+                                    </Border>
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- 底部新建按钮 -->
+            <StackPanel Grid.Row="2" Margin="12,8,12,16" Spacing="4">
+                <Border Margin="4,0,4,8" BorderThickness="0,0,0,1"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                <Button Classes="fav-item" Command="{Binding NewFavoriteCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="+" FontSize="16" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+                        <TextBlock Text="新建收藏夹" />
+                    </StackPanel>
+                </Button>
+                <Button Classes="fav-item" Command="{Binding RefreshCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
+                        <TextBlock Text="刷新" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- 分隔线 -->
+        <Border Grid.Column="1" Background="{DynamicResource ControlStrokeColorDefaultBrush}" />
+
+        <!-- ========== 右侧：选中收藏夹的媒体 ========== -->
+        <Grid Grid.Column="2" RowDefinitions="Auto,*">
+
+            <!-- 顶部头部 -->
+            <Grid Grid.Row="0" Margin="32,24,32,16" ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
+                    <PathIcon Data="{StaticResource IconStar}" Width="24" Height="24"
+                              Foreground="{DynamicResource SystemFillColorAttentionBrush}"
+                              VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding SelectedFavoriteName}"
+                               FontSize="22" FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding SelectedFavoriteCountText}"
+                               FontSize="13" Opacity="0.65"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Command="{Binding DeleteSelectedCommand}"
+                        IsVisible="{Binding CanDeleteSelected}"
+                        VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="✕" Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                        <TextBlock Text="删除收藏夹" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- 主区域：媒体卡片网格 / 空状态 -->
+            <Grid Grid.Row="1" Margin="32,0,32,16">
+
+                <!-- 空状态 -->
+                <Border IsVisible="{Binding ShowEmpty}"
+                        Background="{DynamicResource LayerFillColorAltBrush}"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="48,40"
+                        Margin="0,16"
+                        MaxWidth="480"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                    <StackPanel Spacing="16" HorizontalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconStar}" Width="64" Height="64"
+                                  Foreground="{DynamicResource SystemFillColorAttentionBrush}"
+                                  Opacity="0.5" HorizontalAlignment="Center" />
+                        <TextBlock Text="此收藏夹还是空的"
+                                   HorizontalAlignment="Center"
+                                   FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Text="去媒体库或媒体详情页把媒体加入收藏夹（详情页「加入收藏夹」按钮，待 Phase 2 接入多选对话框）。"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center"
+                                   Opacity="0.7"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- 卡片网格（复用 MediaOverviewPage 的同款 layout） -->
+                <ScrollViewer IsVisible="{Binding !ShowEmpty}">
+                    <ItemsControl ItemsSource="{Binding Items}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:MediaCardViewModel">
+                                <Button Command="{Binding OpenDetailCommand}"
+                                        Padding="0" Background="Transparent" BorderThickness="0"
+                                        HorizontalContentAlignment="Stretch"
+                                        VerticalContentAlignment="Stretch"
+                                        Margin="0,0,12,12"
+                                        CornerRadius="8"
+                                        ClipToBounds="True">
+                                <Border Width="180" Height="320"
+                                        Background="{DynamicResource LayerFillColorDefaultBrush}"
+                                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        ClipToBounds="True">
+                                    <Grid RowDefinitions="*,Auto">
+                                        <Grid Grid.Row="0" Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                                            <Image Source="{Binding Cover}"
+                                                   Stretch="UniformToFill"
+                                                   IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                            <Border IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNull}}"
+                                                    Background="{Binding TopCategory, Converter={x:Static conv:CategoryFillBrushConverter.Instance}}">
+                                                <PathIcon Data="{Binding CategoryIcon}"
+                                                          Width="48" Height="48"
+                                                          Foreground="{Binding CategoryBrush}"
+                                                          Opacity="0.6"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                        </Grid>
+                                        <Border Grid.Row="1" Padding="10,8">
+                                            <StackPanel Spacing="3">
+                                                <TextBlock Text="{Binding Title}"
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip.Tip="{Binding Title}" />
+                                                <TextBlock Text="{Binding CircleName}"
+                                                           FontSize="11" Opacity="0.6"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           IsVisible="{Binding CircleName, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                <TextBlock Text="{Binding RatingText}"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource SystemFillColorAttentionBrush}"
+                                                           IsVisible="{Binding HasRating}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+            </Grid>
+
+        </Grid>
+
+    </Grid>
+
 </UserControl>

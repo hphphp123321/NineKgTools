@@ -92,7 +92,7 @@
                 <Border Grid.Column="4" Classes="stat-card">
                     <StackPanel Spacing="8">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconTasks}" Width="18" Height="18"
+                            <PathIcon Data="{StaticResource IconInboxArrowDown}" Width="18" Height="18"
                                          Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
                             <TextBlock Text="待入库" Opacity="0.7" />
                         </StackPanel>

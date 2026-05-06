@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:NineKgTools.Desktop.ViewModels.Components"
+        xmlns:comp="using:NineKgTools.Desktop.Views.Components"
+        x:Class="NineKgTools.Desktop.Views.Windows.TaskDiagnosticsWindow"
+        x:DataType="vm:IdentificationDiagnosticsViewModel"
+        Width="780" Height="640"
+        MinWidth="640" MinHeight="480"
+        WindowStartupLocation="CenterOwner"
+        Title="识别诊断">
+
+    <Grid RowDefinitions="Auto,*">
+        <Border Grid.Row="0" Padding="20,16,20,12"
+                Background="{DynamicResource LayerFillColorAltBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,1">
+            <StackPanel Spacing="2">
+                <TextBlock Text="识别诊断" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="排查为什么命中或没命中 · 数据仅内存保留，重启即丢"
+                           FontSize="11" Opacity="0.65" />
+            </StackPanel>
+        </Border>
+
+        <comp:IdentificationDiagnosticsView Grid.Row="1" Margin="20,16" />
+    </Grid>
+
+</Window>

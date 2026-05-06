@@ -4,10 +4,620 @@
              xmlns:ui="using:FluentAvalonia.UI.Controls"
              x:Class="NineKgTools.Desktop.Views.Pages.SettingsPage"
              x:DataType="vm:SettingsViewModel">
-    <StackPanel Margin="32,24,32,32" Spacing="16">
-        <TextBlock Text="设置" Theme="{StaticResource TitleLargeTextBlockStyle}" />
-        <ui:InfoBar Severity="Informational" IsOpen="True" IsClosable="False"
-                    Title="Phase 2.3 待实现"
-                    Message="左侧分组导航 + 右侧字段区双列布局 + 即时保存 + 危险操作分隔。" />
-    </StackPanel>
+
+    <UserControl.Styles>
+        <!-- 左侧分组导航按钮 -->
+        <Style Selector="Button.nav-item">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Padding" Value="14,10" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.nav-item.active">
+            <Setter Property="Background" Value="{DynamicResource BrandCategoryAllFillBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BrandCategoryAllBrush}" />
+        </Style>
+        <Style Selector="Button.nav-item.active TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <!-- 主题 RadioButton 风格 -->
+        <Style Selector="RadioButton.theme-option">
+            <Setter Property="Padding" Value="0,4,12,4" />
+        </Style>
+
+        <!-- 表单字段：标签 + 输入控件分两行 -->
+        <Style Selector="StackPanel.field">
+            <Setter Property="Spacing" Value="6" />
+            <Setter Property="Margin" Value="0,0,0,18" />
+        </Style>
+        <Style Selector="StackPanel.field > TextBlock.label">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="StackPanel.field > TextBlock.help">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Opacity" Value="0.65" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ColumnDefinitions="240,1,*">
+
+        <!-- ========== 左侧分组导航 ========== -->
+        <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto" Background="{DynamicResource LayerFillColorAltBrush}">
+
+            <StackPanel Grid.Row="0" Margin="20,24,20,12" Spacing="2">
+                <TextBlock Text="设置" FontSize="22" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding SaveStatusText}"
+                           FontSize="11" Opacity="0.6"
+                           IsVisible="{Binding SaveStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            </StackPanel>
+
+            <!-- 主分组 -->
+            <ScrollViewer Grid.Row="1" Padding="12,8,12,8">
+                <StackPanel Spacing="4">
+                    <Button Classes="nav-item"
+                            Classes.active="{Binding IsGroupAppearance}"
+                            Command="{Binding SelectGroupCommand}" CommandParameter="Appearance">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <PathIcon Data="{StaticResource IconStar}" Width="14" Height="14" />
+                            <TextBlock Text="外观" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="nav-item"
+                            Classes.active="{Binding IsGroupTasks}"
+                            Command="{Binding SelectGroupCommand}" CommandParameter="Tasks">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <PathIcon Data="{StaticResource IconTasks}" Width="14" Height="14" />
+                            <TextBlock Text="任务" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="nav-item"
+                            Classes.active="{Binding IsGroupIdentification}"
+                            Command="{Binding SelectGroupCommand}" CommandParameter="Identification">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
+                            <TextBlock Text="识别" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="nav-item"
+                            Classes.active="{Binding IsGroupSources}"
+                            Command="{Binding SelectGroupCommand}" CommandParameter="Sources">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <PathIcon Data="{StaticResource IconFolderOpen}" Width="14" Height="14" />
+                            <TextBlock Text="媒体源" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="nav-item"
+                            Classes.active="{Binding IsGroupFiles}"
+                            Command="{Binding SelectGroupCommand}" CommandParameter="Files">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <PathIcon Data="{StaticResource IconInbox}" Width="14" Height="14" />
+                            <TextBlock Text="文件过滤" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="nav-item"
+                            Classes.active="{Binding IsGroupAI}"
+                            Command="{Binding SelectGroupCommand}" CommandParameter="AI">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <PathIcon Data="{StaticResource IconWeb}" Width="14" Height="14" />
+                            <TextBlock Text="AI" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="nav-item"
+                            Classes.active="{Binding IsGroupTagMatching}"
+                            Command="{Binding SelectGroupCommand}" CommandParameter="TagMatching">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <PathIcon Data="{StaticResource IconTags}" Width="14" Height="14" />
+                            <TextBlock Text="标签匹配" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="nav-item"
+                            Classes.active="{Binding IsGroupSearch}"
+                            Command="{Binding SelectGroupCommand}" CommandParameter="Search">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <PathIcon Data="{StaticResource IconLibrary}" Width="14" Height="14" />
+                            <TextBlock Text="搜索" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="nav-item"
+                            Classes.active="{Binding IsGroupLog}"
+                            Command="{Binding SelectGroupCommand}" CommandParameter="Log">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <PathIcon Data="{StaticResource IconTasks}" Width="14" Height="14" />
+                            <TextBlock Text="日志" />
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="nav-item"
+                            Classes.active="{Binding IsGroupDatabase}"
+                            Command="{Binding SelectGroupCommand}" CommandParameter="Database">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <PathIcon Data="{StaticResource IconLibrary}" Width="14" Height="14" />
+                            <TextBlock Text="数据库" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- 危险 + 工具操作（底部分隔） -->
+            <StackPanel Grid.Row="2" Margin="12,8,12,16" Spacing="4">
+                <Border Margin="4,0,4,8" BorderThickness="0,0,0,1"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                <Button Classes="nav-item" Command="{Binding OpenDataDirectoryCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <PathIcon Data="{StaticResource IconFolderOpen}" Width="14" Height="14" />
+                        <TextBlock Text="打开数据目录" />
+                    </StackPanel>
+                </Button>
+                <Button Classes="nav-item" Command="{Binding ClearCacheCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
+                        <TextBlock Text="清空缓存" />
+                    </StackPanel>
+                </Button>
+                <Button Classes="nav-item" Command="{Binding ResetDefaultsCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <PathIcon Data="{StaticResource IconInbox}" Width="14" Height="14"
+                                  Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                        <TextBlock Text="重置默认" Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- 分隔线 -->
+        <Border Grid.Column="1" Background="{DynamicResource ControlStrokeColorDefaultBrush}" />
+
+        <!-- ========== 右侧字段区 ========== -->
+        <ScrollViewer Grid.Column="2" Padding="40,24,40,24">
+        <Grid>
+
+            <!-- 外观分组 -->
+            <StackPanel IsVisible="{Binding IsGroupAppearance}" Spacing="0">
+                <TextBlock Text="外观" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="主题与视觉偏好"
+                           FontSize="13" Opacity="0.65" Margin="0,0,0,28" />
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="主题" />
+                    <TextBlock Classes="help" Text="跟随系统会随 Win11 浅深模式切换。修改即时生效。" />
+                    <StackPanel Orientation="Horizontal" Spacing="20" Margin="0,8,0,0">
+                        <RadioButton Classes="theme-option" GroupName="Theme"
+                                     IsChecked="{Binding IsThemeSystem}"
+                                     Command="{Binding SelectThemeCommand}" CommandParameter="System">
+                            <TextBlock Text="跟随系统" />
+                        </RadioButton>
+                        <RadioButton Classes="theme-option" GroupName="Theme"
+                                     IsChecked="{Binding IsThemeLight}"
+                                     Command="{Binding SelectThemeCommand}" CommandParameter="Light">
+                            <TextBlock Text="浅色" />
+                        </RadioButton>
+                        <RadioButton Classes="theme-option" GroupName="Theme"
+                                     IsChecked="{Binding IsThemeDark}"
+                                     Command="{Binding SelectThemeCommand}" CommandParameter="Dark">
+                            <TextBlock Text="深色" />
+                        </RadioButton>
+                    </StackPanel>
+                </StackPanel>
+
+                <ui:InfoBar Severity="Informational" IsOpen="True" IsClosable="False"
+                            Title="主题不持久化"
+                            Message="当前会话生效；重启后回到跟随系统。完整持久化（含其他视图偏好）将在 Phase 2 后续 session 引入桌面端独立的 window-state.json 体系。" />
+            </StackPanel>
+
+            <!-- 任务分组 -->
+            <StackPanel IsVisible="{Binding IsGroupTasks}" Spacing="0">
+                <TextBlock Text="任务" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="后台任务执行参数"
+                           FontSize="13" Opacity="0.65" Margin="0,0,0,28" />
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="最大并发识别任务数" />
+                    <TextBlock Classes="help" Text="同时运行的识别任务上限。改大可加速批量识别但 CPU/网络压力上升。修改后需要重启应用生效。" />
+                    <NumericUpDown Value="{Binding MaxConcurrentIdentificationTasks, Mode=TwoWay}"
+                                   Minimum="1" Maximum="20" Increment="1"
+                                   MaxWidth="200" HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="任务失败重试次数" />
+                    <TextBlock Classes="help" Text="任务失败后自动重试次数。超过仍失败则标记为 Failed。" />
+                    <NumericUpDown Value="{Binding RetryCount, Mode=TwoWay}"
+                                   Minimum="0" Maximum="10" Increment="1"
+                                   MaxWidth="200" HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <ui:InfoBar Severity="Warning" IsOpen="True" IsClosable="False"
+                            Title="部分字段需重启"
+                            Message="最大并发识别任务数仅在 Hangfire BackgroundJobServer 构造时读取，修改后必须重启应用才能生效。" />
+            </StackPanel>
+
+            <!-- 识别分组 -->
+            <StackPanel IsVisible="{Binding IsGroupIdentification}" Spacing="0">
+                <TextBlock Text="识别" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="媒体识别行为与超时"
+                           FontSize="13" Opacity="0.65" Margin="0,0,0,28" />
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="单网站识别超时（秒）" />
+                    <TextBlock Classes="help" Text="单个网站搜索/详情请求超时上限。慢网络可调大。" />
+                    <NumericUpDown Value="{Binding TimeoutSeconds, Mode=TwoWay}"
+                                   Minimum="5" Maximum="120" Increment="5"
+                                   MaxWidth="200" HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="自动入库" />
+                    <TextBlock Classes="help" Text="开启时识别成功后直接入库；关闭时识别结果先停在「待入库」Tab 等用户确认。" />
+                    <ToggleSwitch IsChecked="{Binding AutoAddToDatabase, Mode=TwoWay}"
+                                  OnContent="开启 · 自动入库"
+                                  OffContent="关闭 · 进入待入库列表"
+                                  HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="待入库保留天数" />
+                    <TextBlock Classes="help" Text="超过此天数仍未入库的待入库记录会被定时任务清理。0 = 永不清理。" />
+                    <NumericUpDown Value="{Binding PendingRetentionDays, Mode=TwoWay}"
+                                   Minimum="0" Maximum="365" Increment="1"
+                                   MaxWidth="200" HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="跳过缓存" />
+                    <TextBlock Classes="help" Text="开启后每次识别都重新请求识别源；关闭则命中缓存直接复用。调试用，生产建议关闭。" />
+                    <ToggleSwitch IsChecked="{Binding SkipCache, Mode=TwoWay}"
+                                  OnContent="开启 · 强制重新识别"
+                                  OffContent="关闭 · 命中缓存优先"
+                                  HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="最小相似度阈值" />
+                    <TextBlock Classes="help" Text="搜索结果与文件名相似度低于此值会被忽略。0 = 不限，1 = 完全匹配。建议 0.3–0.5。" />
+                    <NumericUpDown Value="{Binding MinSimilarity, Mode=TwoWay}"
+                                   Minimum="0" Maximum="1" Increment="0.05"
+                                   FormatString="0.00"
+                                   MaxWidth="200" HorizontalAlignment="Left" />
+                </StackPanel>
+            </StackPanel>
+
+            <!-- 媒体源分组（监视文件夹） -->
+            <StackPanel IsVisible="{Binding IsGroupSources}" Spacing="0">
+                <TextBlock Text="媒体源" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="监视文件夹 · 新文件加入会自动触发识别"
+                           FontSize="13" Opacity="0.65" Margin="0,0,0,28" />
+
+                <StackPanel Classes="field">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Classes="label" Text="监视文件夹" VerticalAlignment="Center" />
+                        <Button Grid.Column="1"
+                                Command="{Binding AddWatchFolderCommand}"
+                                Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="+" FontSize="14" FontWeight="Bold" />
+                                <TextBlock Text="添加文件夹" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                    <TextBlock Classes="help" Text="加入新文件夹会自动开始监控；删除会停止监控并从 config.yaml 移除。" />
+
+                    <Border IsVisible="{Binding WatchFolders.Count}"
+                            Margin="0,8,0,0"
+                            Padding="0"
+                            Background="Transparent">
+                        <ItemsControl ItemsSource="{Binding WatchFolders}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,6" Padding="12,8"
+                                            CornerRadius="6"
+                                            Background="{DynamicResource LayerFillColorAltBrush}"
+                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                            BorderThickness="1">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding}"
+                                                       FontFamily="Consolas, monospace"
+                                                       FontSize="12"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip.Tip="{Binding}" />
+                                            <Button Grid.Column="1"
+                                                    Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemoveWatchFolderCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Padding="8,4"
+                                                    Background="Transparent"
+                                                    Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                                    ToolTip.Tip="移除监视">
+                                                <TextBlock Text="✕" FontSize="13" />
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+
+                    <Border IsVisible="{Binding !WatchFolders.Count}"
+                            Margin="0,8,0,0" Padding="20,16"
+                            CornerRadius="6"
+                            Background="{DynamicResource LayerFillColorAltBrush}">
+                        <TextBlock Text="尚未配置监视文件夹。点击「+ 添加文件夹」选择目录。"
+                                   FontSize="12" Opacity="0.65"
+                                   HorizontalAlignment="Center" />
+                    </Border>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- 文件过滤分组 -->
+            <StackPanel IsVisible="{Binding IsGroupFiles}" Spacing="0">
+                <TextBlock Text="文件过滤" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="扫描文件夹时跳过哪些文件"
+                           FontSize="13" Opacity="0.65" Margin="0,0,0,28" />
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="最小文件大小（字节）" />
+                    <TextBlock Classes="help" Text="小于此大小的文件被忽略，避免把空文件 / 占位文件当媒体处理。1024 = 1KB。" />
+                    <NumericUpDown Value="{Binding FilesMinimumSize, Mode=TwoWay}"
+                                   Minimum="0" Maximum="1073741824" Increment="1024"
+                                   MaxWidth="240" HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="跳过隐藏文件" />
+                    <ToggleSwitch IsChecked="{Binding FilesSkipHidden, Mode=TwoWay}"
+                                  OnContent="开启 · 跳过 .hidden 等"
+                                  OffContent="关闭 · 全部扫描"
+                                  HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="跳过系统文件" />
+                    <ToggleSwitch IsChecked="{Binding FilesSkipSystem, Mode=TwoWay}"
+                                  OnContent="开启 · 跳过 Thumbs.db 等"
+                                  OffContent="关闭 · 全部扫描"
+                                  HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <ui:InfoBar Severity="Informational" IsOpen="True" IsClosable="False"
+                            Title="高级过滤规则"
+                            Message="忽略文件名 / 模式 / 允许扩展名等高级列表暂未在此页暴露——请直接编辑 config.yaml 的 files.ignored_files / files.ignored_patterns / files.allowed_extensions。改动后无需重启。" />
+            </StackPanel>
+
+            <!-- AI 分组 -->
+            <StackPanel IsVisible="{Binding IsGroupAI}" Spacing="0">
+                <TextBlock Text="AI" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="OpenAI 兼容 API · 用于关键词切分 / 别名推断 / 向量化"
+                           FontSize="13" Opacity="0.65" Margin="0,0,0,28" />
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="启用 AI" />
+                    <TextBlock Classes="help" Text="总开关。关闭后所有 AI 派生功能（关键词切分、别名推断、向量化）均不工作。" />
+                    <ToggleSwitch IsChecked="{Binding AiUseAi, Mode=TwoWay}"
+                                  OnContent="启用"
+                                  OffContent="禁用"
+                                  HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field" IsEnabled="{Binding AiUseAi}">
+                    <TextBlock Classes="label" Text="AI 关键词切分" />
+                    <TextBlock Classes="help" Text="使用 AI 对文件名进行分词，对中日复合命名提升识别命中率，但会消耗 API token。" />
+                    <ToggleSwitch IsChecked="{Binding AiUseAiForKeywordSplitting, Mode=TwoWay}"
+                                  OnContent="启用"
+                                  OffContent="禁用"
+                                  HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field" IsEnabled="{Binding AiUseAi}">
+                    <TextBlock Classes="label" Text="OpenAI API Key" />
+                    <TextBlock Classes="help" Text="留空时从环境变量 OPENAI_API_KEY 获取。" />
+                    <TextBox Text="{Binding AiOpenAiApiKey, Mode=TwoWay}"
+                             PasswordChar="●"
+                             Watermark="sk-..."
+                             MaxWidth="480" HorizontalAlignment="Stretch" />
+                </StackPanel>
+
+                <StackPanel Classes="field" IsEnabled="{Binding AiUseAi}">
+                    <TextBlock Classes="label" Text="Base Domain" />
+                    <TextBlock Classes="help" Text="OpenAI 兼容 API 的 base 域名。注意不要带 /v1 等后缀（后缀走「API 版本」字段）。" />
+                    <TextBox Text="{Binding AiOpenAiBaseDomain, Mode=TwoWay}"
+                             Watermark="https://api.openai.com"
+                             MaxWidth="480" HorizontalAlignment="Stretch" />
+                </StackPanel>
+
+                <StackPanel Classes="field" IsEnabled="{Binding AiUseAi}">
+                    <TextBlock Classes="label" Text="API 版本" />
+                    <TextBlock Classes="help" Text="拼在 base 域名后面，如 v1。" />
+                    <TextBox Text="{Binding AiOpenAiApiVersion, Mode=TwoWay}"
+                             Watermark="v1"
+                             MaxWidth="200" HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field" IsEnabled="{Binding AiUseAi}">
+                    <TextBlock Classes="label" Text="默认模型" />
+                    <TextBlock Classes="help" Text="用于推断的默认模型名。" />
+                    <TextBox Text="{Binding AiOpenAiDefaultModel, Mode=TwoWay}"
+                             Watermark="gpt-4o-mini"
+                             MaxWidth="320" HorizontalAlignment="Left" />
+                </StackPanel>
+            </StackPanel>
+
+            <!-- 标签匹配分组 -->
+            <StackPanel IsVisible="{Binding IsGroupTagMatching}" Spacing="0">
+                <TextBlock Text="标签匹配" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="识别结果中的标签如何与已有标签库匹配"
+                           FontSize="13" Opacity="0.65" Margin="0,0,0,28" />
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="启用模糊匹配" />
+                    <TextBlock Classes="help" Text="允许通过相似度算法匹配标签，识别源给的标签名跟库里有差异时仍能命中。" />
+                    <ToggleSwitch IsChecked="{Binding TmEnableFuzzyMatching, Mode=TwoWay}"
+                                  OnContent="启用"
+                                  OffContent="禁用"
+                                  HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field" IsEnabled="{Binding TmEnableFuzzyMatching}">
+                    <TextBlock Classes="label" Text="相似度阈值" />
+                    <TextBlock Classes="help" Text="相似度低于此值的标签视为不匹配。0 = 不限，1 = 完全匹配。建议 0.6–0.8。" />
+                    <NumericUpDown Value="{Binding TmSimilarityThreshold, Mode=TwoWay}"
+                                   Minimum="0" Maximum="1" Increment="0.05"
+                                   FormatString="0.00"
+                                   MaxWidth="200" HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="启用包含匹配" />
+                    <TextBlock Classes="help" Text="A 包含 B 也算匹配（如「校园喜剧」匹配「校园」）。" />
+                    <ToggleSwitch IsChecked="{Binding TmEnableContainsMatching, Mode=TwoWay}"
+                                  OnContent="启用" OffContent="禁用"
+                                  HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="启用规范化匹配" />
+                    <TextBlock Classes="help" Text="忽略大小写、空格、全半角差异后再匹配。" />
+                    <ToggleSwitch IsChecked="{Binding TmEnableNormalizedMatching, Mode=TwoWay}"
+                                  OnContent="启用" OffContent="禁用"
+                                  HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="最大匹配结果数" />
+                    <TextBlock Classes="help" Text="单次匹配返回的候选数上限。" />
+                    <NumericUpDown Value="{Binding TmMaxMatchResults, Mode=TwoWay}"
+                                   Minimum="1" Maximum="50" Increment="1"
+                                   MaxWidth="200" HorizontalAlignment="Left" />
+                </StackPanel>
+            </StackPanel>
+
+            <!-- 搜索分组 -->
+            <StackPanel IsVisible="{Binding IsGroupSearch}" Spacing="0">
+                <TextBlock Text="搜索" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="全局搜索行为与缓存"
+                           FontSize="13" Opacity="0.65" Margin="0,0,0,28" />
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="启用全局搜索" />
+                    <ToggleSwitch IsChecked="{Binding SearchEnableGlobal, Mode=TwoWay}"
+                                  OnContent="启用" OffContent="禁用"
+                                  HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="启用搜索缓存" />
+                    <TextBlock Classes="help" Text="缓存最近搜索结果，相同关键词秒级返回。" />
+                    <ToggleSwitch IsChecked="{Binding SearchEnableCache, Mode=TwoWay}"
+                                  OnContent="启用" OffContent="禁用"
+                                  HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field" IsEnabled="{Binding SearchEnableCache}">
+                    <TextBlock Classes="label" Text="缓存过期时间（分钟）" />
+                    <NumericUpDown Value="{Binding SearchCacheExpirationMinutes, Mode=TwoWay}"
+                                   Minimum="1" Maximum="1440" Increment="1"
+                                   MaxWidth="200" HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="最大并发搜索数" />
+                    <NumericUpDown Value="{Binding SearchMaxConcurrent, Mode=TwoWay}"
+                                   Minimum="1" Maximum="50" Increment="1"
+                                   MaxWidth="200" HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="搜索超时（秒）" />
+                    <NumericUpDown Value="{Binding SearchTimeoutSeconds, Mode=TwoWay}"
+                                   Minimum="1" Maximum="300" Increment="1"
+                                   MaxWidth="200" HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="默认最小相关性" />
+                    <TextBlock Classes="help" Text="低于此分数的结果会被过滤。0 = 不限，1 = 完全匹配。" />
+                    <NumericUpDown Value="{Binding SearchDefaultMinRelevance, Mode=TwoWay}"
+                                   Minimum="0" Maximum="1" Increment="0.05"
+                                   FormatString="0.00"
+                                   MaxWidth="200" HorizontalAlignment="Left" />
+                </StackPanel>
+            </StackPanel>
+
+            <!-- 日志分组 -->
+            <StackPanel IsVisible="{Binding IsGroupLog}" Spacing="0">
+                <TextBlock Text="日志" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="Serilog 输出级别"
+                           FontSize="13" Opacity="0.65" Margin="0,0,0,28" />
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="日志级别" />
+                    <TextBlock Classes="help" Text="Verbose 最详细 → Fatal 仅致命。生产环境建议 Information，调试时切 Debug。" />
+                    <ComboBox ItemsSource="{Binding LogLevelOptions}"
+                              SelectedItem="{Binding LogLevelChoice, Mode=TwoWay}"
+                              MaxWidth="240" HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <ui:InfoBar Severity="Warning" IsOpen="True" IsClosable="False"
+                            Title="部分字段需重启"
+                            Message="日志级别只在 Serilog 初始化时读取，修改后需要重启应用才能完全生效（已记录的日志保持原级别）。日志路径 / Server / 模板等高级字段请直接编辑 config.yaml。" />
+            </StackPanel>
+
+            <!-- 数据库分组 -->
+            <StackPanel IsVisible="{Binding IsGroupDatabase}" Spacing="0">
+                <TextBlock Text="数据库" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="存储路径（只读）"
+                           FontSize="13" Opacity="0.65" Margin="0,0,0,28" />
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="主数据库（database.db）" />
+                    <Border Padding="12,10"
+                            Background="{DynamicResource LayerFillColorAltBrush}"
+                            CornerRadius="6">
+                        <TextBlock Text="{Binding DatabasePath}"
+                                   FontSize="12" TextWrapping="Wrap"
+                                   FontFamily="Consolas, Courier New, monospace" />
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="Hangfire 任务库（hangfire.db）" />
+                    <Border Padding="12,10"
+                            Background="{DynamicResource LayerFillColorAltBrush}"
+                            CornerRadius="6">
+                        <TextBlock Text="{Binding HangfirePath}"
+                                   FontSize="12" TextWrapping="Wrap"
+                                   FontFamily="Consolas, Courier New, monospace" />
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="数据根目录" />
+                    <Border Padding="12,10"
+                            Background="{DynamicResource LayerFillColorAltBrush}"
+                            CornerRadius="6">
+                        <TextBlock Text="{Binding DataDirectory}"
+                                   FontSize="12" TextWrapping="Wrap"
+                                   FontFamily="Consolas, Courier New, monospace" />
+                    </Border>
+                </StackPanel>
+
+                <ui:InfoBar Severity="Warning" IsOpen="True" IsClosable="False"
+                            Title="为何只读？"
+                            Message="数据库路径由桌面端独立管理（与 Web/Docker 隔离），不可在此修改。如需迁移数据请直接复制 dataDir 到目标位置后修改 config.yaml。" />
+            </StackPanel>
+
+        </Grid>
+        </ScrollViewer>
+    </Grid>
+
 </UserControl>

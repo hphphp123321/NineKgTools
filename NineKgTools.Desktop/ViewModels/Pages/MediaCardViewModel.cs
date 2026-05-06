@@ -1,6 +1,8 @@
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using NineKgTools.Core.Models.Categories;
 using NineKgTools.Core.Models.Media;
 using NineKgTools.Desktop.Services;
@@ -65,5 +67,13 @@ public partial class MediaCardViewModel : ObservableObject
         {
             Log.Warning(ex, "MediaCardViewModel 加载封面失败：MediaId={Id}", _media.Id);
         }
+    }
+
+    /// <summary>点击卡片时由 ItemsControl 触发，通过 WindowManager 打开媒体详情独立窗口</summary>
+    [RelayCommand]
+    private void OpenDetail()
+    {
+        var wm = Program.Services?.GetService<WindowManager>();
+        wm?.OpenMediaDetail(Id);
     }
 }

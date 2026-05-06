@@ -72,6 +72,7 @@ internal static class Program
     {
         services.AddSingleton<NavigationService>();
         services.AddSingleton<ImageCacheService>();
+        services.AddSingleton<WindowManager>();
 
         // Window-level VM
         services.AddTransient<MainWindowViewModel>();
@@ -87,6 +88,9 @@ internal static class Program
         services.AddTransient<FavoritesViewModel>();
         services.AddTransient<WebsitesViewModel>();
         services.AddTransient<SettingsViewModel>();
+
+        // 详情独立窗口 VM（每次 OpenMediaDetail 调用时新建实例）
+        services.AddTransient<MediaDetailViewModel>();
     }
 
     /// <summary>
