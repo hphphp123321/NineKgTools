@@ -781,6 +781,133 @@ public sealed class WindowManager
 
 两种导航不互通：媒体详情**不**作为主窗页面（不在侧栏 NavigationView 里），点击主窗媒体卡 → 开新窗口而非替换内容。
 
+## 系统集成（Phase 3）
+
+桌面端的差异化兑现 Phase——把 OS 集成层做扎实，让用户感觉这是"真正的桌面应用"而不是"网页套壳"。
+
+### 系统托盘（TrayService）
+
+**入口**：`Services/TrayService.cs`，Singleton，由 `App.OnFrameworkInitializationCompleted` 在主窗 `Opened` 后调 `Initialize()` 启动（macOS 需要先有 Window 才能挂 NSStatusBar）。
+
+**功能**：
+- TrayIcon 通过 `Avalonia.Controls.TrayIcon` + `NativeMenu` 跨平台原生（Win / macOS NSStatusBar / Ubuntu / 大多数 GNOME 桌面）
+- 4 状态动态切色 + 改 ToolTipText：Idle（accent）/ Running（attention 蓝）/ HasFailures（critical 红）/ Paused
+- 1s `DispatcherTimer` 轮询 `TaskProgressService.GetAllRootTasks()`——状态变了才重渲染图标（RenderTargetBitmap 不是免费的）
+- 菜单：状态头部 / 「打开主窗」/ 实时计数子项 / 「退出 NineKgTools」
+
+**图标动态生成**：
+
+```csharp
+// 用 IconLibrary StreamGeometry → Path → RenderTargetBitmap → WindowIcon
+// 不需要打包 .ico 资产文件；颜色按 TrayState 切换 brush
+var path = new AvaloniaPath { Data = geometry, Fill = brush, Width = 32, Height = 32, Stretch = Uniform };
+path.Measure(new Size(32, 32));
+path.Arrange(new Rect(0, 0, 32, 32));
+var rtb = new RenderTargetBitmap(new PixelSize(32, 32));
+rtb.Render(path);
+using var ms = new MemoryStream();
+rtb.Save(ms);
+ms.Position = 0;
+return new WindowIcon(ms);
+```
+
+**关窗 → 最小化到托盘**：通过 `desktop-preferences.json` 的 `CloseAction` 控制（默认 `MinimizeToTray`）。`App.axaml.cs` 在 MainWindow.Closing 检查 `TrayService.IsExitRequested`：
+
+- 用户从主窗 X 关 + CloseAction=MinimizeToTray → `e.Cancel = true; window.Hide()`，应用继续
+- 托盘菜单「退出」→ `TrayService.RequestExit()` 置 `IsExitRequested=true`，再调 `lifetime.Shutdown()`，主窗 Closing 检查到标记后放行
+
+**`ShutdownMode = OnExplicitShutdown`** 是这个机制的前提——默认 `OnLastWindowClose` 会在 `window.Hide()` 后误判为"无窗口"直接退出整个 App。
+
+### 拖拽接收（DragDropDispatcher + Overlay）
+
+**入口**：MainWindow ctor `DragDrop.SetAllowDrop(this, true)` + `AddHandler(DragEnterEvent / DragLeaveEvent / DropEvent)`。
+
+**Overlay 防误触**：`DragEnter` 启动 200ms `DispatcherTimer`，超时仍在拖（没 leave）才显示半透明 overlay；`DragLeave` 或 `Drop` 立即 stop + 隐藏。避免快速划过窗口时闪现 overlay。
+
+**路径分发**（`DragDropDispatcher.HandleDropAsync`）：
+- 单文件 → `FilesService.IdentifySingleMedia(path)`，无对话框（最快路径）
+- 单文件夹 → 弹 `DragDropFolderActionDialog` 双卡片（加入监视 / 一次性识别）
+- 多个项 → `NineKgConfirmDialog Affirmative` 确认后逐项分类处理
+
+**`IStorageItem.TryGetLocalPath()`** 是 Avalonia.Platform.Storage 命名空间的扩展方法——容易漏 using，导致编译报"未包含定义"。
+
+### 命令行 + IPC 单实例（IpcService）
+
+**单实例**：Program.Main 用 `Mutex(initiallyOwned: true, name: "Local\\NineKgTools.Desktop.{user}")` 检查；Mutex 已存在 → 转发命令到现有进程后退出。
+
+**IPC 通道**：NamedPipe（跨平台 .NET 抽象，Win / Mac / Linux 都能用）：
+- 通道名：`NineKgTools.Desktop.IPC.{username}`（多用户系统不冲突）
+- 协议：JSON-Lines，`IpcCommand { Cmd, Path }`
+- Server：后台 `Task` loop，`NamedPipeServerStream.WaitForConnectionAsync` → 读一行 → 反序列化 → 调 handler
+- Client：`NamedPipeClientStream` + 2s connect 超时（超时即认为没现有进程）
+
+**支持命令**：`--identify <path>` / `--show-main` / `--quit`。
+
+**启动时携带的命令** 走 `Program.Pending` 静态字段；`App.OnFrameworkInitializationCompleted` 在主窗 `Opened` 后消费，避免在 IpcService 还没起来时就调度。
+
+### Windows Shell 右键集成（ShellIntegrationService）
+
+**注册位置**：`HKEY_CURRENT_USER\Software\Classes\*\shell\NineKgToolsIdentify` 和 `Directory\shell\NineKgToolsIdentify`——HKCU 不需要 UAC 提权。
+
+**写入字段**：
+- `(默认)` = 「用 NineKgTools 识别」（菜单显示文案）
+- `Icon` = exe 路径（让右键菜单旁显示项目图标）
+- `command\(默认)` = `"<exe_path>" --identify "%1"`
+
+**Settings 切换**：「外观」分组的 ToggleSwitch 调 `ToggleShellIntegration` 命令，注册 / 卸载 + 把状态同步到 `DesktopPreferences.ShellIntegrationRegistered`。
+
+**非 Windows 平台**：`ShellIntegrationService.IsSupported` 返回 false，Settings UI `IsVisible` 自动隐藏整个分组。
+
+**Win11 紧凑菜单坑**：默认隐藏旧式 verb，用户需要「显示更多选项」才能看到「用 NineKgTools 识别」——这是 Win11 OS 行为，不是项目缺陷。新的 `IExplorerCommand` API 可以让 verb 进紧凑菜单，但需要 packaged COM extension（Phase 3 不做）。
+
+### 多窗口增强
+
+**WindowStateService**：把 `Window` 的 size + position 持久化到 `DesktopPreferences.WindowStates[key]`：
+
+- key 选择：主窗 = `"main"`；MediaDetailWindow = `"media"`（同类型窗口共享一份位置，避免每个 mediaId 各占一份冗余）；TaskDiagnosticsWindow = `"diagnostics"`
+- 还原时机：`window.Opened` 之前——读取持久化的 X/Y/Width/Height + IsMaximized
+- 保存时机：`window.PositionChanged` / `window.ClientSizeProperty` observable / `window.Closing`——拖动调整也保存（防应用崩溃丢位置）
+- 屏幕边界检查：还原前确认窗口至少有 50px×50px 在某个屏幕内，避免恢复到已断开的副屏外（笔记本拔屏等）
+
+**子窗共享行为**（`WindowExtensions.EnableChildWindowFeatures(window, key)`）：
+- 自动接 WindowStateService
+- `Ctrl+W` 关自己；主窗不响应 `Ctrl+W`（避免误关）
+- `Ctrl+T` 切 `Topmost` 置顶
+
+**主窗快捷键**：`Ctrl+1..9` 跳到 NavigationView 的第 N 个 MenuItem——直接通过 `NavView.SelectedItem = items[idx]` 触发原本的 `OnNavigationSelectionChanged`，复用导航逻辑，零特殊路径。
+
+### 桌面端独立持久化（DesktopPreferences）
+
+`config.yaml` 是 Web/Desktop 共享的，桌面端独有的 UI 偏好（关窗行为、主题、Shell 集成状态、窗口位置）通过 `dataDir/desktop-preferences.json` 单独落盘，**不污染** `config.yaml`。
+
+```csharp
+public class DesktopPreferences
+{
+    public CloseAction CloseAction { get; set; } = CloseAction.MinimizeToTray;
+    public string? Theme { get; set; }
+    public bool TrayHintShown { get; set; }
+    public bool ShellIntegrationRegistered { get; set; }
+    public Dictionary<string, WindowState> WindowStates { get; set; } = new();
+}
+```
+
+500ms 防抖落盘（`RequestSave()`），错误吞掉只 Log.Warning——保存失败不该阻塞 UI。
+
+### 平台能力对照表（Phase 3）
+
+| 功能 | Win11 | Win10 | macOS 14+ | Ubuntu 24.04 |
+|---|---|---|---|---|
+| 系统托盘 | ✓ | ✓ | ✓ (NSStatusBar) | △ (依赖桌面环境) |
+| 关窗最小化到托盘 | ✓ | ✓ | ✓ | △ |
+| 文件拖拽接收 | ✓ | ✓ | ✓ | ✓ |
+| Ctrl+W / Ctrl+1..9 / Ctrl+T 快捷键 | ✓ | ✓ | ✓（Cmd 键也支持？需测） | ✓ |
+| 窗口位置记忆 | ✓ | ✓ | ✓ | ✓ |
+| 单实例 + IPC | ✓ | ✓ | ✓ | ✓ |
+| 右键 Shell 集成 | ✓ (HKCU verb) | ✓ | ✗ (Phase 3 不做 macOS Service) | ✗ |
+| 命令行 --identify | ✓ | ✓ | ✓ | ✓ |
+
+**降级原则**：所有平台特定调用都包 try/catch + Log.Warning——「功能缺失但不崩」。例如 TrayService.Initialize 在 GNOME 无 indicator extension 时静默失败，主窗仍能用。
+
 ## 主题适配（双主题强制）
 
 `Application.RequestedThemeVariant="Default"`——跟随 Win11 浅色/深色设置。**所有自定义视觉**（Hero 渐变、Intent accent、5 类别色）必须在浅深两套主题下都验证。

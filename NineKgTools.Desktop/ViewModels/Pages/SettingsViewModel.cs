@@ -21,6 +21,7 @@ public partial class SettingsViewModel : PageViewModelBase
 {
     private readonly Config _config;
     private readonly ImageCacheService _imageCache;
+    private readonly DesktopPreferences _preferences;
     private bool _suppressSave;
     private CancellationTokenSource? _saveDebounceCts;
 
@@ -61,6 +62,21 @@ public partial class SettingsViewModel : PageViewModelBase
     public bool IsThemeSystem => Theme == ThemeChoice.System;
     public bool IsThemeLight => Theme == ThemeChoice.Light;
     public bool IsThemeDark => Theme == ThemeChoice.Dark;
+
+    // ========== 关窗行为 ==========
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCloseToTray))]
+    [NotifyPropertyChangedFor(nameof(IsCloseExit))]
+    private CloseAction _closeAction = CloseAction.MinimizeToTray;
+
+    public bool IsCloseToTray => CloseAction == CloseAction.MinimizeToTray;
+    public bool IsCloseExit => CloseAction == CloseAction.Exit;
+
+    // ========== Shell 集成（仅 Win） ==========
+    [ObservableProperty]
+    private bool _shellIntegrationRegistered;
+
+    public bool ShellIntegrationSupported => ShellIntegrationService.IsSupported;
 
     // ========== 任务 ==========
     [ObservableProperty] private int _maxConcurrentIdentificationTasks;
@@ -119,10 +135,15 @@ public partial class SettingsViewModel : PageViewModelBase
 
     [ObservableProperty] private string? _saveStatusText;
 
-    public SettingsViewModel(Config config, ImageCacheService imageCache)
+    private readonly ShellIntegrationService _shellIntegration;
+
+    public SettingsViewModel(Config config, ImageCacheService imageCache, DesktopPreferences preferences,
+        ShellIntegrationService shellIntegration)
     {
         _config = config;
         _imageCache = imageCache;
+        _preferences = preferences;
+        _shellIntegration = shellIntegration;
         LoadFromConfig();
     }
 
@@ -181,11 +202,25 @@ public partial class SettingsViewModel : PageViewModelBase
             HangfirePath = _config.Database?.HangfirePath ?? "";
             DataDirectory = Environment.CurrentDirectory;
 
-            // 主题
-            var current = Application.Current?.RequestedThemeVariant;
-            if (current == ThemeVariant.Light) Theme = ThemeChoice.Light;
-            else if (current == ThemeVariant.Dark) Theme = ThemeChoice.Dark;
-            else Theme = ThemeChoice.System;
+            // 主题：从 DesktopPreferences 持久化字段读，回退到当前 Application 主题
+            if (Enum.TryParse<ThemeChoice>(_preferences.Theme, ignoreCase: true, out var saved))
+            {
+                Theme = saved;
+            }
+            else
+            {
+                var current = Application.Current?.RequestedThemeVariant;
+                if (current == ThemeVariant.Light) Theme = ThemeChoice.Light;
+                else if (current == ThemeVariant.Dark) Theme = ThemeChoice.Dark;
+                else Theme = ThemeChoice.System;
+            }
+
+            // 关窗行为：从 DesktopPreferences 读
+            CloseAction = _preferences.CloseAction;
+
+            // Shell 集成状态：以 ShellIntegrationService 实际检测为准（注册表可能被外部修改）
+            ShellIntegrationRegistered = _shellIntegration.IsRegistered();
+            _preferences.ShellIntegrationRegistered = ShellIntegrationRegistered;
         }
         finally
         {
@@ -208,6 +243,63 @@ public partial class SettingsViewModel : PageViewModelBase
         if (!Enum.TryParse<ThemeChoice>(themeName, ignoreCase: true, out var t)) return;
         Theme = t;
         ApplyTheme();
+        if (!_suppressSave)
+        {
+            _preferences.Theme = t.ToString();
+            _preferences.RequestSave();
+        }
+    }
+
+    [RelayCommand]
+    private void SelectCloseAction(string? actionName)
+    {
+        if (string.IsNullOrEmpty(actionName)) return;
+        if (!Enum.TryParse<CloseAction>(actionName, ignoreCase: true, out var a)) return;
+        CloseAction = a;
+        if (!_suppressSave)
+        {
+            _preferences.CloseAction = a;
+            _preferences.RequestSave();
+        }
+    }
+
+    /// <summary>切换 Shell 集成（注册 / 卸载 HKCU verb）</summary>
+    [RelayCommand]
+    private void ToggleShellIntegration()
+    {
+        if (!ShellIntegrationSupported) return;
+
+        bool ok;
+        if (ShellIntegrationRegistered)
+        {
+            ok = _shellIntegration.Unregister();
+            if (ok)
+            {
+                ShellIntegrationRegistered = false;
+                _preferences.ShellIntegrationRegistered = false;
+                _preferences.RequestSave();
+                SaveStatusText = "Shell 集成已卸载";
+            }
+            else
+            {
+                SaveStatusText = "卸载失败，请稍后重试";
+            }
+        }
+        else
+        {
+            ok = _shellIntegration.Register();
+            if (ok)
+            {
+                ShellIntegrationRegistered = true;
+                _preferences.ShellIntegrationRegistered = true;
+                _preferences.RequestSave();
+                SaveStatusText = "Shell 集成已注册（Win11 需「显示更多选项」）";
+            }
+            else
+            {
+                SaveStatusText = "注册失败，请稍后重试";
+            }
+        }
     }
 
     private void ApplyTheme()

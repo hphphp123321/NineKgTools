@@ -1,0 +1,79 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="NineKgTools.Desktop.Views.Dialogs.DragDropFolderActionDialog"
+             x:Name="DialogRoot"
+             MinWidth="520" MaxWidth="640">
+
+    <UserControl.Styles>
+        <Style Selector="Button.action-card">
+            <Setter Property="Background" Value="{DynamicResource LayerFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="20,18" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" />
+                </Transitions>
+            </Setter>
+            <Setter Property="RenderTransform" Value="translateY(0)" />
+        </Style>
+        <Style Selector="Button.action-card:pointerover">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+            <Setter Property="RenderTransform" Value="translateY(-2px)" />
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Spacing="16">
+
+        <!-- 拖入路径预览 -->
+        <Border Padding="12,10"
+                CornerRadius="6"
+                Background="{DynamicResource LayerFillColorAltBrush}">
+            <StackPanel Spacing="2">
+                <TextBlock Text="文件夹路径" FontSize="11" Opacity="0.6" />
+                <TextBlock Text="{Binding #DialogRoot.FolderPath}"
+                           FontFamily="Consolas, monospace"
+                           FontSize="12"
+                           TextWrapping="Wrap"
+                           ToolTip.Tip="{Binding #DialogRoot.FolderPath}" />
+                <TextBlock Text="{Binding #DialogRoot.ItemCountText}"
+                           FontSize="11" Opacity="0.65" Margin="0,4,0,0" />
+            </StackPanel>
+        </Border>
+
+        <!-- 双卡片选择 -->
+        <Grid ColumnDefinitions="*,12,*">
+
+            <Button Grid.Column="0"
+                    Classes="action-card"
+                    Click="OnAddToWatchClicked">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="🔁" FontSize="28" HorizontalAlignment="Left" />
+                    <TextBlock Text="加入监视" FontSize="14" FontWeight="SemiBold" />
+                    <TextBlock Text="长期跟踪此文件夹。新文件加入会自动触发识别。"
+                               FontSize="11" Opacity="0.7"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Button>
+
+            <Button Grid.Column="2"
+                    Classes="action-card"
+                    Click="OnIdentifyOnceClicked">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="⚡" FontSize="28" HorizontalAlignment="Left" />
+                    <TextBlock Text="一次性识别" FontSize="14" FontWeight="SemiBold" />
+                    <TextBlock Text="识别现有文件后结束。不持续监视新增文件。"
+                               FontSize="11" Opacity="0.7"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Button>
+
+        </Grid>
+
+    </StackPanel>
+
+</UserControl>

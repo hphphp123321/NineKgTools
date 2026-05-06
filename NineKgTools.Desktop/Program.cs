@@ -19,16 +19,55 @@ internal static class Program
     /// </summary>
     public static IServiceProvider Services { get; private set; } = null!;
 
+    /// <summary>
+    /// 单实例 Mutex 名（每用户独立）。
+    /// </summary>
+    private static string SingleInstanceMutexName => $@"Local\NineKgTools.Desktop.{Environment.UserName}";
+
     [STAThread]
     public static int Main(string[] args)
     {
+        // 解析命令行命令（--identify <path> / --quit / --show-main）
+        var pendingCommand = ParseCliCommand(args);
+
+        // 单实例守门：如果已有进程在跑 → 把命令转发给它，自己退出
+        var mutex = new Mutex(initiallyOwned: true, name: SingleInstanceMutexName, out var isNewInstance);
+        if (!isNewInstance)
+        {
+            mutex.Dispose();
+            if (pendingCommand is not null)
+            {
+                // 转发命令；失败也只能算了——用户至少看到现有进程仍活
+                var ok = IpcService.TrySendAsync(pendingCommand).GetAwaiter().GetResult();
+                Console.WriteLine(ok ? "已转发命令到现有进程" : "转发命令失败（连接超时）");
+            }
+            else
+            {
+                // 双击启动 / 无命令——让现有进程把主窗显示出来
+                _ = IpcService.TrySendAsync(new IpcCommand { Cmd = "show-main" }).GetAwaiter().GetResult();
+            }
+            return 0;
+        }
+
         try
         {
             BootstrapAsync().GetAwaiter().GetResult();
 
+            // IPC server 启动（接收后续 --identify 等转发）
+            try { Services.GetService<IpcService>()?.StartServer(); }
+            catch (Exception ex) { Log.Warning(ex, "IpcService 启动失败"); }
+
+            // 把首次启动时携带的命令交给本进程处理（在 UI 框架启动后由 OnFrameworkInitializationCompleted 完成主窗后再触发）
+            if (pendingCommand is not null)
+            {
+                Pending = pendingCommand;
+            }
+
             var exitCode = BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
 
             AppBootstrap.ShutdownCleanup(Services);
+            mutex.ReleaseMutex();
+            mutex.Dispose();
             return exitCode;
         }
         catch (Exception ex)
@@ -37,6 +76,33 @@ internal static class Program
             Console.Error.WriteLine($"桌面端启动失败：{ex}");
             return 1;
         }
+    }
+
+    /// <summary>
+    /// 启动时携带的命令——由 App.OnFrameworkInitializationCompleted 在主窗显示后消费。
+    /// </summary>
+    public static IpcCommand? Pending { get; private set; }
+
+    /// <summary>
+    /// 把命令行参数解析为 IpcCommand。识别：
+    /// `--identify &lt;path&gt;` / `--quit` / `--show-main`
+    /// 不识别返回 null。
+    /// </summary>
+    private static IpcCommand? ParseCliCommand(string[] args)
+    {
+        for (int i = 0; i < args.Length; i++)
+        {
+            switch (args[i])
+            {
+                case "--identify" when i + 1 < args.Length:
+                    return new IpcCommand { Cmd = "identify", Path = args[i + 1] };
+                case "--quit":
+                    return new IpcCommand { Cmd = "quit" };
+                case "--show-main":
+                    return new IpcCommand { Cmd = "show-main" };
+            }
+        }
+        return null;
     }
 
     public static AppBuilder BuildAvaloniaApp() =>
@@ -55,10 +121,13 @@ internal static class Program
         var logger = AppBootstrap.ConfigureLogger(config);
         Log.Information("桌面端数据目录：{DataDir}", dataDir);
 
+        // 加载桌面端独有的 UI 偏好（关窗行为 / 主题 / 窗口位置等），与 config.yaml 解耦
+        var preferences = DesktopPreferences.Load(dataDir);
+
         var services = new ServiceCollection();
         AppBootstrap.ConfigureCoreServices(services, config, logger);
         ConfigureHangfire(services, config);
-        ConfigureDesktopServices(services);
+        ConfigureDesktopServices(services, preferences);
 
         Services = services.BuildServiceProvider();
 
@@ -68,11 +137,17 @@ internal static class Program
     /// <summary>
     /// 桌面端独有服务：NavigationService（Singleton 全局导航状态）+ 全部 ViewModel（Transient，每次导航新实例）。
     /// </summary>
-    private static void ConfigureDesktopServices(IServiceCollection services)
+    private static void ConfigureDesktopServices(IServiceCollection services, DesktopPreferences preferences)
     {
+        services.AddSingleton(preferences);
         services.AddSingleton<NavigationService>();
         services.AddSingleton<ImageCacheService>();
         services.AddSingleton<WindowManager>();
+        services.AddSingleton<TrayService>();
+        services.AddSingleton<DragDropDispatcher>();
+        services.AddSingleton<WindowStateService>();
+        services.AddSingleton<IpcService>();
+        services.AddSingleton<ShellIntegrationService>();
 
         // Window-level VM
         services.AddTransient<MainWindowViewModel>();

@@ -13,7 +13,9 @@
         TransparencyLevelHint="Mica,AcrylicBlur,Blur"
         Background="Transparent">
 
-    <ui:NavigationView x:Name="NavView"
+    <Grid>
+
+        <ui:NavigationView x:Name="NavView"
                        PaneDisplayMode="Auto"
                        CompactModeThresholdWidth="640"
                        ExpandedModeThresholdWidth="1008"
@@ -85,5 +87,39 @@
         <ContentControl Content="{Binding CurrentPage}" />
 
     </ui:NavigationView>
+
+    <!-- 拖拽 Overlay：默认隐藏，DragEnter（停留 200ms 后）显示 -->
+    <Border x:Name="DragOverlay"
+            IsVisible="False"
+            IsHitTestVisible="False"
+            Background="#80000000"
+            CornerRadius="0">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut" />
+            </Transitions>
+        </Border.Transitions>
+        <Border MaxWidth="520" MaxHeight="280"
+                Padding="36,32"
+                CornerRadius="14"
+                Background="{DynamicResource AcrylicInAppFillColorBaseBrush}"
+                BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                BorderThickness="2"
+                HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel Spacing="14" HorizontalAlignment="Center">
+                <TextBlock Text="📥" FontSize="64"
+                           HorizontalAlignment="Center"
+                           Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+                <TextBlock Text="放下文件以识别"
+                           FontSize="18" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="或文件夹以加入监视"
+                           FontSize="13" Opacity="0.75"
+                           HorizontalAlignment="Center" />
+            </StackPanel>
+        </Border>
+    </Border>
+
+    </Grid>
 
 </Window>

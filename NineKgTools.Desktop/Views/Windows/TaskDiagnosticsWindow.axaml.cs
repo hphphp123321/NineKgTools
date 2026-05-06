@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using NineKgTools.Core.Models.Tasks.Diagnostics;
+using NineKgTools.Desktop.Services;
 using NineKgTools.Desktop.ViewModels.Components;
 
 namespace NineKgTools.Desktop.Views.Windows;
@@ -9,7 +10,11 @@ namespace NineKgTools.Desktop.Views.Windows;
 /// </summary>
 public partial class TaskDiagnosticsWindow : Window
 {
-    public TaskDiagnosticsWindow() => InitializeComponent();
+    public TaskDiagnosticsWindow()
+    {
+        InitializeComponent();
+        this.EnableChildWindowFeatures("diagnostics");
+    }
 
     public TaskDiagnosticsWindow(IdentificationDiagnostics? diagnostics, string? taskName = null) : this()
     {

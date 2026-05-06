@@ -209,9 +209,41 @@
                     </StackPanel>
                 </StackPanel>
 
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="关闭主窗时" />
+                    <TextBlock Classes="help" Text="最小化到托盘后，应用继续在后台运行——文件夹监控、识别队列不会停。从托盘的「退出 NineKgTools」菜单项或勾选下方「退出应用」才真正终止。" />
+                    <StackPanel Orientation="Horizontal" Spacing="20" Margin="0,8,0,0">
+                        <RadioButton Classes="theme-option" GroupName="CloseAction"
+                                     IsChecked="{Binding IsCloseToTray}"
+                                     Command="{Binding SelectCloseActionCommand}" CommandParameter="MinimizeToTray">
+                            <TextBlock Text="最小化到托盘" />
+                        </RadioButton>
+                        <RadioButton Classes="theme-option" GroupName="CloseAction"
+                                     IsChecked="{Binding IsCloseExit}"
+                                     Command="{Binding SelectCloseActionCommand}" CommandParameter="Exit">
+                            <TextBlock Text="退出应用" />
+                        </RadioButton>
+                    </StackPanel>
+                </StackPanel>
+
                 <ui:InfoBar Severity="Informational" IsOpen="True" IsClosable="False"
-                            Title="主题不持久化"
-                            Message="当前会话生效；重启后回到跟随系统。完整持久化（含其他视图偏好）将在 Phase 2 后续 session 引入桌面端独立的 window-state.json 体系。" />
+                            Title="持久化已启用"
+                            Message="主题与关窗行为通过 desktop-preferences.json 落盘到数据目录，重启后保留。" />
+
+                <!-- Shell 集成（仅 Windows） -->
+                <StackPanel Classes="field" IsVisible="{Binding ShellIntegrationSupported}">
+                    <TextBlock Classes="label" Text="集成 Windows 资源管理器" />
+                    <TextBlock Classes="help" Text="启用后，资源管理器右键文件 / 文件夹可直接调用「用 NineKgTools 识别」。HKCU 注册表方式，无需 UAC 提权。Win11 需通过「显示更多选项」展开旧式菜单。" />
+                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0" VerticalAlignment="Center">
+                        <ToggleSwitch IsChecked="{Binding ShellIntegrationRegistered, Mode=OneWay}"
+                                      Command="{Binding ToggleShellIntegrationCommand}"
+                                      OnContent="已集成"
+                                      OffContent="未集成" />
+                        <TextBlock VerticalAlignment="Center"
+                                   FontSize="11" Opacity="0.65"
+                                   Text="{Binding ShellIntegrationRegistered, StringFormat='当前状态: {0}'}" />
+                    </StackPanel>
+                </StackPanel>
             </StackPanel>
 
             <!-- 任务分组 -->

@@ -10,6 +10,19 @@
 >
 > **视觉基线**：所有交互元素遵守 [Phase 1 视觉设计基线](desktop-phase-1.md#视觉设计基线先读这一节)；Phase 3 主要是 OS 集成层，UI 元素少但**交互流**是设计重点。
 
+## 完成情况
+
+| 任务 | 状态 | 备注 |
+|---|---|---|
+| 1. 系统托盘 | ✅ | `TrayService` + 4 状态动态图标 + 关窗最小化；Toast 通知未做（应用内 NotificationManager 留待真有需要时再补） |
+| 2. 原生文件拖拽 | ✅ | `DragDropDispatcher` + Overlay 200ms 防误触 + 单文件 / 文件夹 / 多项三分支 |
+| 3. Windows Shell 右键集成 | ✅ | `ShellIntegrationService` HKCU 方式，Settings 切换；Win11 紧凑菜单需「显示更多选项」 |
+| 4. 多窗口管理增强 | 部分 | 位置记忆 / 快捷键 / 置顶 ✅；任务进度独立窗 ⏳ 留 Phase 4（涉及 BackgroundTasksPage 重构） |
+| 5. 跨进程 IPC | ✅ | NamedPipe + JSON-Lines + 单实例 Mutex；命令：identify / show-main / quit |
+| 6. 平台 polish | ✅ | 所有平台特定调用 try/catch + Log.Warning；Mac/Linux 上托盘 / IPC 自动降级 |
+
+**关键沉淀**：`docs/development/desktop-design.md` → "系统集成（Phase 3）"章节有完整的服务架构说明 + 平台能力对照表 + 下一次实现细节坑位（如 `IStorageItem.TryGetLocalPath` 命名空间、`OnExplicitShutdown` 必要性等）。
+
 ---
 
 ## 1. 系统托盘（Windows 优先）
