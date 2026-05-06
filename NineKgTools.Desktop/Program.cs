@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using Avalonia;
 using Hangfire;
-using Hangfire.SQLite;
+using Hangfire.MemoryStorage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NineKgTools.Core.Hosting;
@@ -317,44 +317,44 @@ internal static class Program
     }
 
     /// <summary>
-    /// Hangfire 注册：双 BackgroundJobServer 队列分离 + SQLite 持久化存储。
-    /// 持久化让识别 / 监控等任务跨重启续跑——用户关窗后重开能看到原本进行中的任务恢复。
-    /// 存储文件位于 config.Database.HangfirePath（默认 dataDir/Database/hangfire.db）。
+    /// Hangfire 注册：单 BackgroundJobServer + **MemoryStorage**（不持久化）。
+    ///
+    /// 为什么不用 SQLite 持久化？Hangfire.SQLite 1.4.2 在桌面端高并发 worker 下有严重 fetch
+    /// 竞态——同一 jobId 被多 worker 拾取多次执行（实测 60 倍重复，父任务每次重复都
+    /// CreateChildTasksAsync + 全量 enqueue 子任务，雪崩出 60×7=420 个孤儿子任务），
+    /// 且 worker 完成后 IFetchedJob.RemoveFromQueue 失效，jobId 被反复 fetch 永不进入终态。
+    ///
+    /// 桌面端用户心智下"关进程=任务停止"——不需要跨重启续跑。MemoryStorage 与 Web 端一致，
+    /// 关进程即丢任务，重启从干净状态开始，零孤儿、零竞态。TaskMetadataStore 本就用
+    /// IMemoryCache（in-memory），生命周期天然对齐。
+    ///
+    /// 单 server + 所有队列共享 worker pool；MaxConcurrentIdentificationTasks 限制改用
+    /// 队列优先级实现：identification 排在 default 之前自然排队。严格 N 并发限制不保证
+    /// （用户场景下识别受网络限速主导，无伤大雅）。
     /// </summary>
     private static void ConfigureHangfire(IServiceCollection services, NineKgTools.Core.Services.Configs.Config config)
     {
-        // Hangfire.SQLite 1.4.2 用字符串里是否含 ';' 区分"connection string 字面量"vs"app.config 节点名"。
-        // Core 的 GetHangfireConnectionString 不加分号；这里追加一个，避免被误判成节点名。
-        var hangfireConn = config.Database.GetHangfireConnectionString();
-        if (!hangfireConn.Contains(';')) hangfireConn += ";";
-
-        var hangfireDir = Path.GetDirectoryName(config.Database.HangfirePath);
-        if (!string.IsNullOrEmpty(hangfireDir)) Directory.CreateDirectory(hangfireDir);
-
         services.AddHangfire(c => c
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
             .UseSerilogLogProvider()
-            .UseSQLiteStorage(hangfireConn));
+            .UseMemoryStorage());
 
         GlobalJobFilters.Filters.Add(new AutomaticRetryAttribute { Attempts = 0 });
 
         var identificationWorkers = config.Tasks?.MaxConcurrentIdentificationTasks ?? 5;
+        var defaultWorkers = Environment.ProcessorCount * 2;
+        var totalWorkers = Math.Max(defaultWorkers, identificationWorkers);
 
+        // 单 server，队列优先级从高到低排列：critical / high 高频系统任务优先；
+        // identification 排在 default 之前（让识别在普通任务前进队列）；low / background 兜底
         services.AddHangfireServer(o =>
         {
-            o.Queues = new[] { "critical", "high", "default", "low", "background" };
-            o.WorkerCount = Environment.ProcessorCount * 2;
+            o.Queues = new[] { "critical", "high", "identification", "default", "low", "background" };
+            o.WorkerCount = totalWorkers;
             o.SchedulePollingInterval = TimeSpan.FromSeconds(15);
             o.ServerName = $"{Environment.MachineName}:NineKgTools.Desktop";
-        });
-        services.AddHangfireServer(o =>
-        {
-            o.Queues = new[] { "identification" };
-            o.WorkerCount = identificationWorkers;
-            o.SchedulePollingInterval = TimeSpan.FromSeconds(15);
-            o.ServerName = $"{Environment.MachineName}:NineKgTools.Desktop-Identification";
         });
     }
 

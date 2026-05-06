@@ -698,37 +698,53 @@ WPF/WinUI 有，**Avalonia 11 没有**。用 gutter 列代替：
 
 不要 `Task.Run(() => _mediaService.GetPagedMediaList(...))` 这样把 EF 调用扔到非 UI 线程——MediaService 持有的 DbContext 是 Scoped，多个 Task.Run 并发会冲突。改为 UI 线程同步调（分页 24 条 + AsNoTracking + Includes 在中等库 < 100ms，可接受）；万条级以上库再考虑切 `IDbContextFactory<MediaDbContext>` + Task.Run。
 
-### 🔴 Hangfire 持久化 + TaskMetadataStore 内存 = 孤儿 job 雪崩
+### 🔴 桌面端 Hangfire **必须用 MemoryStorage**——SQLite storage 在高并发 worker 下严重竞态
 
-**现象**：日志启动后立刻刷出大量
+**症状演化（多轮排查的真实历史）**：
 
+1. 第一轮发现：用户提交任务后日志卡在「任务已提交」无下文 → 修：手动驱动 IHostedService 启动 BackgroundJobServer
+2. 第二轮发现：BackgroundJobServer 启动后大量「未找到任务元数据」+「Failed to process the job '71'」 → 怀疑历史孤儿，加 `CleanupOrphanHangfireJobs` 启动清理
+3. 第三轮发现（**真因**）：清理后新提交的任务**仍重复执行**——单一父任务 jobId=247 被 `ExecuteParentTaskAsync` 调用 60 次，每次 `CreateChildTasksAsync` 都 enqueue 7 个子任务，雪崩 60×7=420 个孤儿子任务
+4. 第四轮观察：worker return 后 IFetchedJob.RemoveFromQueue 失效，**同一 jobId 永远在 enqueued 状态被反复 fetch**（每秒 5–10 次）
+
+**根因**：`Hangfire.SQLite` 1.4.2 在桌面端高 WorkerCount（`ProcessorCount * 2 = 64+`）下：
+
+- `FetchNextJob` 的 SQLite SELECT...UPDATE 行锁不可靠 → 同 jobId 被多 worker 同时 fetch
+- worker 完成后 `IFetchedJob.RemoveFromQueue` 没把 JobQueue 行真正删除 → 该 jobId 永远 visible，被反复 fetch 不进入终态
+- ASP.NET Web 端用 `UseMemoryStorage` 没暴露此问题，迁移桌面时直接照搬 SQLite 是错误决策
+
+**最终修法 = 桌面端用 `UseMemoryStorage`**（与 Web 端一致）：
+
+```csharp
+services.AddHangfire(c => c
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseSerilogLogProvider()
+    .UseMemoryStorage());  // 不用 UseSQLiteStorage
 ```
-[WARN] GetTaskAsync: 未找到任务元数据: c6ed0a91-...
-[EROR] ExecuteTaskAsync: 未找到任务元数据: c6ed0a91-...
-[EROR] : Failed to process the job '71': an exception occurred.
-```
 
-同一 jobId 重复 5–10 次，启动后 30–60 秒内打满日志，但用户其实**没新提交任何任务**。
+桌面端用户心智下"关进程=任务停止"——不需要跨重启续跑。MemoryStorage 与 `TaskMetadataStore.IMemoryCache` 生命周期天然对齐，关进程即丢任务，重启从干净状态开始，**零孤儿、零竞态**。
 
-**根因**：
+**保留的辅助防御**：
 
-- `TaskMetadataStore` 用 `IMemoryCache` 存 `(taskId → ITask 实例)`——in-memory，**重启即丢**
-- Hangfire 用 `SQLiteStorage`——`hangfire.db` 持久化所有 enqueued / processing / scheduled / retrying / failed job
-- 桌面端"关窗"=应用进程退出（即便 close-to-tray 模式下，进程总会某天退出）
-- 重启后 BackgroundJobServer 启动 → 把旧 job 取出 → `ExecuteTaskAsync(taskId, ctx)` → metadata 已不在 → 抛异常
-- 同一 job 重复出错是因为 Hangfire SQLite 的 invisibility timeout：fetch 失败后 job 被释放，下一秒可能被另一个 worker 拾取再失败。双 BackgroundJobServer × 64+8 worker 加剧该效应
+- `Program.CleanupOrphanHangfireJobs()` 仍调用——MemoryStorage 下应返回 `无 Hangfire 孤儿 job`，作为"切回 SQLite"时的 fail-safe
+- `UnifiedTaskService` 的 `_runningTaskIds` `ConcurrentDictionary` 进程内互斥锁仍保留——任意持久化方案下都防御性兜底，同 taskId 进入 ExecuteTaskAsync / ExecuteParentTaskAsync 时 `TryAdd` 失败直接 return
+- `[DisableConcurrentExecution(timeoutInSeconds: 60)]` 加在两个入口方法上——双重保护
+- `ExecuteTaskAsync` 找不到 metadata 时**优雅 return 而非 throw**——避免 Hangfire 把孤儿 job 标记 Failed 后 invisibility timeout 反复 fetch
 
-之前测试期间用户多次提交任务、应用关闭、再提交，hangfire.db 就堆了上百个非终态孤儿。一次启动作 smoke test 就触发了 104 个孤儿 job 同时跑。
+**牺牲**：
 
-**修法**：
+- `MaxConcurrentIdentificationTasks` 严格 N 并发限制不再保证——桌面单进程下识别受网络限速主导，无伤大雅
+- 关进程时 in-flight 任务丢失——但 metadata 本就是 in-memory 同样会丢，行为一致
 
-1. **启动时清理孤儿**——`Program.CleanupOrphanHangfireJobs()` 在 `StartHostedServicesAsync` **之前**调用，遍历所有非终态 job (`EnqueuedJobs / ProcessingJobs / ScheduledJobs / FailedJobs`) 调 `BackgroundJob.Delete(jobId)` 删除
-2. 保留 Succeeded / Deleted 历史不动
-3. 调用前 `JobStorage.Current = Services.GetRequiredService<JobStorage>()` 强制初始化（`BackgroundJob.Delete` 走 Current）
+**判定指标**：
 
-**长期防护方案**（未实施）：让 `TaskMetadataStore` 持久化（SQLite / 文件 / IDistributedCache）让 metadata 跨重启。但 ITask 实例序列化复杂（含 lambda、closure），不如启动清理简单可靠。
+- 启动日志应有 `启动清理: 无 Hangfire 孤儿 job`
+- `Hangfire.MemoryStorage.MemoryStorage` 出现在 storage 行
+- 后续运行**不应该**有 `未找到任务元数据` 或 `跳过本次重复调度`（如出现 = `_runningTaskIds` 兜底触发，说明仍有竞态需查）
 
-**判定**：清理后启动日志应有 `启动清理: 删除 N 个 Hangfire 孤儿 job` 或 `无 Hangfire 孤儿 job`，**不应该**有 `未找到任务元数据`。
+**长期重新评估**：如果桌面端真要"任务跨重启续跑"（场景：用户挂大批量识别任务再合上电脑），需要换稳定的持久化存储——`Hangfire.Storage.SQLite`（不同 fork）/ LiteDB / 自实现 IMemoryCache → JSON 文件。但成本高，当前 MemoryStorage 已覆盖 95% 场景。
 
 ### 🔴 System.Text.Json 反序列化要求构造参数对应 public property
 

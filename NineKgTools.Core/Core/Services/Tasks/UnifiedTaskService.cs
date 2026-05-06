@@ -38,6 +38,15 @@ public class UnifiedTaskService : IDisposable
     private readonly ConcurrentDictionary<string, ScheduledTaskConfig> _scheduledTaskConfigs;
     private readonly object _statsLock = new();
 
+    /// <summary>
+    /// 已在执行中的任务 ID 集合 — 进程内互斥，防止同一 taskId 被 Hangfire 多 worker
+    /// 重复 fetch 后并发执行。Hangfire.SQLite 1.4.2 在高 WorkerCount 下 FetchNextJob
+    /// 行锁不可靠，单 jobId 可能被多 worker 同时拾取，每个都会进入 ExecuteTaskAsync /
+    /// ExecuteParentTaskAsync —— 父任务尤其严重，每次重复执行都会再 enqueue 全部子任务，
+    /// 导致 N×N 雪崩。这里用 ConcurrentDictionary 守门：同一 taskId 进入时第二次会直接 return。
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, byte> _runningTaskIds = new();
+
     public UnifiedTaskService(
         IBackgroundJobClient backgroundJobClient,
         IRecurringJobManager recurringJobManager,
@@ -117,14 +126,25 @@ public class UnifiedTaskService : IDisposable
     /// </summary>
     [Queue("default")] // 默认队列，实际会被动态覆盖
     [AutomaticRetry(Attempts = 0)] // 禁用Hangfire自动重试，使用自定义重试逻辑
+    [DisableConcurrentExecution(timeoutInSeconds: 60)]
     public async Task ExecuteTaskAsync(string taskId, PerformContext? context)
     {
+        // 进程内互斥：防 Hangfire SQLite 多 worker 拾取同一 jobId 导致重复执行
+        if (!_runningTaskIds.TryAdd(taskId, 0))
+        {
+            Log.Warning("任务 {TaskId} 已在执行中，跳过本次重复调度（Hangfire fetch 竞态防护）", taskId);
+            return;
+        }
+
+        try
+        {
         // 从元数据存储获取任务
         var task = await _metadataStore.GetTaskAsync(taskId);
         if (task == null)
         {
-            Log.Error("未找到任务元数据: {TaskId}", taskId);
-            throw new InvalidOperationException($"未找到任务元数据: {taskId}");
+            // 优雅返回而非抛异常——孤儿 job 不让 Hangfire retry
+            Log.Warning("未找到任务元数据: {TaskId}（孤儿 job，跳过）", taskId);
+            return;
         }
 
         // 获取取消令牌
@@ -215,6 +235,12 @@ public class UnifiedTaskService : IDisposable
             {
                 await CleanupTaskMetadataAsync(taskId, context?.BackgroundJob?.Id);
             }
+        }
+        }
+        finally
+        {
+            // 进程内互斥锁释放——无论成功 / 失败 / 重试，都让同 taskId 后续可再次执行
+            _runningTaskIds.TryRemove(taskId, out _);
         }
     }
 
@@ -411,12 +437,26 @@ public class UnifiedTaskService : IDisposable
     /// </summary>
     [Queue("default")]
     [JobDisplayName("父任务: {0}")]
+    [DisableConcurrentExecution(timeoutInSeconds: 60)]
     public async Task ExecuteParentTaskAsync(string parentTaskId, PerformContext? context)
     {
+        // 进程内互斥：防 Hangfire SQLite 多 worker 拾取同一 jobId 导致父任务重复执行。
+        // 父任务尤其关键 — 每次重复执行都会 CreateChildTasksAsync + 全量 enqueue 子任务，
+        // 如果重复 N 次会产生 N×ChildCount 的子任务雪崩（实测 60×7=420 个孤儿子任务）。
+        var taskKey = $"parent:{parentTaskId}";
+        if (!_runningTaskIds.TryAdd(taskKey, 0))
+        {
+            Log.Warning("父任务 {Id} 已在执行中，跳过本次重复调度（Hangfire fetch 竞态防护）", parentTaskId);
+            return;
+        }
+
+        try
+        {
         var parentTask = await _metadataStore.GetTaskAsync(parentTaskId) as IParentTask;
         if (parentTask == null)
         {
-            Log.Error("未找到父任务元数据: {ParentTaskId}", parentTaskId);
+            // 优雅返回——孤儿父任务不让 Hangfire retry
+            Log.Warning("未找到父任务元数据: {ParentTaskId}（孤儿 job，跳过）", parentTaskId);
             return;
         }
 
@@ -498,6 +538,12 @@ public class UnifiedTaskService : IDisposable
         {
             // 清理父任务元数据
             await _metadataStore.RemoveTaskAsync(parentTaskId);
+        }
+        }
+        finally
+        {
+            // 释放进程内互斥锁
+            _runningTaskIds.TryRemove(taskKey, out _);
         }
     }
 
