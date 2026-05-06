@@ -244,6 +244,8 @@ internal static class Program
             {
                 case "--identify" when i + 1 < args.Length:
                     return new IpcCommand { Cmd = "identify", Path = args[i + 1] };
+                case "--rescan-folder" when i + 1 < args.Length:
+                    return new IpcCommand { Cmd = "rescan-folder", Path = args[i + 1] };
                 case "--quit":
                     return new IpcCommand { Cmd = "quit" };
                 case "--show-main":

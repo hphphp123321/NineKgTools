@@ -84,14 +84,15 @@ public class FilesService
             options  // monitorOptions
         );
 
-        // 提交任务到队列
-        var taskId = await _taskService.SubmitParentTaskAsync(task);
+        // 提交任务到队列。SubmitParentTaskAsync 返回 Hangfire JobId（仅 Hangfire 内部用），
+        // 调用方需要的是真正能查 TaskProgressService 的 TaskId——直接用 task.TaskId。
+        var jobId = await _taskService.SubmitParentTaskAsync(task);
 
-        Log.Information("文件夹处理任务已提交: {Path}, TaskId: {TaskId}. {MonitorMessage}",
-            directoryPath, taskId,
+        Log.Information("文件夹处理任务已提交: {Path}, TaskId: {TaskId}, JobId: {JobId}. {MonitorMessage}",
+            directoryPath, task.TaskId, jobId,
             startMonitoringAfterCompletion ? "任务完成后将自动开始监控文件夹" : "");
 
-        return taskId;
+        return task.TaskId;
     }
 
     /// <summary>
@@ -117,12 +118,13 @@ public class FilesService
             TaskPriority.High  // 用户手动触发的任务优先级更高
         );
 
-        // 提交到任务队列并返回 TaskId
-        var taskId = await _taskService.SubmitTaskAsync(task);
+        // SubmitTaskAsync 返回 Hangfire JobId（仅 Hangfire 内部用），调用方需要的是
+        // 能查 TaskProgressService 的 TaskId——直接用 task.TaskId。
+        var jobId = await _taskService.SubmitTaskAsync(task);
 
-        Log.Information("单个媒体识别任务已提交: {Path}, TaskId: {TaskId}", path, taskId);
+        Log.Information("单个媒体识别任务已提交: {Path}, TaskId: {TaskId}, JobId: {JobId}", path, task.TaskId, jobId);
 
-        return taskId;
+        return task.TaskId;
     }
 
     /// <summary>
@@ -275,6 +277,18 @@ public class FilesService
 
         if (media.Source == null)
             throw new InvalidOperationException("AddMediaToDatabase: media.Source 不能为 null");
+
+        // 短路：GetMediaByPath 在 InDatabase=true 命中时直接返回 dbMedia（Id>0），
+        // 这种 media 已经在库里——再走 AddOrUpdateMediaAsync 会触发"删旧再插新"
+        // 路径，把刚加载出来的 Poster/Pictures 全删了（RemoveImageAsync 连 db 行 + .cache 文件），
+        // 而新插入路径又因为 image 对象和被删的 db 行处于同 EF tracker 而出错——结果就是
+        // db 里 Image 表清空 + .cache 文件被删，UI 失去封面。直接 return 跳过。
+        if (media.Id > 0 && media.Source.InDatabase)
+        {
+            Log.Debug("AddMediaToDatabase: 媒体已在数据库 (Id={MediaId}, Path={Path})，跳过重复入库",
+                media.Id, media.Source.FullPath);
+            return;
+        }
 
         // 防御性修复：IdentificationCacheService 是单例，会把 MediaBase 连同 Source 引用一起跨作用域
         // 缓存。如果本次任务已经在当前 DbContext 里通过 FindMediaSourceAsync 跟踪了一个同 Id 的

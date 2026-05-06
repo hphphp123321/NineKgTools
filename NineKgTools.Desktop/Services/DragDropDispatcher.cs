@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
+using NineKgTools.Core.Models.Identification;
 using NineKgTools.Core.Services.Configs;
 using NineKgTools.Core.Services.Files;
 using NineKgTools.Desktop.Views.Dialogs;
@@ -172,6 +173,34 @@ public class DragDropDispatcher
     {
         await _filesService.IdentifyBatchMedia(path, startMonitoringAfterCompletion: false);
         Log.Information("拖入文件夹已一次性识别（不加监视）：{Path}", path);
+    }
+
+    /// <summary>
+    /// 强制 SkipCache 重新识别整个文件夹——给 IPC 命令 / SourcesPage Rescan 用。
+    /// 绕过 GetMediaByPath 的"已存在"短路，让 DLsite 重新爬取 + 重新下载图片。
+    /// 修复历史脏数据（Media.Poster=null / cache 文件丢失）。
+    /// 返回提交后的父任务 TaskId（失败返回 null）。CLI 一次性命令的调用方可拿来轮询完成。
+    /// </summary>
+    public async Task<string?> RescanFolderAsync(string folderPath)
+    {
+        if (!Directory.Exists(folderPath))
+        {
+            Log.Warning("RescanFolderAsync: 文件夹不存在：{Path}", folderPath);
+            return null;
+        }
+        try
+        {
+            var options = _config.Identification?.ToIdentificationOptions() ?? new IdentificationOptions();
+            options.SkipCache = true;
+            var taskId = await _filesService.IdentifyBatchMedia(folderPath, options, startMonitoringAfterCompletion: false);
+            Log.Information("RescanFolderAsync 已提交（SkipCache=true）：{Path}, TaskId={TaskId}", folderPath, taskId);
+            return taskId;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "RescanFolderAsync 失败：{Path}", folderPath);
+            return null;
+        }
     }
 }
 

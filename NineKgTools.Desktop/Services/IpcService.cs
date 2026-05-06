@@ -132,6 +132,14 @@ public class IpcService : IDisposable
                     });
                 }
                 break;
+            case "rescan-folder":
+                if (!string.IsNullOrEmpty(cmd.Path))
+                {
+                    // 强制 SkipCache 重识别——绕过 GetMediaByPath 短路，让 DLsite 重新爬取
+                    // + 重新下载 Poster/Pictures，修复历史脏数据（Media.Poster=null 等）
+                    await _dragDispatcher.RescanFolderAsync(cmd.Path);
+                }
+                break;
             case "show-main":
                 await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => _trayService.ShowMainWindow());
                 break;

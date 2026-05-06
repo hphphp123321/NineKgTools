@@ -5,6 +5,9 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
 using Microsoft.Extensions.DependencyInjection;
 using NineKgTools.Core.Hosting;
+using NineKgTools.Core.Models.Tasks;
+using NineKgTools.Core.Services.Progress;
+using NineKgTools.Core.Services.Tasks;
 using NineKgTools.Desktop.Services;
 using NineKgTools.Desktop.ViewModels;
 using NineKgTools.Desktop.Views;
@@ -15,6 +18,13 @@ namespace NineKgTools.Desktop;
 
 public partial class App : Application
 {
+    /// <summary>
+    /// 主窗 Closing 处理器调 desktop.Shutdown 时，DoShutdown 又会再次调
+    /// window.OnClosing → 同一个 handler 二次重入。无 guard 会无限递归直到 stack overflow。
+    /// 这里仅在第一次进入时执行真正的关闭逻辑，后续重入直接放行。
+    /// </summary>
+    private bool _shuttingDown;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -60,6 +70,10 @@ public partial class App : Application
             // TrayService.RequestExit() 已置 IsExitRequested=true 时直接放行
             window.Closing += (_, e) =>
             {
+                // 重入保护：desktop.Shutdown() 内部会逐个关闭窗口又触发 Closing，
+                // 不挡就会无限递归直到 stack overflow（实测）
+                if (_shuttingDown) return;
+
                 var tray = Program.Services.GetService<TrayService>();
                 var preferences = Program.Services.GetService<DesktopPreferences>();
 
@@ -69,6 +83,7 @@ public partial class App : Application
                 // 用户请求退出 OR 没启用 close-to-tray：放行 + 退出整个应用
                 if (isExit || closeAction == CloseAction.Exit)
                 {
+                    _shuttingDown = true;
                     try { Program.Services.GetService<WindowManager>()?.CloseAll(); }
                     catch (Exception ex) { Log.Warning(ex, "关闭子窗时异常"); }
 
@@ -143,6 +158,17 @@ public partial class App : Application
                 case "identify" when !string.IsNullOrEmpty(pending.Path):
                     await dispatcher.HandleDropAsync(new[] { pending.Path });
                     break;
+                case "rescan-folder" when !string.IsNullOrEmpty(pending.Path):
+                    var taskId = await dispatcher.RescanFolderAsync(pending.Path);
+                    if (!string.IsNullOrEmpty(taskId))
+                    {
+                        // Hangfire MemoryStorage 在进程退出时丢任务——必须等父任务跑完再退。
+                        // 子任务（每个媒体的爬取 + 入库 + 写 .cache）也在父任务的"等子任务完成"环节里同步。
+                        await WaitForTaskCompletionAsync(taskId, TimeSpan.FromMinutes(15));
+                    }
+                    // 完成后退出（一次性命令，不留进程）
+                    Program.Services.GetService<TrayService>()?.RequestExit();
+                    break;
                 case "quit":
                     Program.Services.GetService<TrayService>()?.RequestExit();
                     break;
@@ -153,5 +179,47 @@ public partial class App : Application
         {
             Log.Warning(ex, "消费启动命令失败：{Cmd}", pending.Cmd);
         }
+    }
+
+    /// <summary>
+    /// 轮询直到父任务真正执行完毕——给 CLI 一次性命令（--rescan-folder 等）等待 Hangfire 后台任务完成用，
+    /// 否则进程提前退出会让 MemoryStorage 里的 Job 全部丢失。
+    ///
+    /// 终止信号优先使用 <see cref="TaskMetadataStore.GetTaskAsync"/> 返回 null
+    /// （UnifiedTaskService.ExecuteParentTaskAsync 的 finally 块在父任务彻底结束后才清理元数据）。
+    /// 这比 progress.Status 更可靠：observation 显示父任务还在运行子任务时
+    /// progress.Status 已经被某条不明路径标记为 Failed（疑似 reporter 串扰），导致旧实现误判提前退出。
+    /// </summary>
+    private static async Task WaitForTaskCompletionAsync(string taskId, TimeSpan timeout)
+    {
+        var metadataStore = Program.Services.GetService<TaskMetadataStore>();
+        var progressService = Program.Services.GetService<TaskProgressService>();
+        if (metadataStore is null)
+        {
+            Log.Warning("WaitForTaskCompletionAsync: TaskMetadataStore 未注册，无法轮询");
+            return;
+        }
+
+        var deadline = DateTime.UtcNow + timeout;
+        Log.Information("WaitForTaskCompletionAsync: 等待任务完成 TaskId={TaskId}, Timeout={Timeout}s",
+            taskId, timeout.TotalSeconds);
+
+        // 进入轮询前 metadata 一定已经存在（IdentifyBatchMedia 同步阶段就把 task 存了）。
+        // 这里轮询直到 metadata 被父任务的 finally 块清理掉——这是父任务真正结束的唯一可靠信号。
+        while (DateTime.UtcNow < deadline)
+        {
+            var task = await metadataStore.GetTaskAsync(taskId);
+            if (task is null)
+            {
+                var status = progressService?.GetProgress(taskId)?.Status;
+                Log.Information("WaitForTaskCompletionAsync: TaskId={TaskId} 元数据已清理，任务结束 (Status={Status})",
+                    taskId, status?.ToString() ?? "Unknown");
+                return;
+            }
+            await Task.Delay(500);
+        }
+
+        Log.Warning("WaitForTaskCompletionAsync: TaskId={TaskId} 超时（{Timeout}s 仍未结束）",
+            taskId, timeout.TotalSeconds);
     }
 }
