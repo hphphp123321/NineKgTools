@@ -927,6 +927,48 @@ return new WindowIcon(ms);
 
 **主窗快捷键**：`Ctrl+1..9` 跳到 NavigationView 的第 N 个 MenuItem——直接通过 `NavView.SelectedItem = items[idx]` 触发原本的 `OnNavigationSelectionChanged`，复用导航逻辑，零特殊路径。
 
+### 首页（HomePage）状态卡
+
+桌面端用户启动应用后**第一眼**应该看到"应用真在工作"——所以 HomePage 4 张状态卡都接 Phase 3 实时数据：
+
+| 卡片 | 数据源 | 用途 |
+|---|---|---|
+| 媒体总数 | `MediaDbContext.Medias.Count`（`OnEnter` 一次） | 库规模 |
+| 监视文件夹 | `Config.Source.WatchFolders.Count` + `MonitorService.IsMonitoring` | 配置 vs 实际运行（active/total） |
+| 运行中任务 | `TaskProgressService.GetAllRootTasks()` filter Running/Pending/Retrying | 桌面端关窗后台仍在跑的可视化 |
+| 失败任务 | 同上 filter Failed/Timeout | Critical 色突出，**HasFailedTasks** 控制副标题颜色 |
+
+**5s 轮询**：监视状态 / 任务计数高变化频率，进入页面起 timer，离开 stop。媒体总数变化频率低，仅在 `OnEnter` 拉一次。
+
+### 子窗 📌 置顶按钮
+
+`MediaDetailWindow` 和 `TaskDiagnosticsWindow` 都加了 `<ToggleButton IsChecked="{Binding $parent[Window].Topmost, Mode=TwoWay}" />`——`$parent[Window]` ancestor binding 直接绑 Window 的 Topmost 属性，省一个 ViewModel 字段。
+
+放置位置：
+
+- TaskDiagnosticsWindow：头部右侧（紧凑场景，按钮 + "置顶"文字）
+- MediaDetailWindow：Hero 区主操作组里（与「文件管理器打开」「重新识别」并排）
+
+`Ctrl+T` 快捷键由 `WindowExtensions.EnableChildWindowFeatures` 提供——按钮和快捷键都触发同一份 `Topmost` 属性，UI 双向同步。
+
+### 首次关窗到托盘的引导
+
+`DesktopPreferences.TrayHintShown` 控制——第一次按 X 时：
+
+1. `e.Cancel = true` 阻止关闭走原路径
+2. 置 `TrayHintShown = true` + `RequestSave()`
+3. fire-and-forget 弹 `NineKgConfirmDialog Info` 解释"应用仍在托盘运行"
+4. `window.Hide()` 立刻最小化（不等 dialog 关闭——ContentDialog 的 OverlayLayer 浮在桌面上层，不依赖主窗可见）
+
+二次起按 X 直接 Hide 不再提示。用户在 Settings 改回"退出应用"模式后该提示也不再出现（CloseAction 检查在前）。
+
+### Settings Shell 集成的辅助按钮
+
+`Settings / 外观 / 集成 Windows 资源管理器` 下方多两个按钮（仅在已注册时显示）：
+
+- **🔌 测试通道**：`IpcService.TrySendAsync(new IpcCommand { Cmd = "show-main" })` 自连发送，验证 IPC 通道能收到——这意味着右键菜单触发 `--identify` 时也能被现有进程接住
+- **↻ 重置注册**：`Unregister()` 后 `Register()`，用于应用被移动 / 注册表被外部修改导致 verb 失效。走 `NineKgConfirmDialog Affirmative` 确认
+
 ### 桌面端独立持久化（DesktopPreferences）
 
 `config.yaml` 是 Web/Desktop 共享的，桌面端独有的 UI 偏好（关窗行为、主题、Shell 集成状态、窗口位置）通过 `dataDir/desktop-preferences.json` 单独落盘，**不污染** `config.yaml`。

@@ -122,6 +122,13 @@
                                         <TextBlock Text="重新识别" />
                                     </StackPanel>
                                 </Button>
+                                <ToggleButton IsChecked="{Binding $parent[Window].Topmost, Mode=TwoWay}"
+                                              ToolTip.Tip="窗口置顶（Ctrl+T） · 比较多个媒体时方便">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="📌" FontSize="13" />
+                                        <TextBlock Text="置顶" />
+                                    </StackPanel>
+                                </ToggleButton>
                             </StackPanel>
 
                         </StackPanel>

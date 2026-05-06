@@ -263,6 +263,65 @@ public partial class SettingsViewModel : PageViewModelBase
         }
     }
 
+    /// <summary>测试 Shell verb——通过 IPC 自连发送 show-main，验证现有进程能收到 verb 调用</summary>
+    [RelayCommand]
+    private async Task TestShellIntegrationAsync()
+    {
+        if (!ShellIntegrationSupported)
+        {
+            SaveStatusText = "当前平台不支持 Shell 集成";
+            return;
+        }
+        if (!ShellIntegrationRegistered)
+        {
+            SaveStatusText = "请先启用 Shell 集成再测试";
+            return;
+        }
+
+        try
+        {
+            // 自连——发个 show-main 到 IPC 服务器，往返成功即说明命令通道工作
+            var ok = await IpcService.TrySendAsync(new IpcCommand { Cmd = "show-main" });
+            SaveStatusText = ok
+                ? "测试成功 · IPC 通道已就绪，右键菜单调用会被本进程接住"
+                : "测试失败 · 现有进程无响应（IpcService server 可能未启动）";
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "TestShellIntegration 失败");
+            SaveStatusText = "测试失败，请稍后重试";
+        }
+    }
+
+    /// <summary>手动重置注册——先 Unregister 再 Register。注册表残留 / 路径漂移时用。</summary>
+    [RelayCommand]
+    private async Task ResetShellRegistrationAsync()
+    {
+        if (!ShellIntegrationSupported) return;
+
+        var confirmed = await NineKgConfirmDialog.ShowAsync(null,
+            title: "重置 Shell 集成注册",
+            message: "将清除当前用户注册表的 NineKgTools 右键 verb，然后用当前 exe 路径重新注册。如果应用被移动过位置或注册表被外部修改，这能修复。",
+            intent: DialogIntent.Affirmative,
+            confirmText: "确认重置");
+        if (!confirmed) return;
+
+        try
+        {
+            _shellIntegration.Unregister();
+            var ok = _shellIntegration.Register();
+            ShellIntegrationRegistered = _shellIntegration.IsRegistered();
+            _preferences.ShellIntegrationRegistered = ShellIntegrationRegistered;
+            _preferences.RequestSave();
+            SaveStatusText = ok ? "重置完成 · 已用当前 exe 路径重新注册" : "重置失败，请稍后重试";
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "ResetShellRegistration 失败");
+            SaveStatusText = "重置失败，请稍后重试";
+        }
+    }
+
     /// <summary>切换 Shell 集成（注册 / 卸载 HKCU verb）</summary>
     [RelayCommand]
     private void ToggleShellIntegration()

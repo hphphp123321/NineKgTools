@@ -58,14 +58,14 @@
                 </StackPanel>
             </Border>
 
-            <!-- ========== 统计卡片栏（3 列） ========== -->
-            <Grid ColumnDefinitions="*,16,*,16,*">
+            <!-- ========== 统计卡片栏：媒体总数 + 监视文件夹 + 运行任务 + 失败任务 ========== -->
+            <Grid ColumnDefinitions="*,16,*,16,*,16,*">
 
                 <Border Grid.Column="0" Classes="stat-card">
                     <StackPanel Spacing="8">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <PathIcon Data="{StaticResource IconLibrary}" Width="18" Height="18"
-                                         Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+                                      Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
                             <TextBlock Text="媒体总数" Opacity="0.7" />
                         </StackPanel>
                         <TextBlock Text="{Binding MediaCount}"
@@ -75,31 +75,54 @@
                     </StackPanel>
                 </Border>
 
+                <!-- 监视文件夹：active / total -->
                 <Border Grid.Column="2" Classes="stat-card">
                     <StackPanel Spacing="8">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconInbox}" Width="18" Height="18"
-                                         Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
-                            <TextBlock Text="待识别" Opacity="0.7" />
+                            <PathIcon Data="{StaticResource IconFolderOpen}" Width="18" Height="18"
+                                      Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
+                            <TextBlock Text="监视文件夹" Opacity="0.7" />
                         </StackPanel>
-                        <TextBlock Text="{Binding PendingIdentifyCount}"
+                        <TextBlock Text="{Binding WatchFolderActive}"
                                    Theme="{StaticResource DisplayTextBlockStyle}"
                                    FontWeight="SemiBold" />
-                        <TextBlock Text="（待 Phase 1.5 接入）" Opacity="0.5" FontSize="12" />
+                        <TextBlock Text="{Binding WatchFolderText}" Opacity="0.5" FontSize="12" />
                     </StackPanel>
                 </Border>
 
+                <!-- 运行中任务 -->
                 <Border Grid.Column="4" Classes="stat-card">
                     <StackPanel Spacing="8">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconInboxArrowDown}" Width="18" Height="18"
-                                         Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
-                            <TextBlock Text="待入库" Opacity="0.7" />
+                            <PathIcon Data="{StaticResource IconTasks}" Width="18" Height="18"
+                                      Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                            <TextBlock Text="运行中任务" Opacity="0.7" />
                         </StackPanel>
-                        <TextBlock Text="{Binding PendingDatabaseCount}"
+                        <TextBlock Text="{Binding RunningTaskCount}"
                                    Theme="{StaticResource DisplayTextBlockStyle}"
                                    FontWeight="SemiBold" />
-                        <TextBlock Text="（待 Phase 1.5 接入）" Opacity="0.5" FontSize="12" />
+                        <TextBlock Text="{Binding RunningTaskText}" Opacity="0.5" FontSize="12" />
+                    </StackPanel>
+                </Border>
+
+                <!-- 失败任务（如有则用 Critical 色突出） -->
+                <Border Grid.Column="6" Classes="stat-card">
+                    <StackPanel Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <PathIcon Data="{StaticResource IconInbox}" Width="18" Height="18"
+                                      Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                            <TextBlock Text="失败任务" Opacity="0.7" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding FailedTaskCount}"
+                                   Theme="{StaticResource DisplayTextBlockStyle}"
+                                   FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding FailedTaskText}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                   IsVisible="{Binding HasFailedTasks}" />
+                        <TextBlock Text="{Binding FailedTaskText}"
+                                   FontSize="12" Opacity="0.5"
+                                   IsVisible="{Binding !HasFailedTasks}" />
                     </StackPanel>
                 </Border>
 

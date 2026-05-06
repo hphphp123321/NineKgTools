@@ -8,6 +8,7 @@ using NineKgTools.Core.Hosting;
 using NineKgTools.Desktop.Services;
 using NineKgTools.Desktop.ViewModels;
 using NineKgTools.Desktop.Views;
+using NineKgTools.Desktop.Views.Dialogs;
 using Serilog;
 
 namespace NineKgTools.Desktop;
@@ -76,8 +77,14 @@ public partial class App : Application
                     return;
                 }
 
-                // close-to-tray：取消关闭 + 隐藏主窗
+                // close-to-tray：首次提示一次（不阻塞此次最小化，dialog 在隐藏后浮在屏幕上）
                 e.Cancel = true;
+                if (preferences is not null && !preferences.TrayHintShown)
+                {
+                    preferences.TrayHintShown = true;
+                    preferences.RequestSave();
+                    _ = ShowFirstTimeTrayHintAsync();
+                }
                 window.Hide();
                 Log.Information("主窗最小化到托盘（close-to-tray）");
             };
@@ -98,6 +105,29 @@ public partial class App : Application
             _ => ThemeVariant.Default,
         };
         Application.Current.RequestedThemeVariant = variant;
+    }
+
+    /// <summary>
+    /// 首次关窗到托盘时的引导提示。fire-and-forget 调用——主窗已经 Hide，
+    /// dialog 由 ContentDialog 的 OverlayLayer 浮在桌面上层（不依赖主窗可见）。
+    /// </summary>
+    private static async Task ShowFirstTimeTrayHintAsync()
+    {
+        try
+        {
+            await NineKgConfirmDialog.ShowAsync(null,
+                title: "应用仍在托盘运行",
+                message: "主窗已最小化到系统托盘。文件夹监控、识别队列继续在后台运行。\n\n" +
+                         "· 单击托盘图标 → 重新打开主窗\n" +
+                         "· 托盘菜单「退出 NineKgTools」→ 真正终止进程\n" +
+                         "· 在「设置 / 外观」可改成「关闭主窗时直接退出」",
+                intent: DialogIntent.Info,
+                confirmText: "知道了");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "首次托盘提示 dialog 显示失败");
+        }
     }
 
     private static async Task ConsumePendingCliCommandAsync()
