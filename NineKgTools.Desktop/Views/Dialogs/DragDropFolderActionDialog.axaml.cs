@@ -30,7 +30,7 @@ public partial class DragDropFolderActionDialog : UserControl
     }
 
     private FolderDragAction? _result;
-    private ContentDialog? _ownerDialog;
+    private FAContentDialog? _ownerDialog;
 
     public DragDropFolderActionDialog() => InitializeComponent();
 
@@ -55,12 +55,12 @@ public partial class DragDropFolderActionDialog : UserControl
             ItemCountText = fileCount > 0 ? $"包含 {fileCount} 个文件（顶层）" : "（空文件夹）",
         };
 
-        var dialog = new ContentDialog
+        var dialog = new FAContentDialog
         {
             Title = BuildTitle(),
             Content = view,
             CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.None,
+            DefaultButton = FAContentDialogButton.None,
         };
         view._ownerDialog = dialog;
 

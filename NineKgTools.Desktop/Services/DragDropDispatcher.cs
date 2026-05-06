@@ -30,13 +30,15 @@ public class DragDropDispatcher
 
     /// <summary>
     /// 解析 DragEventArgs 拿到本地文件路径列表。返回空列表表示无法解析或为远端 URL。
+    /// Avalonia 12 改用 DataTransfer + DataFormat（旧 e.Data + DataFormats 已 obsolete）。
     /// </summary>
     public static List<string> ExtractLocalPaths(DragEventArgs e)
     {
         var paths = new List<string>();
         try
         {
-            var files = e.Data.GetFiles();
+            if (!e.DataTransfer.Contains(DataFormat.File)) return paths;
+            var files = e.DataTransfer.TryGetFiles();
             if (files is null) return paths;
             foreach (var item in files)
             {

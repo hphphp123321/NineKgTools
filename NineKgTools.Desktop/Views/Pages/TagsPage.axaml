@@ -204,7 +204,7 @@
 
             <!-- 搜索栏 -->
             <Grid Grid.Row="1" Margin="32,8,32,12">
-                <TextBox Watermark="过滤标签名 / 描述..."
+                <TextBox PlaceholderText="过滤标签名 / 描述..."
                          Text="{Binding SearchText, Mode=TwoWay}" />
             </Grid>
 

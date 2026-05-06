@@ -54,13 +54,13 @@ public partial class TopTagEditorDialog : UserControl
                 : ""
         };
 
-        var dialog = new ContentDialog
+        var dialog = new FAContentDialog
         {
             Title = BuildTitleVisual(title, isEdit: initialName is not null),
             Content = view,
             PrimaryButtonText = "保存",
             CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.Primary,
+            DefaultButton = FAContentDialogButton.Primary,
             IsPrimaryButtonEnabled = !string.IsNullOrWhiteSpace(view.NameValue),
         };
 
@@ -72,7 +72,7 @@ public partial class TopTagEditorDialog : UserControl
         };
 
         var result = await dialog.ShowAsync();
-        if (result != ContentDialogResult.Primary) return null;
+        if (result != FAContentDialogResult.Primary) return null;
         var trimmed = view.NameValue?.Trim();
         return string.IsNullOrEmpty(trimmed) ? null : trimmed;
     }

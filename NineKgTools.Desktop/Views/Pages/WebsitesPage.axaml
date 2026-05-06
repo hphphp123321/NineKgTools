@@ -136,7 +136,7 @@
                         <StackPanel Spacing="6" IsEnabled="{Binding BangumiEnable}">
                             <TextBlock Text="API Key" Classes="field-label" />
                             <TextBox Text="{Binding BangumiApiKey, Mode=TwoWay}"
-                                     Watermark="粘贴 Bangumi 个人 ApiKey..."
+                                     PlaceholderText="粘贴 Bangumi 个人 ApiKey..."
                                      PasswordChar="●" />
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Grid.Column="0"
@@ -230,7 +230,7 @@
                 <Border Classes="site-card">
                     <StackPanel Spacing="10">
                         <TextBlock Text="识别优先级" FontSize="14" FontWeight="SemiBold" />
-                        <ui:InfoBar Severity="Informational"
+                        <ui:FAInfoBar Severity="Informational"
                                     IsOpen="True"
                                     IsClosable="False"
                                     Title="拖拽优先级配置（即将到来）"

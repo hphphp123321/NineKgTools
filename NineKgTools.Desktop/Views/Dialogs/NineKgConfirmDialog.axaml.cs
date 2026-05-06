@@ -47,18 +47,18 @@ public partial class NineKgConfirmDialog : UserControl
             DataContext = context,
         };
 
-        var dialog = new ContentDialog
+        var dialog = new FAContentDialog
         {
             // Title slot 用自渲染的"图标 + 标题"——避免 Title=null 时的空白占位
             Title = BuildTitleVisual(context),
             Content = view,
             PrimaryButtonText = confirmText ?? context.DefaultConfirmText,
             CloseButtonText = cancelText ?? "取消",
-            DefaultButton = ContentDialogButton.Primary,
+            DefaultButton = FAContentDialogButton.Primary,
         };
 
         var result = await dialog.ShowAsync();
-        return result == ContentDialogResult.Primary;
+        return result == FAContentDialogResult.Primary;
     }
 
     /// <summary>

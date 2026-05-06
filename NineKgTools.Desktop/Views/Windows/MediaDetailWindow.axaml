@@ -20,7 +20,7 @@
                 IsVisible="{Binding IsLoading}"
                 HorizontalAlignment="Center" VerticalAlignment="Center">
             <StackPanel Spacing="12" HorizontalAlignment="Center">
-                <ui:ProgressRing IsIndeterminate="True" Width="48" Height="48" />
+                <ui:FAProgressRing IsIndeterminate="True" Width="48" Height="48" />
                 <TextBlock Text="加载中..." Opacity="0.7" HorizontalAlignment="Center" />
             </StackPanel>
         </Border>

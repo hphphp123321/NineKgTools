@@ -11,7 +11,7 @@
         <StackPanel Spacing="6">
             <TextBlock Text="标签名称" FontSize="11" Opacity="0.7" />
             <TextBox Text="{Binding #DialogRoot.NameValue, Mode=TwoWay}"
-                     Watermark="例如：校园 / 末世 / 治愈..." />
+                     PlaceholderText="例如：校园 / 末世 / 治愈..." />
         </StackPanel>
 
         <StackPanel Spacing="6">
@@ -30,7 +30,7 @@
         <StackPanel Spacing="6">
             <TextBlock Text="描述（可选）" FontSize="11" Opacity="0.7" />
             <TextBox Text="{Binding #DialogRoot.DescriptionValue, Mode=TwoWay}"
-                     Watermark="对此标签的简短说明..."
+                     PlaceholderText="对此标签的简短说明..."
                      AcceptsReturn="True"
                      TextWrapping="Wrap"
                      MinHeight="72" />

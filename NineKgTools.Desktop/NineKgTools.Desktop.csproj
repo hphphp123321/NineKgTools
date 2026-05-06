@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <RootNamespace>NineKgTools.Desktop</RootNamespace>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
@@ -12,19 +12,21 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Avalonia" Version="11.2.1" />
-        <PackageReference Include="Avalonia.Desktop" Version="11.2.1" />
-        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.1" />
-        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.1" />
+        <PackageReference Include="Avalonia" Version="12.0.2" />
+        <PackageReference Include="Avalonia.Desktop" Version="12.0.2" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.2" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.2" />
         <!-- Diagnostics 仅 Debug 配置启用，生产构建剔除 -->
-        <PackageReference Include="Avalonia.Diagnostics" Version="11.2.1">
+        <PackageReference Include="Avalonia.Diagnostics" Version="11.3.14">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
             <Condition>'$(Configuration)' == 'Debug'</Condition>
         </PackageReference>
 
-        <!-- Win11 Mica / Acrylic + Fluent 风格控件库 -->
-        <PackageReference Include="FluentAvaloniaUI" Version="2.2.0" />
+        <!-- Win11 Mica / Acrylic + Fluent 风格控件库
+             3.0.0-preview2 是与 Avalonia 12.x 匹配的版本（2.5.1 还停在 Avalonia 11.3.x，
+             与本项目 Avalonia 12.0.2 不兼容会运行时 MissingMethodException）。 -->
+        <PackageReference Include="FluentAvaloniaUI" Version="3.0.0-preview2" />
 
         <!-- MVVM 源生成器 ([ObservableProperty] / [RelayCommand]) -->
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />

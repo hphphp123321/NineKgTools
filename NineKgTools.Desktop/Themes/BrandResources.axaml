@@ -102,7 +102,7 @@
     <!-- ========== 项目图标库（Material Design Icons，path data 内嵌） ==========
         来自 https://materialdesignicons.com（Pictogrammers，Apache 2.0）
         风格：填充式、清晰、现代——比 Segoe Fluent Icons 更有标识度
-        使用：<ui:PathIconSource Data="{StaticResource IconHome}" />
+        使用：<ui:FAPathIconSource Data="{StaticResource IconHome}" />
     -->
 
     <!-- 侧栏导航图标 -->

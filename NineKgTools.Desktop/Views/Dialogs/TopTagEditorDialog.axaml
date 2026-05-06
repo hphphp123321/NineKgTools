@@ -16,7 +16,7 @@
             <TextBlock Text="名称" FontSize="11" Opacity="0.7" />
             <TextBox x:Name="NameInput"
                      Text="{Binding #DialogRoot.NameValue, Mode=TwoWay}"
-                     Watermark="例如：风格 / 题材 / 角色..." />
+                     PlaceholderText="例如：风格 / 题材 / 角色..." />
         </StackPanel>
 
         <Border IsVisible="{Binding #DialogRoot.ShowEditHint}"

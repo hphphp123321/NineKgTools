@@ -106,13 +106,13 @@ public partial class TagEditorDialog : UserControl
                 : ""
         };
 
-        var dialog = new ContentDialog
+        var dialog = new FAContentDialog
         {
             Title = BuildTitleVisual(title, isEdit: initialName is not null),
             Content = view,
             PrimaryButtonText = "保存",
             CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.Primary,
+            DefaultButton = FAContentDialogButton.Primary,
             IsPrimaryButtonEnabled = false,
         };
 
@@ -131,7 +131,7 @@ public partial class TagEditorDialog : UserControl
         RecomputeValidity();
 
         var dlgResult = await dialog.ShowAsync();
-        if (dlgResult != ContentDialogResult.Primary) return null;
+        if (dlgResult != FAContentDialogResult.Primary) return null;
 
         var name = view.NameValue?.Trim();
         var top = view.SelectedTopTag;

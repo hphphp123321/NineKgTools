@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <!-- LangVersion / Nullable / ImplicitUsings / IsPackable 在根 Directory.Build.props 统一维护 -->
     <NoWarn>$(NoWarn);NU1701</NoWarn>
   </PropertyGroup>

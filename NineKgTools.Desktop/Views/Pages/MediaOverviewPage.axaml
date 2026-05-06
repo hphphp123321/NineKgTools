@@ -197,7 +197,7 @@
         <Grid Grid.Row="1" Margin="32,12,32,16"
               ColumnDefinitions="*,12,Auto,12,Auto">
             <TextBox Grid.Column="0"
-                     Watermark="搜索标题..."
+                     PlaceholderText="搜索标题..."
                      Text="{Binding SearchText, Mode=TwoWay}" />
             <ComboBox Grid.Column="2"
                       ItemsSource="{Binding AvailableSorts}"

@@ -60,13 +60,13 @@ public partial class CreatorMergeDialog : UserControl
             AllTargets = candidates,
         };
 
-        var dialog = new ContentDialog
+        var dialog = new FAContentDialog
         {
             Title = BuildTitleVisual(),
             Content = view,
             PrimaryButtonText = "确认合并",
             CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.Primary,
+            DefaultButton = FAContentDialogButton.Primary,
             IsPrimaryButtonEnabled = false,
         };
 
@@ -86,7 +86,7 @@ public partial class CreatorMergeDialog : UserControl
         };
 
         var result = await dialog.ShowAsync();
-        if (result != ContentDialogResult.Primary) return null;
+        if (result != FAContentDialogResult.Primary) return null;
         return view.SelectedTarget as Creator;
     }
 

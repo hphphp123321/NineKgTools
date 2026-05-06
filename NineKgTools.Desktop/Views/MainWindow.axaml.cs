@@ -58,7 +58,7 @@ public partial class MainWindow : Window
         if (targetIndex is not int idx) return;
         try
         {
-            var items = NavView.MenuItems.OfType<NavigationViewItem>().ToList();
+            var items = NavView.MenuItems.OfType<FANavigationViewItem>().ToList();
             if (idx < items.Count)
             {
                 NavView.SelectedItem = items[idx];
@@ -71,7 +71,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void OnNavigationSelectionChanged(object? sender, NavigationViewSelectionChangedEventArgs args)
+    private async void OnNavigationSelectionChanged(object? sender, FANavigationViewSelectionChangedEventArgs args)
     {
         if (DataContext is not MainWindowViewModel vm) return;
 
@@ -81,7 +81,7 @@ public partial class MainWindow : Window
         {
             targetType = typeof(SettingsViewModel);
         }
-        else if (args.SelectedItem is NavigationViewItem item && item.Tag is string typeName)
+        else if (args.SelectedItem is FANavigationViewItem item && item.Tag is string typeName)
         {
             // Tag 形如 "HomeViewModel"，命名空间在 NineKgTools.Desktop.ViewModels.Pages
             targetType = Type.GetType($"NineKgTools.Desktop.ViewModels.Pages.{typeName}, NineKgTools.Desktop");
@@ -106,7 +106,8 @@ public partial class MainWindow : Window
 
     private void OnDragEnter(object? sender, DragEventArgs e)
     {
-        _dragHasFiles = e.Data.Contains(DataFormats.Files);
+        // Avalonia 12: e.Data → e.DataTransfer，DataFormats.Files → DataFormat.File
+        _dragHasFiles = e.DataTransfer.Contains(DataFormat.File);
         if (!_dragHasFiles) return;
 
         e.DragEffects = DragDropEffects.Copy;

@@ -240,7 +240,7 @@
             </StackPanel>
 
             <!-- ========== Phase 状态提示 ========== -->
-            <ui:InfoBar Severity="Informational" IsOpen="True" IsClosable="False"
+            <ui:FAInfoBar Severity="Informational" IsOpen="True" IsClosable="False"
                         Title="Phase 1.1 / 1.6 / 1.7 / 1.8 / 1.9 已完成"
                         Message="主窗框架 + Hangfire 持久化 + 共享对话框 + 视觉 token + 图片 LRU 缓存。后续 Phase 1.2–1.5 接入业务页面。" />
 

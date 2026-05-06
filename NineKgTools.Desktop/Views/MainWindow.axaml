@@ -15,7 +15,7 @@
 
     <Grid>
 
-        <ui:NavigationView x:Name="NavView"
+        <ui:FANavigationView x:Name="NavView"
                        PaneDisplayMode="Auto"
                        CompactModeThresholdWidth="640"
                        ExpandedModeThresholdWidth="1008"
@@ -25,68 +25,68 @@
                        PaneTitle="NineKgTools"
                        SelectionChanged="OnNavigationSelectionChanged">
 
-        <ui:NavigationView.MenuItems>
-            <ui:NavigationViewItem Content="首页" Tag="HomeViewModel" IsSelected="True">
-                <ui:NavigationViewItem.IconSource>
-                    <ui:PathIconSource Data="{StaticResource IconHome}" />
-                </ui:NavigationViewItem.IconSource>
-            </ui:NavigationViewItem>
+        <ui:FANavigationView.MenuItems>
+            <ui:FANavigationViewItem Content="首页" Tag="HomeViewModel" IsSelected="True">
+                <ui:FANavigationViewItem.IconSource>
+                    <ui:FAPathIconSource Data="{StaticResource IconHome}" />
+                </ui:FANavigationViewItem.IconSource>
+            </ui:FANavigationViewItem>
 
-            <ui:NavigationViewItem Content="媒体库" Tag="MediaOverviewViewModel">
-                <ui:NavigationViewItem.IconSource>
-                    <ui:PathIconSource Data="{StaticResource IconLibrary}" />
-                </ui:NavigationViewItem.IconSource>
-            </ui:NavigationViewItem>
+            <ui:FANavigationViewItem Content="媒体库" Tag="MediaOverviewViewModel">
+                <ui:FANavigationViewItem.IconSource>
+                    <ui:FAPathIconSource Data="{StaticResource IconLibrary}" />
+                </ui:FANavigationViewItem.IconSource>
+            </ui:FANavigationViewItem>
 
-            <ui:NavigationViewItem Content="待处理" Tag="PendingMediaViewModel">
-                <ui:NavigationViewItem.IconSource>
-                    <ui:PathIconSource Data="{StaticResource IconInbox}" />
-                </ui:NavigationViewItem.IconSource>
-            </ui:NavigationViewItem>
+            <ui:FANavigationViewItem Content="待处理" Tag="PendingMediaViewModel">
+                <ui:FANavigationViewItem.IconSource>
+                    <ui:FAPathIconSource Data="{StaticResource IconInbox}" />
+                </ui:FANavigationViewItem.IconSource>
+            </ui:FANavigationViewItem>
 
-            <ui:NavigationViewItem Content="媒体源" Tag="SourcesViewModel">
-                <ui:NavigationViewItem.IconSource>
-                    <ui:PathIconSource Data="{StaticResource IconFolderOpen}" />
-                </ui:NavigationViewItem.IconSource>
-            </ui:NavigationViewItem>
+            <ui:FANavigationViewItem Content="媒体源" Tag="SourcesViewModel">
+                <ui:FANavigationViewItem.IconSource>
+                    <ui:FAPathIconSource Data="{StaticResource IconFolderOpen}" />
+                </ui:FANavigationViewItem.IconSource>
+            </ui:FANavigationViewItem>
 
-            <ui:NavigationViewItem Content="任务" Tag="BackgroundTasksViewModel">
-                <ui:NavigationViewItem.IconSource>
-                    <ui:PathIconSource Data="{StaticResource IconTasks}" />
-                </ui:NavigationViewItem.IconSource>
-            </ui:NavigationViewItem>
+            <ui:FANavigationViewItem Content="任务" Tag="BackgroundTasksViewModel">
+                <ui:FANavigationViewItem.IconSource>
+                    <ui:FAPathIconSource Data="{StaticResource IconTasks}" />
+                </ui:FANavigationViewItem.IconSource>
+            </ui:FANavigationViewItem>
 
-            <ui:NavigationViewItemSeparator />
+            <ui:FANavigationViewItemSeparator />
 
-            <ui:NavigationViewItem Content="标签" Tag="TagsViewModel">
-                <ui:NavigationViewItem.IconSource>
-                    <ui:PathIconSource Data="{StaticResource IconTags}" />
-                </ui:NavigationViewItem.IconSource>
-            </ui:NavigationViewItem>
+            <ui:FANavigationViewItem Content="标签" Tag="TagsViewModel">
+                <ui:FANavigationViewItem.IconSource>
+                    <ui:FAPathIconSource Data="{StaticResource IconTags}" />
+                </ui:FANavigationViewItem.IconSource>
+            </ui:FANavigationViewItem>
 
-            <ui:NavigationViewItem Content="创作者" Tag="CreatorsViewModel">
-                <ui:NavigationViewItem.IconSource>
-                    <ui:PathIconSource Data="{StaticResource IconCreators}" />
-                </ui:NavigationViewItem.IconSource>
-            </ui:NavigationViewItem>
+            <ui:FANavigationViewItem Content="创作者" Tag="CreatorsViewModel">
+                <ui:FANavigationViewItem.IconSource>
+                    <ui:FAPathIconSource Data="{StaticResource IconCreators}" />
+                </ui:FANavigationViewItem.IconSource>
+            </ui:FANavigationViewItem>
 
-            <ui:NavigationViewItem Content="收藏夹" Tag="FavoritesViewModel">
-                <ui:NavigationViewItem.IconSource>
-                    <ui:PathIconSource Data="{StaticResource IconStar}" />
-                </ui:NavigationViewItem.IconSource>
-            </ui:NavigationViewItem>
+            <ui:FANavigationViewItem Content="收藏夹" Tag="FavoritesViewModel">
+                <ui:FANavigationViewItem.IconSource>
+                    <ui:FAPathIconSource Data="{StaticResource IconStar}" />
+                </ui:FANavigationViewItem.IconSource>
+            </ui:FANavigationViewItem>
 
-            <ui:NavigationViewItem Content="网站" Tag="WebsitesViewModel">
-                <ui:NavigationViewItem.IconSource>
-                    <ui:PathIconSource Data="{StaticResource IconWeb}" />
-                </ui:NavigationViewItem.IconSource>
-            </ui:NavigationViewItem>
-        </ui:NavigationView.MenuItems>
+            <ui:FANavigationViewItem Content="网站" Tag="WebsitesViewModel">
+                <ui:FANavigationViewItem.IconSource>
+                    <ui:FAPathIconSource Data="{StaticResource IconWeb}" />
+                </ui:FANavigationViewItem.IconSource>
+            </ui:FANavigationViewItem>
+        </ui:FANavigationView.MenuItems>
 
         <!-- 主内容区：ViewLocator 自动把 PageViewModelBase 渲染为对应 View -->
         <ContentControl Content="{Binding CurrentPage}" />
 
-    </ui:NavigationView>
+    </ui:FANavigationView>
 
     <!-- 拖拽 Overlay：默认隐藏，DragEnter（停留 200ms 后）显示 -->
     <Border x:Name="DragOverlay"

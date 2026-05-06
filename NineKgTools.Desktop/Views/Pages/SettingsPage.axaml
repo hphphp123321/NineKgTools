@@ -226,7 +226,7 @@
                     </StackPanel>
                 </StackPanel>
 
-                <ui:InfoBar Severity="Informational" IsOpen="True" IsClosable="False"
+                <ui:FAInfoBar Severity="Informational" IsOpen="True" IsClosable="False"
                             Title="持久化已启用"
                             Message="主题与关窗行为通过 desktop-preferences.json 落盘到数据目录，重启后保留。" />
 
@@ -284,7 +284,7 @@
                                    MaxWidth="200" HorizontalAlignment="Left" />
                 </StackPanel>
 
-                <ui:InfoBar Severity="Warning" IsOpen="True" IsClosable="False"
+                <ui:FAInfoBar Severity="Warning" IsOpen="True" IsClosable="False"
                             Title="部分字段需重启"
                             Message="最大并发识别任务数仅在 Hangfire BackgroundJobServer 构造时读取，修改后必须重启应用才能生效。" />
             </StackPanel>
@@ -437,7 +437,7 @@
                                   HorizontalAlignment="Left" />
                 </StackPanel>
 
-                <ui:InfoBar Severity="Informational" IsOpen="True" IsClosable="False"
+                <ui:FAInfoBar Severity="Informational" IsOpen="True" IsClosable="False"
                             Title="高级过滤规则"
                             Message="忽略文件名 / 模式 / 允许扩展名等高级列表暂未在此页暴露——请直接编辑 config.yaml 的 files.ignored_files / files.ignored_patterns / files.allowed_extensions。改动后无需重启。" />
             </StackPanel>
@@ -471,7 +471,7 @@
                     <TextBlock Classes="help" Text="留空时从环境变量 OPENAI_API_KEY 获取。" />
                     <TextBox Text="{Binding AiOpenAiApiKey, Mode=TwoWay}"
                              PasswordChar="●"
-                             Watermark="sk-..."
+                             PlaceholderText="sk-..."
                              MaxWidth="480" HorizontalAlignment="Stretch" />
                 </StackPanel>
 
@@ -479,7 +479,7 @@
                     <TextBlock Classes="label" Text="Base Domain" />
                     <TextBlock Classes="help" Text="OpenAI 兼容 API 的 base 域名。注意不要带 /v1 等后缀（后缀走「API 版本」字段）。" />
                     <TextBox Text="{Binding AiOpenAiBaseDomain, Mode=TwoWay}"
-                             Watermark="https://api.openai.com"
+                             PlaceholderText="https://api.openai.com"
                              MaxWidth="480" HorizontalAlignment="Stretch" />
                 </StackPanel>
 
@@ -487,7 +487,7 @@
                     <TextBlock Classes="label" Text="API 版本" />
                     <TextBlock Classes="help" Text="拼在 base 域名后面，如 v1。" />
                     <TextBox Text="{Binding AiOpenAiApiVersion, Mode=TwoWay}"
-                             Watermark="v1"
+                             PlaceholderText="v1"
                              MaxWidth="200" HorizontalAlignment="Left" />
                 </StackPanel>
 
@@ -495,7 +495,7 @@
                     <TextBlock Classes="label" Text="默认模型" />
                     <TextBlock Classes="help" Text="用于推断的默认模型名。" />
                     <TextBox Text="{Binding AiOpenAiDefaultModel, Mode=TwoWay}"
-                             Watermark="gpt-4o-mini"
+                             PlaceholderText="gpt-4o-mini"
                              MaxWidth="320" HorizontalAlignment="Left" />
                 </StackPanel>
             </StackPanel>
@@ -615,7 +615,7 @@
                               MaxWidth="240" HorizontalAlignment="Left" />
                 </StackPanel>
 
-                <ui:InfoBar Severity="Warning" IsOpen="True" IsClosable="False"
+                <ui:FAInfoBar Severity="Warning" IsOpen="True" IsClosable="False"
                             Title="部分字段需重启"
                             Message="日志级别只在 Serilog 初始化时读取，修改后需要重启应用才能完全生效（已记录的日志保持原级别）。日志路径 / Server / 模板等高级字段请直接编辑 config.yaml。" />
             </StackPanel>
@@ -659,7 +659,7 @@
                     </Border>
                 </StackPanel>
 
-                <ui:InfoBar Severity="Warning" IsOpen="True" IsClosable="False"
+                <ui:FAInfoBar Severity="Warning" IsOpen="True" IsClosable="False"
                             Title="为何只读？"
                             Message="数据库路径由桌面端独立管理（与 Web/Docker 隔离），不可在此修改。如需迁移数据请直接复制 dataDir 到目标位置后修改 config.yaml。" />
             </StackPanel>

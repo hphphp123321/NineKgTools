@@ -29,7 +29,7 @@
 
             <!-- 搜索栏 -->
             <Grid Grid.Row="1" Margin="32,8,32,16" ColumnDefinitions="*">
-                <TextBox Watermark="搜索创作者名 / 别名..."
+                <TextBox PlaceholderText="搜索创作者名 / 别名..."
                          Text="{Binding SearchText, Mode=TwoWay}" />
             </Grid>
 
