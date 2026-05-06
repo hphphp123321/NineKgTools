@@ -4,6 +4,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NineKgTools.Core.Models.Identification;
 using NineKgTools.Core.Services.Configs;
 using NineKgTools.Core.Services.Files;
 using NineKgTools.Desktop.Views.Dialogs;
@@ -205,16 +206,22 @@ public partial class SourcesViewModel : PageViewModelBase
         }
     }
 
-    /// <summary>触发一次性识别（不影响当前监视状态，只是补扫一遍）</summary>
+    /// <summary>
+    /// 触发一次性强制重新识别（绕过 MediaSource.InDatabase 短路）。
+    /// 用 SkipCache=true 让识别流程重新爬取网页 + 重新下载 Poster/Pictures——
+    /// 修复早期 bug 留下的"Media.Poster=null"或"cache 文件丢失"等历史脏数据。
+    /// </summary>
     [RelayCommand]
     private async Task RescanAsync(WatchFolderItemViewModel? item)
     {
         if (item is null || !item.DirectoryExists) return;
         try
         {
-            var taskId = await _filesService.IdentifyBatchMedia(item.Path, startMonitoringAfterCompletion: false);
-            StatusMessage = $"已开始重新扫描：{item.FolderName}（任务 {taskId}）";
-            Log.Information("Rescan：{Path}, TaskId={TaskId}", item.Path, taskId);
+            var options = _config.Identification?.ToIdentificationOptions() ?? new IdentificationOptions();
+            options.SkipCache = true;  // 关键：绕过 GetMediaByPath 的"已存在"短路，重走完整识别
+            var taskId = await _filesService.IdentifyBatchMedia(item.Path, options, startMonitoringAfterCompletion: false);
+            StatusMessage = $"已开始重新扫描：{item.FolderName}（任务 {taskId}，强制刷新）";
+            Log.Information("Rescan (SkipCache=true)：{Path}, TaskId={TaskId}", item.Path, taskId);
         }
         catch (Exception ex)
         {

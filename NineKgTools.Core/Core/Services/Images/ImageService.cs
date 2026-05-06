@@ -68,7 +68,12 @@ public class ImageService(MediaDbContext dbContext, Config config, HttpService h
         // 使用单独的方法查找现有图片
         var dbImage = await FindExistingImageAsync(image, imageName);
         if (dbImage != null)
+        {
+            // dbImage 存在但 cache 文件可能丢失（旧版每次启动清 .cache 留下的烂摊子，
+            // 或用户手动 rm -rf）。这里检查并按需重建 cache 文件，用 BLOB / URL 兜底。
+            await EnsureImageCacheFileAsync(dbImage, parentDirName);
             return dbImage;
+        }
 
         image.Name = imageName;
         await dbContext.Images.AddAsync(image);
@@ -80,6 +85,70 @@ public class ImageService(MediaDbContext dbContext, Config config, HttpService h
         await dbContext.SaveChangesAsync();
 
         return image;
+    }
+
+    /// <summary>
+    /// 扫描媒体的 Poster + Pictures，按需从 BLOB / URL 重建 cache 文件。
+    /// 在 GetMediaByPath 短路点（媒体已入库直接返回）调用，确保用户重启后图片不丢。
+    /// </summary>
+    public async Task EnsureMediaImagesAsync(MediaBase media)
+    {
+        if (media is null) return;
+        try
+        {
+            if (Log.IsEnabled(Serilog.Events.LogEventLevel.Debug))
+            {
+                var posterStatus = media.Poster is null ? "null"
+                    : $"File={(media.Poster.File?.FullName ?? "null")}, Exists={media.Poster.File?.Exists ?? false}, Url={media.Poster.Url?.ToString() ?? "null"}, ContentLen={media.Poster.Content?.Length ?? 0}";
+                Log.Debug("EnsureMediaImagesAsync: {Title} Poster={Poster}, Pictures={PicCount}",
+                    media.Title, posterStatus, media.Pictures?.Count ?? 0);
+            }
+
+            if (media.Poster is not null)
+            {
+                await EnsureImageCacheFileAsync(media.Poster, media.Title.ReplaceInvalidChars());
+            }
+            if (media.Pictures is { Count: > 0 })
+            {
+                foreach (var pic in media.Pictures)
+                {
+                    await EnsureImageCacheFileAsync(pic, media.Title.ReplaceInvalidChars());
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "EnsureMediaImagesAsync 失败: {Title}", media.Title);
+        }
+    }
+
+    /// <summary>
+    /// 当 dbImage 在数据库里有记录但 .cache 文件不存在时，从 Content BLOB / URL 重建。
+    /// 解决"启动期清 .cache 后封面图全丢"的漂移问题——数据库说图片在但实际文件不在。
+    /// </summary>
+    public async Task EnsureImageCacheFileAsync(Image image, string parentDirName)
+    {
+        try
+        {
+            // File 字段已设置且文件实际存在 → 啥都不做
+            if (image.File != null && image.File.Exists) return;
+
+            // 没数据可重建（BLOB 已清 + 没 URL）→ 没办法
+            if (image.Content == null && image.Url == null)
+            {
+                Log.Debug("EnsureImageCacheFileAsync: 图片 {Name} 无 Content/Url，无法重建 cache 文件（需手动重新识别）", image.Name);
+                return;
+            }
+
+            var file = await StoreImage(image, parentDirName);
+            image.File = file;
+            await dbContext.SaveChangesAsync();
+            Log.Debug("已重建 cache 文件: {Path}", file.FullName);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "重建图片 cache 文件失败: {Name}", image.Name);
+        }
     }
 
     public async Task RemoveImageAsync(Image image)
@@ -294,8 +363,11 @@ public class ImageService(MediaDbContext dbContext, Config config, HttpService h
 
         fileStream.Close();
 
-        // 图片内容已经写入文件，可以清空Content避免数据库存储过大的二进制数据
-        image.Content = null;
+        // 保留 image.Content（BLOB）作为 cache 丢失时的重建兜底——
+        // 之前为了节省 SQLite 体积清空 BLOB，但 .cache 一旦被清空（启动期清理 / 用户手动 rm /
+        // 数据目录被复制时漏文件）就再也无法恢复封面（image.Url 也可能因网站改 URL 而失效）。
+        // 让 BLOB 当 single source of truth，cache 只是性能加速层，可丢可重建。
+        // 如果未来数据库膨胀成问题，再做"按文件大小阈值清理"或"移到独立 BLOB 表"的优化。
 
         return new FileInfo(filePath);
     }

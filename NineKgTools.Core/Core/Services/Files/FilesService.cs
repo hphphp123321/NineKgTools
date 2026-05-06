@@ -31,6 +31,7 @@ public class FilesService
     private readonly MediaService _mediaService;
     private readonly PendingIdentificationService _pendingIdentificationService;
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly ImageService _imageService;
 
     private readonly UnifiedTaskService _taskService;
 
@@ -46,6 +47,7 @@ public class FilesService
         _websiteService = websiteService;
         _mediaService = mediaService;
         _pendingIdentificationService = pendingIdentificationService;
+        _imageService = imageService;
         _config = config;
         _serviceScopeFactory = serviceScopeFactory;
         _monitorService = monitorService;
@@ -197,6 +199,12 @@ public class FilesService
             else if (mediaDbSource is { InDatabase: true, MediaBase: not null })
             {
                 var dbMedia = await _mediaService.GetMediaAsync(mediaDbSource.MediaBase.Id);
+                // .cache 漂移修复：用户关进程重启 / 清缓存 / 复制数据目录漏文件后，
+                // 数据库 Image 记录还在但 cache 文件丢失。短路返回前按需重建。
+                if (dbMedia is not null)
+                {
+                    await _imageService.EnsureMediaImagesAsync(dbMedia);
+                }
                 if (progressReporter != null)
                 {
                     await progressReporter.SuccessAsync($"使用缓存: {dbMedia.Title}", 100, path);

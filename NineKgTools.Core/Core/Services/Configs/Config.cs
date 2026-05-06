@@ -195,12 +195,14 @@ public class Config
     {
         var cachePath = Cache.Path;
 
-        if (Directory.Exists(cachePath))
+        // 不再删除已有缓存——之前是开发期为了"每次启动从干净状态开始"留的副作用，
+        // 但导致桌面端每次关进程重启后所有封面图片都丢失（StoreImage 落在
+        // {Cache.Path}/Img/{parentDir}/{image.Name}，跟着 .cache 一起被删）。
+        // 缓存清理交给定时任务 CacheCleanupTask（按文件年龄过滤），不在启动期粗暴清空。
+        if (!Directory.Exists(cachePath))
         {
-            Directory.Delete(cachePath, true); // 删除原有缓存 TODO: 在实际使用时应该注释
+            Directory.CreateDirectory(cachePath);
         }
-
-        Directory.CreateDirectory(cachePath);
     }
 }
 
