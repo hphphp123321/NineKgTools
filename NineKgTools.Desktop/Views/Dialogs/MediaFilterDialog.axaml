@@ -1,0 +1,142 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Dialogs"
+             x:Class="NineKgTools.Desktop.Views.Dialogs.MediaFilterDialog"
+             x:DataType="vm:MediaFilterDialogContext"
+             MinWidth="600" MaxWidth="780">
+
+    <ScrollViewer MaxHeight="600" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="10">
+
+            <!-- 段 1：分类与标签 -->
+            <Expander Header="分类与标签" IsExpanded="True">
+                <StackPanel Spacing="12" Margin="0,8,0,0">
+
+                    <!-- TopCategory 单选 -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="媒体类型" FontWeight="SemiBold" />
+                        <ListBox ItemsSource="{Binding TopCategoryOptions}"
+                                 SelectedItem="{Binding SelectedTopCategory, Mode=TwoWay}"
+                                 SelectionMode="Single"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Padding="0">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.Styles>
+                                <Style Selector="ListBoxItem">
+                                    <Setter Property="Margin" Value="0,0,8,8" />
+                                    <Setter Property="Padding" Value="14,6" />
+                                    <Setter Property="CornerRadius" Value="14" />
+                                </Style>
+                            </ListBox.Styles>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:TopCategoryChoice">
+                                    <TextBlock Text="{Binding DisplayName}" FontSize="13" />
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+
+                    <!-- 仅按类型 -->
+                    <ToggleSwitch IsChecked="{Binding OnlyTopCategory, Mode=TwoWay}"
+                                  OnContent="仅按媒体类型筛选"
+                                  OffContent="选择具体分类（可多选）" />
+
+                    <!-- 子分类 chip 多选 -->
+                    <StackPanel Spacing="6" IsVisible="{Binding ShowSubCategorySection}">
+                        <TextBlock Text="{Binding SubCategoryHeader}" FontWeight="SemiBold" />
+                        <ItemsControl ItemsSource="{Binding SubCategoryChoices}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CategoryChoiceVm">
+                                    <ToggleButton IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                  Margin="0,0,8,8"
+                                                  Padding="12,5"
+                                                  CornerRadius="14"
+                                                  Content="{Binding DisplayName}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- 标签 ComboBox（单选，简化版——不嵌套 TagSelectorDialog） -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="标签筛选" FontWeight="SemiBold" />
+                        <ComboBox ItemsSource="{Binding TagNameOptions}"
+                                  SelectedItem="{Binding SelectedTagName, Mode=TwoWay}"
+                                  PlaceholderText="不限标签"
+                                  HorizontalAlignment="Stretch" />
+                    </StackPanel>
+
+                </StackPanel>
+            </Expander>
+
+            <!-- 段 2：收藏与评分 -->
+            <Expander Header="收藏与评分" IsExpanded="True">
+                <Grid Margin="0,8,0,0"
+                      ColumnDefinitions="*,*"
+                      ColumnSpacing="12">
+                    <StackPanel Grid.Column="0" Spacing="6">
+                        <TextBlock Text="收藏夹" FontWeight="SemiBold" />
+                        <ComboBox ItemsSource="{Binding FavoriteNameOptions}"
+                                  SelectedItem="{Binding SelectedFavoriteName, Mode=TwoWay}"
+                                  PlaceholderText="不限收藏夹"
+                                  HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Spacing="6">
+                        <TextBlock Text="最低评分" FontWeight="SemiBold" />
+                        <ComboBox ItemsSource="{Binding RatingOptions}"
+                                  SelectedItem="{Binding SelectedRating, Mode=TwoWay}"
+                                  HorizontalAlignment="Stretch">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:RatingChoice">
+                                    <TextBlock Text="{Binding DisplayName}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+            </Expander>
+
+            <!-- 段 3：日期 -->
+            <Expander Header="日期筛选">
+                <StackPanel Spacing="10" Margin="0,8,0,0">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="日期类型" FontWeight="SemiBold" />
+                        <ComboBox ItemsSource="{Binding DateFilterTypeOptions}"
+                                  SelectedItem="{Binding SelectedDateFilterType, Mode=TwoWay}"
+                                  HorizontalAlignment="Stretch">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:DateFilterTypeChoice">
+                                    <TextBlock Text="{Binding DisplayName}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <StackPanel Grid.Column="0" Spacing="6">
+                            <TextBlock Text="开始日期" FontWeight="SemiBold" />
+                            <DatePicker SelectedDate="{Binding StartDate, Mode=TwoWay}"
+                                        HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="6">
+                            <TextBlock Text="结束日期" FontWeight="SemiBold" />
+                            <DatePicker SelectedDate="{Binding EndDate, Mode=TwoWay}"
+                                        HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Expander>
+
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>

@@ -81,11 +81,27 @@
                                                FontSize="12"
                                                Foreground="{Binding CategoryBrush}"
                                                FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding CategorySubName, StringFormat='/ {0}'}"
+                                               FontSize="12"
+                                               Opacity="0.7"
+                                               IsVisible="{Binding CategorySubName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                    <Button Command="{Binding EditCategoryCommand}"
+                                            IsVisible="{Binding IsEditMode}"
+                                            Padding="8,2"
+                                            Content="修改分类" />
                                 </StackPanel>
+
+                                <!-- Title：只读 vs 编辑 -->
                                 <TextBlock Text="{Binding Title}"
                                            FontSize="28"
                                            FontWeight="SemiBold"
-                                           TextWrapping="Wrap" />
+                                           TextWrapping="Wrap"
+                                           IsVisible="{Binding !IsEditMode}" />
+                                <TextBox Text="{Binding Title, Mode=TwoWay}"
+                                         FontSize="22"
+                                         FontWeight="SemiBold"
+                                         IsVisible="{Binding IsEditMode}"
+                                         MaxLength="200" />
                             </StackPanel>
 
                             <!-- 副标题：创作者 · 社团 -->
@@ -99,17 +115,50 @@
                                 <TextBlock Text="{Binding CreatorsText}"
                                            FontSize="14"
                                            Opacity="0.85" />
+                                <Button Command="{Binding EditCreatorsCommand}"
+                                        IsVisible="{Binding IsEditMode}"
+                                        Padding="8,2"
+                                        Content="编辑创作者" />
                             </StackPanel>
 
-                            <!-- 评分 -->
-                            <TextBlock Text="{Binding RatingText}"
-                                       FontSize="20"
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource SystemFillColorAttentionBrush}"
-                                       IsVisible="{Binding HasRating}" />
+                            <!-- 评分：只读 vs 编辑（NumericUpDown 0-5 整数 stop） -->
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="{Binding RatingText}"
+                                           FontSize="20"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource SystemFillColorAttentionBrush}"
+                                           IsVisible="{Binding HasRating}" />
+                                <StackPanel Orientation="Horizontal" Spacing="6"
+                                            IsVisible="{Binding IsEditMode}">
+                                    <TextBlock Text="评分" Opacity="0.7" VerticalAlignment="Center" FontSize="12" />
+                                    <NumericUpDown Value="{Binding Rating, Mode=TwoWay}"
+                                                   Minimum="0" Maximum="5"
+                                                   Increment="0.5"
+                                                   FormatString="0.0"
+                                                   Width="120" />
+                                </StackPanel>
+                            </StackPanel>
 
-                            <!-- 主操作按钮组 -->
-                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0">
+                            <!-- 保存错误提示（仅 IsEditMode + 有错误） -->
+                            <Border IsVisible="{Binding SaveError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                    Padding="10,6"
+                                    CornerRadius="{DynamicResource ControlCornerRadius}"
+                                    Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="⚠" FontSize="13" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding SaveError}" FontSize="12" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 主操作按钮组：只读模式 -->
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0"
+                                        IsVisible="{Binding !IsEditMode}">
+                                <Button Command="{Binding EnterEditCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="✏️" FontSize="13" />
+                                        <TextBlock Text="编辑" />
+                                    </StackPanel>
+                                </Button>
                                 <Button Command="{Binding OpenInExplorerCommand}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <PathIcon Data="{StaticResource IconFolderOpen}" Width="14" Height="14" />
@@ -131,6 +180,34 @@
                                 </ToggleButton>
                             </StackPanel>
 
+                            <!-- 主操作按钮组：编辑模式 -->
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0"
+                                        IsVisible="{Binding IsEditMode}">
+                                <Button Command="{Binding SaveCommand}"
+                                        IsEnabled="{Binding !IsSaving}"
+                                        Classes="accent">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="💾" FontSize="13" />
+                                        <TextBlock Text="保存" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding CancelEditCommand}"
+                                        IsEnabled="{Binding !IsSaving}"
+                                        Content="取消" />
+                                <Button Command="{Binding DeleteCommand}"
+                                        IsEnabled="{Binding !IsSaving}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="🗑" FontSize="13"
+                                                   Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                                        <TextBlock Text="删除"
+                                                   Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                                    </StackPanel>
+                                </Button>
+                                <ui:FAProgressRing IsIndeterminate="True"
+                                                   Width="20" Height="20"
+                                                   IsVisible="{Binding IsSaving}" />
+                            </StackPanel>
+
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -148,21 +225,34 @@
                                        FontSize="14"
                                        LineHeight="22"
                                        Opacity="0.85"
-                                       TextWrapping="Wrap" />
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding !IsEditMode}" />
+                            <TextBox Text="{Binding Summary, Mode=TwoWay}"
+                                     IsVisible="{Binding IsEditMode}"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     MinHeight="80"
+                                     MaxLength="500" />
                         </StackPanel>
 
-                        <!-- 描述（如果与简介不同） -->
-                        <StackPanel Spacing="8"
-                                    IsVisible="{Binding Description, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <!-- 描述 -->
+                        <StackPanel Spacing="8">
                             <TextBlock Text="详细描述" FontSize="16" FontWeight="SemiBold" />
                             <TextBlock Text="{Binding Description}"
                                        FontSize="13"
                                        LineHeight="20"
                                        Opacity="0.75"
-                                       TextWrapping="Wrap" />
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding !IsEditMode}" />
+                            <TextBox Text="{Binding Description, Mode=TwoWay}"
+                                     IsVisible="{Binding IsEditMode}"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     MinHeight="120"
+                                     MaxLength="5000" />
                         </StackPanel>
 
-                        <!-- 别名 -->
+                        <!-- 别名（编辑模式下置灰显示，§1.3 P3 后续接编辑） -->
                         <StackPanel Spacing="8" IsVisible="{Binding HasAlias}">
                             <TextBlock Text="别名" FontSize="16" FontWeight="SemiBold" />
                             <TextBlock Text="{Binding AliasText}"
@@ -196,7 +286,15 @@
 
                         <!-- 标签 -->
                         <StackPanel Spacing="10">
-                            <TextBlock Text="标签" FontSize="14" FontWeight="SemiBold" Opacity="0.8" />
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="标签"
+                                           FontSize="14" FontWeight="SemiBold" Opacity="0.8" />
+                                <Button Grid.Column="1"
+                                        Command="{Binding EditTagsCommand}"
+                                        IsVisible="{Binding IsEditMode}"
+                                        Padding="8,2"
+                                        Content="编辑" />
+                            </Grid>
                             <ItemsControl ItemsSource="{Binding Tags}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
@@ -217,7 +315,7 @@
                             </ItemsControl>
                         </StackPanel>
 
-                        <!-- 收藏夹 -->
+                        <!-- 收藏夹（§10.5 P1 FavoriteSelectorDialog 落地后接编辑） -->
                         <StackPanel Spacing="10" IsVisible="{Binding HasFavorites}">
                             <TextBlock Text="收藏夹" FontSize="14" FontWeight="SemiBold" Opacity="0.8" />
                             <ItemsControl ItemsSource="{Binding Favorites}">

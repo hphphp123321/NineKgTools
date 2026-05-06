@@ -1,0 +1,160 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Dialogs"
+             xmlns:cat="using:NineKgTools.Core.Models.Categories"
+             x:Class="NineKgTools.Desktop.Views.Dialogs.ManualAddMediaDialog"
+             x:DataType="vm:ManualAddMediaDialogContext"
+             MinWidth="500" MaxWidth="640">
+
+    <ScrollViewer MaxHeight="540" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="14">
+
+            <!-- Hero：路径 + 文件名 + 文件/文件夹 chip -->
+            <Border Padding="16,12"
+                    CornerRadius="{DynamicResource OverlayCornerRadius}"
+                    Background="{DynamicResource LayerFillColorDefaultBrush}">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding SourceFileName}"
+                               Theme="{StaticResource SubtitleTextBlockStyle}"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding SourceFullPath}"
+                               FontSize="11"
+                               Opacity="0.7"
+                               TextWrapping="Wrap"
+                               TextTrimming="CharacterEllipsis" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Border Padding="8,2"
+                                CornerRadius="4"
+                                Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                            <TextBlock Text="{Binding SourceKindLabel}" FontSize="11" />
+                        </Border>
+                        <Border IsVisible="{Binding HasSourceKindHint}"
+                                Padding="8,2"
+                                CornerRadius="4"
+                                Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                            <TextBlock Text="{Binding SourceKindHint}" FontSize="11" />
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 错误提示（preview2 无 InfoBar，自渲染语义色 Border 与 NineKgConfirmDialog 警告条一致） -->
+            <Border IsVisible="{Binding HasError}"
+                    Padding="12,8"
+                    CornerRadius="{DynamicResource ControlCornerRadius}"
+                    Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="⚠" FontSize="14" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding ErrorMessage}"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- 标题 -->
+            <StackPanel Spacing="6">
+                <TextBlock>
+                    <Run Text="标题" />
+                    <Run Text="*" Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                </TextBlock>
+                <TextBox Text="{Binding TitleValue, Mode=TwoWay}"
+                         PlaceholderText="为这个媒体起一个名字"
+                         MaxLength="200" />
+            </StackPanel>
+
+            <!-- TopCategory 选择（5 chip 单选） -->
+            <StackPanel Spacing="6">
+                <TextBlock>
+                    <Run Text="媒体类型" />
+                    <Run Text="*" Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                </TextBlock>
+                <ListBox ItemsSource="{Binding TopCategoryOptions}"
+                         SelectedItem="{Binding SelectedTopCategory, Mode=TwoWay}"
+                         SelectionMode="Single"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="0">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.Styles>
+                        <Style Selector="ListBoxItem">
+                            <Setter Property="Margin" Value="0,0,8,8" />
+                            <Setter Property="Padding" Value="14,6" />
+                            <Setter Property="CornerRadius" Value="14" />
+                        </Style>
+                    </ListBox.Styles>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TopCategoryChoice">
+                            <TextBlock Text="{Binding DisplayName}" FontSize="13" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </StackPanel>
+
+            <!-- 选填手风琴 -->
+            <Expander Header="填更多信息（可选）"
+                      IsExpanded="{Binding OptionalExpanded, Mode=TwoWay}">
+                <StackPanel Spacing="12" Margin="0,8,0,0">
+
+                    <!-- 子分类 -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="具体分类" FontSize="11" Opacity="0.7" />
+                        <ComboBox HorizontalAlignment="Stretch"
+                                  ItemsSource="{Binding AvailableSubCategories}"
+                                  SelectedItem="{Binding SelectedSubCategory, Mode=TwoWay}"
+                                  IsEnabled="{Binding HasTopCategorySelected}"
+                                  PlaceholderText="可留空（自动用「其他X」）">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="cat:Category">
+                                    <TextBlock Text="{Binding Name}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <!-- 简介 -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="简介" FontSize="11" Opacity="0.7" />
+                        <TextBox Text="{Binding Summary, Mode=TwoWay}"
+                                 PlaceholderText="这个媒体的大致内容"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 MinHeight="72"
+                                 MaxLength="500" />
+                    </StackPanel>
+
+                    <!-- 评分 0-5 整数 -->
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="评分" FontSize="11" Opacity="0.7"
+                                   VerticalAlignment="Center" />
+                        <NumericUpDown Value="{Binding Rating, Mode=TwoWay}"
+                                       Minimum="0" Maximum="5"
+                                       Increment="1"
+                                       FormatString="0"
+                                       Width="120" />
+                        <TextBlock Text="（0 表示无评分）"
+                                   FontSize="11"
+                                   Opacity="0.6"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+
+                </StackPanel>
+            </Expander>
+
+            <!-- 底部提示行 -->
+            <Border Padding="12,8"
+                    CornerRadius="{DynamicResource ControlCornerRadius}"
+                    Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}">
+                <TextBlock Text="{Binding HintMessage}"
+                           FontSize="12"
+                           TextWrapping="Wrap" />
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>

@@ -4,6 +4,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NineKgTools.Core.Models.Tasks;
+using NineKgTools.Core.Services.Configs;
 using NineKgTools.Core.Services.Progress;
 using NineKgTools.Core.Services.Tasks;
 using NineKgTools.Desktop.Views.Windows;
@@ -17,12 +18,31 @@ public partial class BackgroundTasksViewModel : PageViewModelBase
 {
     private readonly TaskProgressService _progressService;
     private readonly UnifiedTaskService _taskService;
+    private readonly Config _config;
     private DispatcherTimer? _refreshTimer;
 
     public override string Title => "任务";
 
+    /// <summary>0=运行中 / 1=历史 / 2=定时</summary>
+    [ObservableProperty]
+    private int _selectedTabIndex;
+
     [ObservableProperty]
     private ObservableCollection<TaskItemViewModel> _items = new();
+
+    /// <summary>"历史" Tab 的项（每次切到该 Tab 重新拉一次）</summary>
+    [ObservableProperty]
+    private ObservableCollection<HistoryItemViewModel> _historyItems = new();
+
+    [ObservableProperty]
+    private bool _showHistoryEmpty;
+
+    /// <summary>"定时" Tab 的项（从 Config.Tasks.ScheduledTasks 读取）</summary>
+    [ObservableProperty]
+    private ObservableCollection<ScheduledItemViewModel> _scheduledItems = new();
+
+    [ObservableProperty]
+    private bool _showScheduledEmpty;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsFilterAll))]
@@ -51,20 +71,74 @@ public partial class BackgroundTasksViewModel : PageViewModelBase
     public bool IsFilterSucceeded => SelectedFilter == TaskStatusFilter.Succeeded;
     public bool IsFilterFailed => SelectedFilter == TaskStatusFilter.Failed;
 
-    public BackgroundTasksViewModel(TaskProgressService progressService, UnifiedTaskService taskService)
+    public BackgroundTasksViewModel(
+        TaskProgressService progressService,
+        UnifiedTaskService taskService,
+        Config config)
     {
         _progressService = progressService;
         _taskService = taskService;
+        _config = config;
     }
 
     public override Task OnEnterAsync()
     {
         Refresh();
         // 500ms 轮询足够实时，开销远小于 Subscribe + 跨 task 注销/订阅
+        // 注：定时器只刷新 Tab 0「运行中」；历史 / 定时 Tab 在切换时 lazy-load
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-        _refreshTimer.Tick += (_, _) => Refresh();
+        _refreshTimer.Tick += (_, _) =>
+        {
+            if (SelectedTabIndex == 0) Refresh();
+        };
         _refreshTimer.Start();
         return Task.CompletedTask;
+    }
+
+    /// <summary>Tab 切换时按需加载——历史 + 定时不需要轮询，每次切换刷新一次</summary>
+    partial void OnSelectedTabIndexChanged(int value)
+    {
+        switch (value)
+        {
+            case 1:
+                LoadHistory();
+                break;
+            case 2:
+                LoadScheduled();
+                break;
+        }
+    }
+
+    private void LoadHistory()
+    {
+        try
+        {
+            var history = _taskService.GetExecutionHistory()
+                .Select(h => new HistoryItemViewModel(h))
+                .ToList();
+            HistoryItems = new ObservableCollection<HistoryItemViewModel>(history);
+            ShowHistoryEmpty = history.Count == 0;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "BackgroundTasks LoadHistory 失败");
+        }
+    }
+
+    private void LoadScheduled()
+    {
+        try
+        {
+            var scheduled = _config.Tasks?.ScheduledTasks?
+                .Select(c => new ScheduledItemViewModel(c))
+                .ToList() ?? new List<ScheduledItemViewModel>();
+            ScheduledItems = new ObservableCollection<ScheduledItemViewModel>(scheduled);
+            ShowScheduledEmpty = scheduled.Count == 0;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "BackgroundTasks LoadScheduled 失败");
+        }
     }
 
     public override Task OnLeaveAsync()

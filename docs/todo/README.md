@@ -12,6 +12,12 @@
 | 3 | 桌面端独占（托盘 / 拖拽 / Shell 集成 / 多窗口） | 📋 待开始 | [`desktop-phase-3.md`](desktop-phase-3.md) |
 | 4 | 打包与分发（Win MSIX / Mac DMG / Linux 单文件） | 📋 待开始 | [`desktop-phase-4.md`](desktop-phase-4.md) |
 
+## 跨 Phase 清单
+
+| 文件 | 用途 |
+|---|---|
+| [`desktop-web-parity-checklist.md`](desktop-web-parity-checklist.md) | 桌面端 ↔ Web 端 功能对等盘点：列出 Web 全部页面 / 组件 / 功能 + 桌面端当前实现，差距条目留空待逐项填充。**做对等性补齐之前必读**。 |
+
 ## 总体原则
 
 - **不要并发推进多个 Phase**——做完一个 Phase 验收通过再开下一个，避免半成品堆积。

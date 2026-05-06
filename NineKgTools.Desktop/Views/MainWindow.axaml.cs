@@ -38,9 +38,22 @@ public partial class MainWindow : Window
 
     private void OnGlobalKeyDown(object? sender, KeyEventArgs e)
     {
-        // Ctrl + 1..9 → NavigationView 第 N 个 MenuItem
         if (e.KeyModifiers != KeyModifiers.Control) return;
 
+        // Ctrl+K → 聚焦全局搜索框（§12 决策入口②）
+        if (e.Key == Key.K)
+        {
+            try
+            {
+                GlobalSearchBox.Focus();
+                GlobalSearchBox.SelectAll();
+                e.Handled = true;
+            }
+            catch (Exception ex) { Log.Warning(ex, "Ctrl+K 聚焦搜索框失败"); }
+            return;
+        }
+
+        // Ctrl + 1..9 → NavigationView 第 N 个 MenuItem
         int? targetIndex = e.Key switch
         {
             Key.D1 or Key.NumPad1 => 0,
@@ -68,6 +81,24 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Log.Warning(ex, "Ctrl+{Idx} 跳转失败", idx + 1);
+        }
+    }
+
+    /// <summary>SearchBox 按 Enter → 触发 MainWindowViewModel.ExecuteSearchCommand 跳到媒体库</summary>
+    private void OnSearchBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+        if (DataContext is not MainWindowViewModel vm) return;
+
+        try
+        {
+            if (vm.ExecuteSearchCommand.CanExecute(null))
+                vm.ExecuteSearchCommand.Execute(null);
+            e.Handled = true;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "全局搜索 Enter 提交失败");
         }
     }
 

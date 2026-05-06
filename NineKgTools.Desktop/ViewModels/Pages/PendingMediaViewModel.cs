@@ -7,6 +7,7 @@ using NineKgTools.Core.Models.Media.Source;
 using NineKgTools.Core.Services.Files;
 using NineKgTools.Core.Services.Media;
 using NineKgTools.Core.Services.Source;
+using NineKgTools.Desktop.Services;
 using NineKgTools.Desktop.Views.Dialogs;
 using Serilog;
 
@@ -18,6 +19,7 @@ public partial class PendingMediaViewModel : PageViewModelBase
     private readonly SourceService _sourceService;
     private readonly PendingIdentificationService _pendingService;
     private readonly FilesService _filesService;
+    private readonly IServiceProvider _services;
 
     public override string Title => "待处理";
 
@@ -50,12 +52,14 @@ public partial class PendingMediaViewModel : PageViewModelBase
         IDbContextFactory<MediaDbContext> dbFactory,
         SourceService sourceService,
         PendingIdentificationService pendingService,
-        FilesService filesService)
+        FilesService filesService,
+        IServiceProvider services)
     {
         _dbFactory = dbFactory;
         _sourceService = sourceService;
         _pendingService = pendingService;
         _filesService = filesService;
+        _services = services;
     }
 
     public override Task OnEnterAsync() => RefreshAsync();
@@ -117,12 +121,19 @@ public partial class PendingMediaViewModel : PageViewModelBase
     }
 
     [RelayCommand]
-    private Task ManualAddAsync(PendingMediaItemViewModel? item)
+    private async Task ManualAddAsync(PendingMediaItemViewModel? item)
     {
-        if (item is null) return Task.CompletedTask;
-        // TODO Phase 2: 接入 ManualAddMediaHelper 流程
-        Log.Information("手动添加（待 Phase 2 接入 ManualAddMediaHelper）：{Path}", item.FullPath);
-        return Task.CompletedTask;
+        if (item is null) return;
+
+        // Helper 内部已处理：路径重复检测 → 对话框 → 入库 → 打开 MediaDetailWindow
+        // 失败已经在 Helper 里 Log + InfoBar 提示，这里只关心成功后刷新两个 Tab
+        var newId = await ManualAddMediaHelper.OpenByPathAsync(item.FullPath, _services);
+        if (newId.HasValue)
+        {
+            // 入库后该 MediaSource 通常会变 Identified=true && InDatabase=true，
+            // 不再属于"待识别"——刷新让该行从列表消失
+            await RefreshAsync();
+        }
     }
 
     [RelayCommand]
@@ -210,11 +221,15 @@ public partial class PendingMediaViewModel : PageViewModelBase
     }
 
     [RelayCommand]
-    private Task PreviewDatabaseAsync(PendingMediaItemViewModel? item)
+    private async Task PreviewDatabaseAsync(PendingMediaItemViewModel? item)
     {
-        if (item is null || item.IdentifiedMedia is null) return Task.CompletedTask;
-        // TODO Phase 1.3: 接入媒体详情独立窗口（只读模式预览）
-        Log.Information("预览待入库（待 Phase 1.3 接入详情窗）：{Title}", item.IdentifiedMedia.Title);
-        return Task.CompletedTask;
+        if (item is null || item.IdentifiedMedia is null) return;
+
+        // 弹预览 dialog；用户在预览里点"确认入库"则 ApproveDatabaseAsync 直接走一遍，省掉返回列表再点入库的二次操作
+        var approve = await PendingMediaPreviewDialog.ShowAsync(item.IdentifiedMedia, item.Source);
+        if (approve)
+        {
+            await ApproveDatabaseAsync(item);
+        }
     }
 }

@@ -1,0 +1,77 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Dialogs"
+             x:Class="NineKgTools.Desktop.Views.Dialogs.CreatorSelectorDialog"
+             x:DataType="vm:CreatorSelectorDialogContext"
+             MinWidth="560" MaxWidth="720">
+
+    <StackPanel Spacing="12">
+
+        <!-- 搜索 + 类型筛选 -->
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+            <TextBox Grid.Column="0"
+                     Text="{Binding SearchText, Mode=TwoWay}"
+                     PlaceholderText="按名称或别名搜索（≥2 字）" />
+            <ComboBox Grid.Column="1"
+                      MinWidth="140"
+                      ItemsSource="{Binding TypeOptions}"
+                      SelectedItem="{Binding SelectedType, Mode=TwoWay}">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CreatorTypeChoice">
+                        <TextBlock Text="{Binding DisplayName}" />
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </Grid>
+
+        <!-- 计数 / 截断提示 -->
+        <Border Padding="10,6"
+                CornerRadius="{DynamicResource ControlCornerRadius}"
+                Background="{DynamicResource LayerFillColorDefaultBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBlock Text="{Binding SelectionLabel}" FontSize="12" Opacity="0.8" />
+                <TextBlock IsVisible="{Binding IsTruncated}"
+                           Text="（结果较多，仅展示前 50 位，请缩小搜索）"
+                           FontSize="11"
+                           Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+            </StackPanel>
+        </Border>
+
+        <ProgressBar IsVisible="{Binding IsLoading}" IsIndeterminate="True" />
+
+        <Border IsVisible="{Binding ShowEmpty}"
+                Padding="14,10"
+                CornerRadius="{DynamicResource ControlCornerRadius}"
+                Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}">
+            <TextBlock Text="没有匹配的创作者" FontSize="12" />
+        </Border>
+
+        <ScrollViewer MaxHeight="400" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Choices}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CreatorChoiceVm">
+                        <ToggleButton IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                      Margin="0,0,8,8"
+                                      Padding="12,6"
+                                      CornerRadius="14">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="{Binding DisplayName}" FontSize="12" />
+                                <TextBlock IsVisible="{Binding HasTypesHint}"
+                                           Text="{Binding TypesHint}"
+                                           FontSize="11"
+                                           Opacity="0.55" />
+                            </StackPanel>
+                        </ToggleButton>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+    </StackPanel>
+
+</UserControl>

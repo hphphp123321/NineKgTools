@@ -83,7 +83,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
 
         <!-- ========== Row 0: 分类切换栏（"全部" + 5 类别 = 6 列） ========== -->
         <Grid Grid.Row="0" Margin="32,24,32,12"
@@ -193,13 +193,29 @@
 
         </Grid>
 
-        <!-- ========== Row 1: 筛选 / 排序条 ========== -->
-        <Grid Grid.Row="1" Margin="32,12,32,16"
-              ColumnDefinitions="*,12,Auto,12,Auto">
-            <TextBox Grid.Column="0"
+        <!-- ========== Row 1: 筛选 / 排序 / 新建 ========== -->
+        <Grid Grid.Row="1" Margin="32,12,32,8"
+              ColumnDefinitions="Auto,12,*,12,Auto,12,Auto,12,Auto">
+            <!-- 筛选按钮：HasActiveFilter 时变 accent 色 -->
+            <Button Grid.Column="0"
+                    Command="{Binding OpenFilterCommand}"
+                    ToolTip.Tip="多维筛选（分类 / 标签 / 收藏 / 评分 / 日期）">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Data="{StaticResource IconFilter}" Width="14" Height="14" />
+                    <TextBlock Text="筛选" />
+                    <Border IsVisible="{Binding HasActiveFilter}"
+                            Width="8" Height="8"
+                            CornerRadius="4"
+                            Background="{DynamicResource SystemFillColorAttentionBrush}"
+                            VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+
+            <TextBox Grid.Column="2"
                      PlaceholderText="搜索标题..."
                      Text="{Binding SearchText, Mode=TwoWay}" />
-            <ComboBox Grid.Column="2"
+
+            <ComboBox Grid.Column="4"
                       ItemsSource="{Binding AvailableSorts}"
                       SelectedItem="{Binding SelectedSort, Mode=TwoWay}"
                       MinWidth="140">
@@ -209,7 +225,24 @@
                     </DataTemplate>
                 </ComboBox.ItemTemplate>
             </ComboBox>
-            <Button Grid.Column="4" Command="{Binding LoadCommand}">
+
+            <!-- 新建：主按钮触发 flyout，内含"文件夹 / 文件"两选项 -->
+            <Button Grid.Column="6"
+                    ToolTip.Tip="手动添加媒体（指定文件或文件夹路径）">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="+ 新建" FontWeight="SemiBold" />
+                </StackPanel>
+                <Button.Flyout>
+                    <MenuFlyout>
+                        <MenuItem Header="新建（文件夹）"
+                                  Command="{Binding NewMediaFromFolderCommand}" />
+                        <MenuItem Header="新建（文件）"
+                                  Command="{Binding NewMediaFromFileCommand}" />
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
+
+            <Button Grid.Column="8" Command="{Binding LoadCommand}">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
                     <TextBlock Text="刷新" />
@@ -217,8 +250,27 @@
             </Button>
         </Grid>
 
-        <!-- ========== Row 2: 主内容（卡片网格 / 三态） ========== -->
-        <Grid Grid.Row="2" Margin="32,0,32,0">
+        <!-- ========== Row 2: 已应用筛选状态条（仅 HasActiveFilter 显示） ========== -->
+        <Border Grid.Row="2" Margin="32,0,32,12"
+                IsVisible="{Binding HasActiveFilter}"
+                Padding="12,6"
+                CornerRadius="{DynamicResource ControlCornerRadius}"
+                Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding FilterSummary}"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <Button Grid.Column="1"
+                        Command="{Binding ClearFilterCommand}"
+                        Padding="10,4"
+                        Content="清除筛选" />
+            </Grid>
+        </Border>
+
+        <!-- ========== Row 3: 主内容（卡片网格 / 三态） ========== -->
+        <Grid Grid.Row="3" Margin="32,0,32,0">
 
             <!-- 加载中：6 张骨架卡 -->
             <WrapPanel IsVisible="{Binding IsLoading}">
@@ -337,8 +389,8 @@
 
         </Grid>
 
-        <!-- ========== Row 3: 分页栏 ========== -->
-        <Border Grid.Row="3" Padding="32,12"
+        <!-- ========== Row 4: 分页栏 ========== -->
+        <Border Grid.Row="4" Padding="32,12"
                 Background="{DynamicResource LayerFillColorAltBrush}"
                 BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                 BorderThickness="0,1,0,0"

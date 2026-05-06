@@ -25,6 +25,19 @@
                        PaneTitle="NineKgTools"
                        SelectionChanged="OnNavigationSelectionChanged">
 
+        <!-- 侧栏底部全局搜索（§12 决策入口①）。Ctrl+K 快捷键由 Window.KeyBindings 触发聚焦本框。 -->
+        <ui:FANavigationView.PaneFooter>
+            <Border Padding="12,8" x:Name="SearchFooter">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="全局搜索" FontSize="11" Opacity="0.6" />
+                    <TextBox x:Name="GlobalSearchBox"
+                             Text="{Binding SearchText, Mode=TwoWay}"
+                             PlaceholderText="搜索媒体（Ctrl+K）"
+                             KeyDown="OnSearchBoxKeyDown" />
+                </StackPanel>
+            </Border>
+        </ui:FANavigationView.PaneFooter>
+
         <ui:FANavigationView.MenuItems>
             <ui:FANavigationViewItem Content="首页" Tag="HomeViewModel" IsSelected="True">
                 <ui:FANavigationViewItem.IconSource>

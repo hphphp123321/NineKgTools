@@ -1,0 +1,93 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Dialogs"
+             x:Class="NineKgTools.Desktop.Views.Dialogs.CategorySelectorDialog"
+             x:DataType="vm:CategorySelectorDialogContext"
+             MinWidth="520" MaxWidth="680">
+
+    <ScrollViewer MaxHeight="540" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="14">
+
+            <!-- TopCategory 单选 -->
+            <StackPanel Spacing="6">
+                <TextBlock Text="选择媒体类型" FontWeight="SemiBold" />
+                <ListBox ItemsSource="{Binding TopCategoryOptions}"
+                         SelectedItem="{Binding SelectedTopCategory, Mode=TwoWay}"
+                         SelectionMode="Single"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="0">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.Styles>
+                        <Style Selector="ListBoxItem">
+                            <Setter Property="Margin" Value="0,0,8,8" />
+                            <Setter Property="Padding" Value="14,6" />
+                            <Setter Property="CornerRadius" Value="14" />
+                        </Style>
+                    </ListBox.Styles>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TopCategoryChoice">
+                            <TextBlock Text="{Binding DisplayName}" FontSize="13" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </StackPanel>
+
+            <!-- 仅按类型 Switch -->
+            <ToggleSwitch IsChecked="{Binding OnlyTopCategory, Mode=TwoWay}"
+                          OnContent="仅按媒体类型筛选"
+                          OffContent="选择具体分类（可多选）" />
+
+            <!-- 子分类多选 -->
+            <StackPanel Spacing="8" IsVisible="{Binding ShowSubCategorySection}">
+                <Grid ColumnDefinitions="*,Auto,Auto">
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding SubCategoryHeader}"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+                    <Button Grid.Column="1"
+                            Content="全选"
+                            Margin="0,0,6,0"
+                            Padding="10,4"
+                            Click="OnSelectAllClick" />
+                    <Button Grid.Column="2"
+                            Content="全不选"
+                            Padding="10,4"
+                            Click="OnDeselectAllClick" />
+                </Grid>
+                <ItemsControl ItemsSource="{Binding SubCategoryChoices}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CategoryChoiceVm">
+                            <ToggleButton IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                          Margin="0,0,8,8"
+                                          Padding="12,5"
+                                          CornerRadius="14"
+                                          Content="{Binding DisplayName}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- OnlyTopCategory 提示 -->
+            <Border IsVisible="{Binding OnlyTopCategory}"
+                    Padding="12,8"
+                    CornerRadius="{DynamicResource ControlCornerRadius}"
+                    Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}">
+                <TextBlock Text="将筛选所选媒体类型下的全部媒体（不限具体分类）"
+                           FontSize="12"
+                           TextWrapping="Wrap" />
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>

@@ -20,7 +20,6 @@
                 </Transitions>
             </Setter>
         </Style>
-        <!-- 4 个状态各自的选中态：浅色 fill 背景 + 同色边框，与媒体库 cat-tab 保持视觉一致 -->
         <Style Selector="Button.filter-chip.sel-all">
             <Setter Property="Background" Value="{DynamicResource BrandCategoryAllFillBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource BrandCategoryAllBrush}" />
@@ -44,7 +43,7 @@
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
-        <!-- chip 底部 indicator 横条：默认 0 宽 + 透明，选中态展开（与媒体库 cat-indicator 同款，但更紧凑） -->
+        <!-- chip 底部 indicator 横条 -->
         <Style Selector="Border.chip-indicator">
             <Setter Property="Height" Value="2" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
@@ -65,7 +64,7 @@
             <Setter Property="RenderTransform" Value="scaleX(1.0)" />
         </Style>
 
-        <!-- 任务行卡片 hover 加亮 accent 边框 -->
+        <!-- 任务行 / 历史行 / 定时行 通用卡片 -->
         <Style Selector="Border.task-row">
             <Setter Property="Background" Value="{DynamicResource LayerFillColorDefaultBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
@@ -83,7 +82,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,Auto,*">
+    <Grid RowDefinitions="Auto,*">
 
         <!-- ========== Row 0: 头部 ========== -->
         <Grid Grid.Row="0" Margin="32,24,32,8" ColumnDefinitions="*,Auto">
@@ -94,193 +93,367 @@
             </StackPanel>
             <Button Grid.Column="1" Command="{Binding ClearCompletedCommand}"
                     VerticalAlignment="Center"
-                    Content="清理已完成" />
+                    Content="清理已完成"
+                    IsVisible="{Binding SelectedTabIndex, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}" />
         </Grid>
 
-        <!-- ========== Row 1: 状态过滤 chip group ========== -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="32,8,32,16">
-            <Grid>
-                <Button Classes="filter-chip"
-                        Classes.sel-all="{Binding IsFilterAll}"
-                        Command="{Binding SelectFilterCommand}" CommandParameter="All">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="全部" Foreground="{DynamicResource BrandCategoryAllBrush}" />
-                        <TextBlock Text="{Binding AllCount, StringFormat='[{0}]'}" Opacity="0.65" />
+        <!-- ========== Row 1: 3-Tab 容器（运行中 / 历史 / 定时） ========== -->
+        <TabControl Grid.Row="1"
+                    Margin="32,0,32,16"
+                    SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}">
+
+            <!-- ============== Tab 0: 运行中 ============== -->
+            <TabItem Header="运行中">
+                <Grid RowDefinitions="Auto,*">
+
+                    <!-- 状态过滤 chip group -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,12,0,16">
+                        <Grid>
+                            <Button Classes="filter-chip"
+                                    Classes.sel-all="{Binding IsFilterAll}"
+                                    Command="{Binding SelectFilterCommand}" CommandParameter="All">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="全部" Foreground="{DynamicResource BrandCategoryAllBrush}" />
+                                    <TextBlock Text="{Binding AllCount, StringFormat='[{0}]'}" Opacity="0.65" />
+                                </StackPanel>
+                            </Button>
+                            <Border Classes="chip-indicator" Classes.active="{Binding IsFilterAll}"
+                                    Background="{DynamicResource BrandCategoryAllBrush}" />
+                        </Grid>
+                        <Grid>
+                            <Button Classes="filter-chip"
+                                    Classes.sel-running="{Binding IsFilterRunning}"
+                                    Command="{Binding SelectFilterCommand}" CommandParameter="Running">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="▶ 运行中" Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                                    <TextBlock Text="{Binding RunningCount, StringFormat='[{0}]'}" Opacity="0.65" />
+                                </StackPanel>
+                            </Button>
+                            <Border Classes="chip-indicator" Classes.active="{Binding IsFilterRunning}"
+                                    Background="{DynamicResource SystemFillColorAttentionBrush}" />
+                        </Grid>
+                        <Grid>
+                            <Button Classes="filter-chip"
+                                    Classes.sel-succeeded="{Binding IsFilterSucceeded}"
+                                    Command="{Binding SelectFilterCommand}" CommandParameter="Succeeded">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="✓ 已完成" Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
+                                    <TextBlock Text="{Binding SucceededCount, StringFormat='[{0}]'}" Opacity="0.65" />
+                                </StackPanel>
+                            </Button>
+                            <Border Classes="chip-indicator" Classes.active="{Binding IsFilterSucceeded}"
+                                    Background="{DynamicResource SystemFillColorSuccessBrush}" />
+                        </Grid>
+                        <Grid>
+                            <Button Classes="filter-chip"
+                                    Classes.sel-failed="{Binding IsFilterFailed}"
+                                    Command="{Binding SelectFilterCommand}" CommandParameter="Failed">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="✕ 失败" Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                                    <TextBlock Text="{Binding FailedCount, StringFormat='[{0}]'}" Opacity="0.65" />
+                                </StackPanel>
+                            </Button>
+                            <Border Classes="chip-indicator" Classes.active="{Binding IsFilterFailed}"
+                                    Background="{DynamicResource SystemFillColorCriticalBrush}" />
+                        </Grid>
                     </StackPanel>
-                </Button>
-                <Border Classes="chip-indicator" Classes.active="{Binding IsFilterAll}"
-                        Background="{DynamicResource BrandCategoryAllBrush}" />
-            </Grid>
 
-            <Grid>
-                <Button Classes="filter-chip"
-                        Classes.sel-running="{Binding IsFilterRunning}"
-                        Command="{Binding SelectFilterCommand}" CommandParameter="Running">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="▶ 运行中" Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
-                        <TextBlock Text="{Binding RunningCount, StringFormat='[{0}]'}" Opacity="0.65" />
-                    </StackPanel>
-                </Button>
-                <Border Classes="chip-indicator" Classes.active="{Binding IsFilterRunning}"
-                        Background="{DynamicResource SystemFillColorAttentionBrush}" />
-            </Grid>
+                    <!-- 任务列表 -->
+                    <Grid Grid.Row="1">
+                        <!-- 空状态 -->
+                        <Border IsVisible="{Binding ShowEmpty}"
+                                Background="{DynamicResource LayerFillColorAltBrush}"
+                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="48,40"
+                                Margin="0,16"
+                                MaxWidth="480"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                            <StackPanel Spacing="16" HorizontalAlignment="Center">
+                                <PathIcon Data="{StaticResource IconTasks}" Width="64" Height="64"
+                                          Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                          Opacity="0.5" HorizontalAlignment="Center" />
+                                <TextBlock Text="暂无任务"
+                                           HorizontalAlignment="Center"
+                                           FontSize="18"
+                                           FontWeight="SemiBold" />
+                                <TextBlock Text="去媒体源页面触发识别后，进度会出现在这里。"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           Opacity="0.7"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
 
-            <Grid>
-                <Button Classes="filter-chip"
-                        Classes.sel-succeeded="{Binding IsFilterSucceeded}"
-                        Command="{Binding SelectFilterCommand}" CommandParameter="Succeeded">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="✓ 已完成" Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
-                        <TextBlock Text="{Binding SucceededCount, StringFormat='[{0}]'}" Opacity="0.65" />
-                    </StackPanel>
-                </Button>
-                <Border Classes="chip-indicator" Classes.active="{Binding IsFilterSucceeded}"
-                        Background="{DynamicResource SystemFillColorSuccessBrush}" />
-            </Grid>
+                        <!-- 列表 -->
+                        <ScrollViewer IsVisible="{Binding !ShowEmpty}">
+                            <ItemsControl ItemsSource="{Binding Items}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:TaskItemViewModel">
+                                        <Border Classes="task-row" Margin="0,0,0,8">
+                                            <Grid ColumnDefinitions="Auto,16,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto">
+                                                <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="3"
+                                                        Width="40" Height="40"
+                                                        CornerRadius="20"
+                                                        Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                        VerticalAlignment="Top">
+                                                    <TextBlock Text="{Binding StatusIcon}"
+                                                               FontSize="18"
+                                                               Foreground="{Binding StatusBrush}"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center" />
+                                                </Border>
+                                                <StackPanel Grid.Column="2" Grid.Row="0" Orientation="Horizontal" Spacing="8">
+                                                    <TextBlock Text="{Binding DisplayName}"
+                                                               FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip.Tip="{Binding TaskId}" />
+                                                    <TextBlock Text="{Binding ChildrenStatsText}"
+                                                               FontSize="11"
+                                                               Opacity="0.6"
+                                                               IsVisible="{Binding HasChildren}"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <ProgressBar Grid.Column="2" Grid.Row="1"
+                                                             Margin="0,8,0,4"
+                                                             Minimum="0" Maximum="100"
+                                                             Value="{Binding ProgressPercentage}"
+                                                             Foreground="{Binding StatusBrush}"
+                                                             IsVisible="{Binding ShowProgressBar}" />
+                                                <StackPanel Grid.Column="2" Grid.Row="2" Orientation="Horizontal" Spacing="10">
+                                                    <TextBlock Text="{Binding StatusText}"
+                                                               FontSize="11"
+                                                               Foreground="{Binding StatusBrush}"
+                                                               FontWeight="SemiBold" />
+                                                    <TextBlock Text="·" FontSize="11" Opacity="0.3" />
+                                                    <TextBlock Text="{Binding TimingText}"
+                                                               FontSize="11"
+                                                               Opacity="0.7" />
+                                                    <TextBlock Text="{Binding CurrentItem}"
+                                                               FontSize="11"
+                                                               Opacity="0.55"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               IsVisible="{Binding ShowProgressBar}" />
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="3" Grid.Row="0" Grid.RowSpan="3"
+                                                            Orientation="Horizontal" Spacing="6"
+                                                            VerticalAlignment="Center">
+                                                    <Button Command="{Binding #PageRoot.((vm:BackgroundTasksViewModel)DataContext).OpenDiagnosticsCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            IsVisible="{Binding HasDiagnostics}"
+                                                            ToolTip.Tip="查看本次识别的诊断面板">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <TextBlock Text="🔍" FontSize="12" />
+                                                            <TextBlock Text="诊断" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                    <Button Command="{Binding #PageRoot.((vm:BackgroundTasksViewModel)DataContext).CancelTaskCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            Content="取消"
+                                                            IsVisible="{Binding CanCancel}" />
+                                                </StackPanel>
+                                                <Border Grid.Column="2" Grid.Row="3"
+                                                        IsVisible="{Binding HasErrorMessage}"
+                                                        Margin="0,8,0,0"
+                                                        Padding="10,6"
+                                                        CornerRadius="4"
+                                                        Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}">
+                                                    <TextBlock Text="{Binding ErrorMessage}"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                                               TextWrapping="Wrap" />
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
+            </TabItem>
 
-            <Grid>
-                <Button Classes="filter-chip"
-                        Classes.sel-failed="{Binding IsFilterFailed}"
-                        Command="{Binding SelectFilterCommand}" CommandParameter="Failed">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="✕ 失败" Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
-                        <TextBlock Text="{Binding FailedCount, StringFormat='[{0}]'}" Opacity="0.65" />
-                    </StackPanel>
-                </Button>
-                <Border Classes="chip-indicator" Classes.active="{Binding IsFilterFailed}"
-                        Background="{DynamicResource SystemFillColorCriticalBrush}" />
-            </Grid>
-        </StackPanel>
+            <!-- ============== Tab 1: 历史 ============== -->
+            <TabItem Header="历史">
+                <Grid Margin="0,12,0,0">
+                    <!-- 空状态 -->
+                    <Border IsVisible="{Binding ShowHistoryEmpty}"
+                            Background="{DynamicResource LayerFillColorAltBrush}"
+                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="40,32"
+                            MaxWidth="480"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                        <StackPanel Spacing="14" HorizontalAlignment="Center">
+                            <TextBlock Text="📜" FontSize="48" HorizontalAlignment="Center" Opacity="0.5" />
+                            <TextBlock Text="暂无执行历史"
+                                       FontSize="16" FontWeight="SemiBold"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="任务执行完成后会归档到这里——进度页清理后这里仍保留。"
+                                       Opacity="0.7"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
 
-        <!-- ========== Row 2: 任务列表 ========== -->
-        <Grid Grid.Row="2" Margin="32,0,32,16">
+                    <ScrollViewer IsVisible="{Binding !ShowHistoryEmpty}">
+                        <ItemsControl ItemsSource="{Binding HistoryItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:HistoryItemViewModel">
+                                    <Border Classes="task-row" Margin="0,0,0,8">
+                                        <Grid ColumnDefinitions="Auto,16,*,Auto" RowDefinitions="Auto,Auto,Auto">
+                                            <!-- 状态图标 -->
+                                            <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="3"
+                                                    Width="36" Height="36"
+                                                    CornerRadius="18"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    VerticalAlignment="Top">
+                                                <TextBlock Text="{Binding StatusIcon}"
+                                                           FontSize="18"
+                                                           Foreground="{Binding StatusBrush}"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center" />
+                                            </Border>
 
-            <!-- 空状态 -->
-            <Border IsVisible="{Binding ShowEmpty}"
-                    Background="{DynamicResource LayerFillColorAltBrush}"
-                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8"
-                    Padding="48,40"
-                    Margin="0,16"
-                    MaxWidth="480"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center">
-                <StackPanel Spacing="16" HorizontalAlignment="Center">
-                    <PathIcon Data="{StaticResource IconTasks}" Width="64" Height="64"
-                              Foreground="{DynamicResource AccentFillColorDefaultBrush}"
-                              Opacity="0.5" HorizontalAlignment="Center" />
-                    <TextBlock Text="暂无任务"
-                               HorizontalAlignment="Center"
-                               FontSize="18"
-                               FontWeight="SemiBold" />
-                    <TextBlock Text="去媒体源页面触发识别后，进度会出现在这里。"
-                               HorizontalAlignment="Center"
-                               TextAlignment="Center"
-                               Opacity="0.7"
-                               TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
-
-            <!-- 列表 -->
-            <ScrollViewer IsVisible="{Binding !ShowEmpty}">
-                <ItemsControl ItemsSource="{Binding Items}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:TaskItemViewModel">
-                            <Border Classes="task-row" Margin="0,0,0,8">
-                                <Grid ColumnDefinitions="Auto,16,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto">
-
-                                    <!-- 左侧：状态图标 + 圆形彩色背景 -->
-                                    <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="3"
-                                            Width="40" Height="40"
-                                            CornerRadius="20"
-                                            Background="{DynamicResource SubtleFillColorTertiaryBrush}"
-                                            VerticalAlignment="Top">
-                                        <TextBlock Text="{Binding StatusIcon}"
-                                                   FontSize="18"
-                                                   Foreground="{Binding StatusBrush}"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center" />
-                                    </Border>
-
-                                    <!-- 中部 Row 0: 名称 + 子任务统计 -->
-                                    <StackPanel Grid.Column="2" Grid.Row="0" Orientation="Horizontal" Spacing="8">
-                                        <TextBlock Text="{Binding DisplayName}"
-                                                   FontWeight="SemiBold"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   ToolTip.Tip="{Binding TaskId}" />
-                                        <TextBlock Text="{Binding ChildrenStatsText}"
-                                                   FontSize="11"
-                                                   Opacity="0.6"
-                                                   IsVisible="{Binding HasChildren}"
-                                                   VerticalAlignment="Center" />
-                                    </StackPanel>
-
-                                    <!-- 中部 Row 1: 进度条（仅运行中） -->
-                                    <ProgressBar Grid.Column="2" Grid.Row="1"
-                                                 Margin="0,8,0,4"
-                                                 Minimum="0" Maximum="100"
-                                                 Value="{Binding ProgressPercentage}"
-                                                 Foreground="{Binding StatusBrush}"
-                                                 IsVisible="{Binding ShowProgressBar}" />
-
-                                    <!-- 中部 Row 2: 状态文本 + 时间信息 + 当前 item -->
-                                    <StackPanel Grid.Column="2" Grid.Row="2" Orientation="Horizontal" Spacing="10">
-                                        <TextBlock Text="{Binding StatusText}"
-                                                   FontSize="11"
-                                                   Foreground="{Binding StatusBrush}"
-                                                   FontWeight="SemiBold" />
-                                        <TextBlock Text="·" FontSize="11" Opacity="0.3" />
-                                        <TextBlock Text="{Binding TimingText}"
-                                                   FontSize="11"
-                                                   Opacity="0.7" />
-                                        <TextBlock Text="{Binding CurrentItem}"
-                                                   FontSize="11"
-                                                   Opacity="0.55"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   IsVisible="{Binding ShowProgressBar}" />
-                                    </StackPanel>
-
-                                    <!-- 右侧动作组 -->
-                                    <StackPanel Grid.Column="3" Grid.Row="0" Grid.RowSpan="3"
-                                                Orientation="Horizontal" Spacing="6"
-                                                VerticalAlignment="Center">
-                                        <Button Command="{Binding #PageRoot.((vm:BackgroundTasksViewModel)DataContext).OpenDiagnosticsCommand}"
-                                                CommandParameter="{Binding}"
-                                                IsVisible="{Binding HasDiagnostics}"
-                                                ToolTip.Tip="查看本次识别的诊断面板">
-                                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                                <TextBlock Text="🔍" FontSize="12" />
-                                                <TextBlock Text="诊断" />
+                                            <!-- 名字 + 类型 -->
+                                            <StackPanel Grid.Column="2" Grid.Row="0" Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="{Binding TaskName}"
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip.Tip="{Binding TaskId}" />
+                                                <Border Padding="6,1" CornerRadius="3"
+                                                        Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                                    <TextBlock Text="{Binding TaskTypeText}" FontSize="10" />
+                                                </Border>
                                             </StackPanel>
-                                        </Button>
-                                        <Button Command="{Binding #PageRoot.((vm:BackgroundTasksViewModel)DataContext).CancelTaskCommand}"
-                                                CommandParameter="{Binding}"
-                                                Content="取消"
-                                                IsVisible="{Binding CanCancel}" />
-                                    </StackPanel>
 
-                                    <!-- 失败任务的错误消息行（独占 Row 3，和上面状态行不重叠） -->
-                                    <Border Grid.Column="2" Grid.Row="3"
-                                            IsVisible="{Binding HasErrorMessage}"
-                                            Margin="0,8,0,0"
-                                            Padding="10,6"
-                                            CornerRadius="4"
-                                            Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}">
-                                        <TextBlock Text="{Binding ErrorMessage}"
-                                                   FontSize="11"
-                                                   Foreground="{DynamicResource SystemFillColorCriticalBrush}"
-                                                   TextWrapping="Wrap" />
+                                            <!-- 状态 + 时间 + 处理 / 失败 -->
+                                            <StackPanel Grid.Column="2" Grid.Row="1" Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
+                                                <TextBlock Text="{Binding StatusText}"
+                                                           FontSize="11"
+                                                           Foreground="{Binding StatusBrush}"
+                                                           FontWeight="SemiBold" />
+                                                <TextBlock Text="·" FontSize="11" Opacity="0.3" />
+                                                <TextBlock Text="{Binding StartTimeText}" FontSize="11" Opacity="0.7" />
+                                                <TextBlock Text="·" FontSize="11" Opacity="0.3" />
+                                                <TextBlock Text="{Binding DurationText}" FontSize="11" Opacity="0.7" />
+                                                <TextBlock Text="·" FontSize="11" Opacity="0.3" />
+                                                <TextBlock Text="{Binding StatsText}" FontSize="11" Opacity="0.7" />
+                                            </StackPanel>
+
+                                            <!-- 路径（识别类任务） -->
+                                            <TextBlock Grid.Column="2" Grid.Row="2"
+                                                       Text="{Binding SourcePath}"
+                                                       FontSize="11"
+                                                       Opacity="0.55"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       FontFamily="Consolas, Courier New, monospace"
+                                                       Margin="0,4,0,0"
+                                                       IsVisible="{Binding HasSourcePath}" />
+                                        </Grid>
                                     </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
 
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+            <!-- ============== Tab 2: 定时 ============== -->
+            <TabItem Header="定时">
+                <Grid Margin="0,12,0,0">
+                    <Border IsVisible="{Binding ShowScheduledEmpty}"
+                            Background="{DynamicResource LayerFillColorAltBrush}"
+                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="40,32"
+                            MaxWidth="480"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                        <StackPanel Spacing="14" HorizontalAlignment="Center">
+                            <TextBlock Text="⏱" FontSize="48" HorizontalAlignment="Center" Opacity="0.5" />
+                            <TextBlock Text="无定时任务"
+                                       FontSize="16" FontWeight="SemiBold"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="config.yaml 的 tasks.scheduled_tasks 列表为空。"
+                                       Opacity="0.7"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
 
-        </Grid>
+                    <ScrollViewer IsVisible="{Binding !ShowScheduledEmpty}">
+                        <ItemsControl ItemsSource="{Binding ScheduledItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ScheduledItemViewModel">
+                                    <Border Classes="task-row" Margin="0,0,0,8">
+                                        <Grid ColumnDefinitions="Auto,16,*,Auto" RowDefinitions="Auto,Auto,Auto">
+                                            <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="3"
+                                                    Width="36" Height="36"
+                                                    CornerRadius="18"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    VerticalAlignment="Top">
+                                                <TextBlock Text="⏱" FontSize="18"
+                                                           Foreground="{Binding StatusBrush}"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center" />
+                                            </Border>
+
+                                            <!-- 名字 + 类型 -->
+                                            <StackPanel Grid.Column="2" Grid.Row="0" Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                                <Border Padding="6,1" CornerRadius="3"
+                                                        Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                                    <TextBlock Text="{Binding Type}" FontSize="10" />
+                                                </Border>
+                                            </StackPanel>
+
+                                            <!-- 描述 -->
+                                            <TextBlock Grid.Column="2" Grid.Row="1"
+                                                       Text="{Binding Description}"
+                                                       FontSize="11" Opacity="0.7"
+                                                       Margin="0,4,0,0"
+                                                       TextWrapping="Wrap" />
+
+                                            <!-- Cron + 超时 -->
+                                            <StackPanel Grid.Column="2" Grid.Row="2"
+                                                        Orientation="Horizontal" Spacing="10"
+                                                        Margin="0,4,0,0">
+                                                <TextBlock Text="{Binding CronExpression, StringFormat='cron: {0}'}"
+                                                           FontSize="11"
+                                                           FontFamily="Consolas, Courier New, monospace"
+                                                           Opacity="0.65" />
+                                                <TextBlock Text="·" FontSize="11" Opacity="0.3" />
+                                                <TextBlock Text="{Binding TimeoutText, StringFormat='超时: {0}'}"
+                                                           FontSize="11" Opacity="0.65" />
+                                            </StackPanel>
+
+                                            <!-- 启用状态 chip -->
+                                            <Border Grid.Column="3" Grid.Row="0" Grid.RowSpan="3"
+                                                    Padding="10,4"
+                                                    CornerRadius="12"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding EnabledText}"
+                                                           Foreground="{Binding StatusBrush}"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold" />
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+        </TabControl>
 
     </Grid>
 
