@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NineKgTools.Core.Models.Media;
@@ -93,6 +95,10 @@ public partial class CirclesViewModel : PageViewModelBase
     [ObservableProperty]
     private string _editingDescription = "";
 
+    /// <summary>头像 draft（用户选了新图后存这里，Save 时构造 Image 传给 service）</summary>
+    private byte[]? _editingAvatarBytes;
+    private string? _editingAvatarExt;
+
     public bool ShowDetailReadActions => ShowDetail && !IsDetailEditMode;
     public bool ShowDetailEditActions => ShowDetail && IsDetailEditMode;
 
@@ -165,6 +171,16 @@ public partial class CirclesViewModel : PageViewModelBase
 
     private bool CanGoNextPage() => PageNumber < TotalPages;
     private bool CanGoPrevPage() => PageNumber > 1;
+
+    private static Avalonia.Controls.TopLevel? GetTopLevel()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime
+            && lifetime.MainWindow is not null)
+        {
+            return Avalonia.Controls.TopLevel.GetTopLevel(lifetime.MainWindow);
+        }
+        return null;
+    }
 
     partial void OnSearchTextChanged(string value)
     {
@@ -246,6 +262,8 @@ public partial class CirclesViewModel : PageViewModelBase
         if (SelectedCircle is null || IsDetailEditMode) return;
         EditingAliases = new ObservableCollection<string>(SelectedCircle.AliasNames ?? new List<string>());
         EditingDescription = SelectedCircle.Description ?? "";
+        _editingAvatarBytes = null;
+        _editingAvatarExt = null;
         DetailSaveError = null;
         IsDetailEditMode = true;
     }
@@ -256,8 +274,66 @@ public partial class CirclesViewModel : PageViewModelBase
         if (!IsDetailEditMode) return;
         EditingAliases = new ObservableCollection<string>();
         EditingDescription = "";
+        _editingAvatarBytes = null;
+        _editingAvatarExt = null;
         DetailSaveError = null;
         IsDetailEditMode = false;
+
+        // 还原头像 Bitmap（用户可能选过新图）
+        DetailAvatar = null;
+        if (SelectedCircle?.Avatar?.Name is { } name)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var bm = await _imageCache.GetOrLoadAsync(name);
+                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => DetailAvatar = bm);
+                }
+                catch { /* 失败保持 null */ }
+            });
+        }
+    }
+
+    [RelayCommand]
+    private async Task ChangeAvatarAsync()
+    {
+        if (!IsDetailEditMode || SelectedCircle is null) return;
+
+        var topLevel = GetTopLevel();
+        if (topLevel?.StorageProvider is null) return;
+
+        try
+        {
+            var picked = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "选择头像图片",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("图片")
+                    {
+                        Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.webp", "*.bmp" },
+                    },
+                },
+            });
+            var file = picked.FirstOrDefault();
+            var path = file?.TryGetLocalPath();
+            if (string.IsNullOrEmpty(path)) return;
+
+            var bytes = await File.ReadAllBytesAsync(path);
+            _editingAvatarBytes = bytes;
+            _editingAvatarExt = Path.GetExtension(path);
+
+            using var ms = new MemoryStream(bytes);
+            DetailAvatar = new Bitmap(ms);
+            Log.Information("Circle ChangeAvatarAsync: 已加载新头像 {Path} ({Size} bytes)", path, bytes.Length);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Circle ChangeAvatarAsync 失败");
+            DetailSaveError = "头像加载失败，请稍后重试。";
+        }
     }
 
     [RelayCommand]
@@ -277,6 +353,20 @@ public partial class CirclesViewModel : PageViewModelBase
                 Description = string.IsNullOrWhiteSpace(EditingDescription) ? null : EditingDescription.Trim(),
             };
 
+            // 头像：用户选过新图 → 新 Image；否则保留原值
+            if (_editingAvatarBytes is not null)
+            {
+                updated.Avatar = new Image
+                {
+                    Name = $"circle_{SelectedCircle.Id}_{Guid.NewGuid():N}{_editingAvatarExt ?? ".jpg"}",
+                    Content = _editingAvatarBytes,
+                };
+            }
+            else
+            {
+                updated.Avatar = SelectedCircle.Avatar;
+            }
+
             await _creatorService.FindAndUpdateCircleAsync(updated);
             Log.Information("CircleDetail 保存成功：Id={Id}, Name={Name}", updated.Id, updated.Name);
 
@@ -286,7 +376,15 @@ public partial class CirclesViewModel : PageViewModelBase
             if (refreshed is not null)
             {
                 SelectedCircle = refreshed;
+                // 如果换了头像，重新拉新文件名的 Bitmap（_imageCache.GetOrLoadAsync 会从 db Content 兜底）
+                if (refreshed.Avatar?.Name is { } name)
+                {
+                    try { DetailAvatar = await _imageCache.GetOrLoadAsync(name); }
+                    catch { /* 保持 null */ }
+                }
             }
+            _editingAvatarBytes = null;
+            _editingAvatarExt = null;
             IsDetailEditMode = false;
         }
         catch (Exception ex)

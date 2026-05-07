@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NineKgTools.Core.Models.Media;
@@ -94,6 +96,10 @@ public partial class CreatorsViewModel : PageViewModelBase
     /// <summary>描述 draft（双向绑给 TextBox）</summary>
     [ObservableProperty]
     private string _editingDescription = "";
+
+    /// <summary>头像 draft：用户选了新图后存这里，Save 时构造 Image 实例传给 service</summary>
+    private byte[]? _editingAvatarBytes;
+    private string? _editingAvatarExt;
 
     public bool ShowDetailReadActions => ShowDetail && !IsDetailEditMode;
     public bool ShowDetailEditActions => ShowDetail && IsDetailEditMode;
@@ -259,6 +265,8 @@ public partial class CreatorsViewModel : PageViewModelBase
         if (SelectedCreator is null || IsDetailEditMode) return;
         EditingAliases = new ObservableCollection<string>(SelectedCreator.AliasNames ?? new List<string>());
         EditingDescription = SelectedCreator.Description ?? "";
+        _editingAvatarBytes = null;
+        _editingAvatarExt = null;
         DetailSaveError = null;
         IsDetailEditMode = true;
     }
@@ -269,8 +277,67 @@ public partial class CreatorsViewModel : PageViewModelBase
         if (!IsDetailEditMode) return;
         EditingAliases = new ObservableCollection<string>();
         EditingDescription = "";
+        _editingAvatarBytes = null;
+        _editingAvatarExt = null;
         DetailSaveError = null;
         IsDetailEditMode = false;
+
+        // 还原头像 Bitmap（用户可能选过新图）
+        DetailAvatar = null;
+        if (SelectedCreator?.Avatar?.Name is { } name)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    var bm = await _imageCache.GetOrLoadAsync(name);
+                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => DetailAvatar = bm);
+                }
+                catch { /* 失败保持 null */ }
+            });
+        }
+    }
+
+    [RelayCommand]
+    private async Task ChangeAvatarAsync()
+    {
+        if (!IsDetailEditMode || SelectedCreator is null) return;
+
+        var topLevel = GetTopLevel();
+        if (topLevel?.StorageProvider is null) return;
+
+        try
+        {
+            var picked = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "选择头像图片",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("图片")
+                    {
+                        Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.webp", "*.bmp" },
+                    },
+                },
+            });
+            var file = picked.FirstOrDefault();
+            var path = file?.TryGetLocalPath();
+            if (string.IsNullOrEmpty(path)) return;
+
+            var bytes = await File.ReadAllBytesAsync(path);
+            _editingAvatarBytes = bytes;
+            _editingAvatarExt = Path.GetExtension(path);
+
+            // UI 即时反馈
+            using var ms = new MemoryStream(bytes);
+            DetailAvatar = new Bitmap(ms);
+            Log.Information("ChangeAvatarAsync: 已加载新头像 {Path} ({Size} bytes)", path, bytes.Length);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "ChangeAvatarAsync 失败");
+            DetailSaveError = "头像加载失败，请稍后重试。";
+        }
     }
 
     [RelayCommand]
@@ -290,14 +357,30 @@ public partial class CreatorsViewModel : PageViewModelBase
                 AliasNames = EditingAliases.ToList(),
                 Description = string.IsNullOrWhiteSpace(EditingDescription) ? null : EditingDescription.Trim(),
                 Types = SelectedCreator.Types?.ToList() ?? new List<CreatorType>(),
-                // Avatar 暂保持原值——头像编辑留 P3 后续（依赖 ImageService 注入）
             };
+
+            // 头像：用户选过新图 → 新 Image（service 内 AddOrFindImageAsync 走 hash 去重 + 写 .cache）；
+            // 没选则保留原值
+            if (_editingAvatarBytes is not null)
+            {
+                updated.Avatar = new Image
+                {
+                    Name = $"creator_{SelectedCreator.Id}_{Guid.NewGuid():N}{_editingAvatarExt ?? ".jpg"}",
+                    Content = _editingAvatarBytes,
+                };
+            }
+            else
+            {
+                updated.Avatar = SelectedCreator.Avatar;
+            }
 
             await _creatorService.FindAndUpdateCreatorAsync(updated);
             Log.Information("CreatorDetail 保存成功：Id={Id}, Name={Name}", updated.Id, updated.Name);
 
             // 重新加载详情拿真实 db 状态
             await LoadDetailByIdAsync(SelectedCreator.Id);
+            _editingAvatarBytes = null;
+            _editingAvatarExt = null;
             IsDetailEditMode = false;
         }
         catch (Exception ex)
@@ -379,6 +462,16 @@ public partial class CreatorsViewModel : PageViewModelBase
         {
             Log.Error(ex, "合并创作者失败: {SourceId} -> {TargetId}", source.Id, target.Id);
         }
+    }
+
+    private static Avalonia.Controls.TopLevel? GetTopLevel()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime
+            && lifetime.MainWindow is not null)
+        {
+            return Avalonia.Controls.TopLevel.GetTopLevel(lifetime.MainWindow);
+        }
+        return null;
     }
 
     private static string MapType(CreatorType t) => t switch

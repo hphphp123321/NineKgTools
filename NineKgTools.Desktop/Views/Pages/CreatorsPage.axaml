@@ -179,25 +179,35 @@
             <!-- Hero 区 -->
             <Grid Grid.Row="0" Margin="32,24,32,16" ColumnDefinitions="Auto,20,*,Auto">
 
-                <!-- 大头像（96x96 圆形） -->
-                <Border Grid.Column="0"
-                        Width="96" Height="96"
-                        CornerRadius="48"
-                        ClipToBounds="True"
-                        Background="{DynamicResource SubtleFillColorTertiaryBrush}"
-                        VerticalAlignment="Center">
-                    <Grid>
-                        <Image Source="{Binding DetailAvatar}"
-                               Stretch="UniformToFill"
-                               IsVisible="{Binding DetailAvatar, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                        <TextBlock Text="{Binding DetailAvatarFallback}"
-                                   FontSize="40" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}"
-                                   Opacity="0.5"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   IsVisible="{Binding DetailAvatar, Converter={x:Static ObjectConverters.IsNull}}" />
-                    </Grid>
-                </Border>
+                <!-- 大头像（96x96 圆形）+ 编辑模式下方"更换头像"按钮 -->
+                <StackPanel Grid.Column="0" Spacing="6" VerticalAlignment="Center">
+                    <Border Width="96" Height="96"
+                            CornerRadius="48"
+                            ClipToBounds="True"
+                            Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                        <Grid>
+                            <Image Source="{Binding DetailAvatar}"
+                                   Stretch="UniformToFill"
+                                   IsVisible="{Binding DetailAvatar, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <TextBlock Text="{Binding DetailAvatarFallback}"
+                                       FontSize="40" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                       Opacity="0.5"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       IsVisible="{Binding DetailAvatar, Converter={x:Static ObjectConverters.IsNull}}" />
+                        </Grid>
+                    </Border>
+                    <Button Command="{Binding ChangeAvatarCommand}"
+                            IsVisible="{Binding IsDetailEditMode}"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Padding="6,3">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="🖼" FontSize="11" />
+                            <TextBlock Text="换头像" FontSize="11" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
 
                 <!-- 信息 -->
                 <StackPanel Grid.Column="2" Spacing="6" VerticalAlignment="Center">
