@@ -64,6 +64,10 @@ public partial class MediaDetailViewModel : ObservableObject
     public bool HasEditingSummaryTranslated => !string.IsNullOrWhiteSpace(EditingSummaryTranslated);
     public bool HasEditingDescriptionTranslated => !string.IsNullOrWhiteSpace(EditingDescriptionTranslated);
 
+    /// <summary>发售日期 draft（DatePicker 用 DateTimeOffset?，Save 时转 DateTime?）</summary>
+    [ObservableProperty]
+    private DateTimeOffset? _editingReleaseDate;
+
     /// <summary>删除成功后由 Window 订阅以关闭自身——VM 内部不持有 Window 引用。</summary>
     public event EventHandler? DeleteCompleted;
 
@@ -312,6 +316,9 @@ public partial class MediaDetailViewModel : ObservableObject
         EditingAliases = new ObservableCollection<string>(_media.AliasTitles ?? new List<string>());
         EditingSummaryTranslated = _media.SummaryTranslated ?? "";
         EditingDescriptionTranslated = _media.DescriptionTranslated ?? "";
+        EditingReleaseDate = _media.ReleaseDate.HasValue
+            ? new DateTimeOffset(_media.ReleaseDate.Value)
+            : null;
         SaveError = null;
 
         IsEditMode = true;
@@ -328,6 +335,7 @@ public partial class MediaDetailViewModel : ObservableObject
         EditingAliases = new ObservableCollection<string>();
         EditingSummaryTranslated = "";
         EditingDescriptionTranslated = "";
+        EditingReleaseDate = null;
         SaveError = null;
 
         // 字段从 _media 还原
@@ -370,6 +378,9 @@ public partial class MediaDetailViewModel : ObservableObject
                 ? null : EditingSummaryTranslated.Trim();
             _media.DescriptionTranslated = string.IsNullOrWhiteSpace(EditingDescriptionTranslated)
                 ? null : EditingDescriptionTranslated.Trim();
+
+            // 发售日期：DatePicker 返回 DateTimeOffset?，转 DateTime?
+            _media.ReleaseDate = EditingReleaseDate?.DateTime;
 
             await _mediaService.UpdateMediaAsync(_media);
             Log.Information("MediaDetail 保存成功：mediaId={Id}, title={Title}", _media.Id, _media.Title);

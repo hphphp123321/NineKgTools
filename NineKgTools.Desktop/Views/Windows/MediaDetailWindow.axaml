@@ -432,7 +432,14 @@
                             <TextBlock Text="元数据" FontSize="14" FontWeight="SemiBold" Opacity="0.8" />
                             <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,4,Auto,4,Auto">
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="发布日期" FontSize="12" Opacity="0.6" />
-                                <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding ReleaseDateText}" FontSize="12" />
+                                <TextBlock Grid.Row="0" Grid.Column="2"
+                                           Text="{Binding ReleaseDateText}"
+                                           FontSize="12"
+                                           IsVisible="{Binding !IsEditMode}" />
+                                <DatePicker Grid.Row="0" Grid.Column="2"
+                                            SelectedDate="{Binding EditingReleaseDate, Mode=TwoWay}"
+                                            HorizontalAlignment="Stretch"
+                                            IsVisible="{Binding IsEditMode}" />
                                 <TextBlock Grid.Row="2" Grid.Column="0" Text="入库时间" FontSize="12" Opacity="0.6" />
                                 <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding StoreDateText}" FontSize="12" />
                                 <TextBlock Grid.Row="4" Grid.Column="0" Text="文件大小" FontSize="12" Opacity="0.6" />
