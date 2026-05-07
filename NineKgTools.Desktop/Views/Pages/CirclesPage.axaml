@@ -3,6 +3,7 @@
              xmlns:vm="using:NineKgTools.Desktop.ViewModels.Pages"
              xmlns:conv="using:NineKgTools.Desktop.Converters"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:comp="using:NineKgTools.Desktop.Views.Components"
              x:Class="NineKgTools.Desktop.Views.Pages.CirclesPage"
              x:DataType="vm:CirclesViewModel"
              x:Name="PageRoot">
@@ -180,36 +181,93 @@
                                TextTrimming="CharacterEllipsis" />
                     <StackPanel Orientation="Horizontal" Spacing="6"
                                 IsVisible="{Binding HasAlias}">
-                        <TextBlock Text="别名:" FontSize="12" Opacity="0.55" />
-                        <TextBlock Text="{Binding DetailAliasText}"
+                        <TextBlock IsVisible="{Binding !IsDetailEditMode}"
+                                   Text="别名:" FontSize="12" Opacity="0.55" />
+                        <TextBlock IsVisible="{Binding !IsDetailEditMode}"
+                                   Text="{Binding DetailAliasText}"
                                    FontSize="12" Opacity="0.75"
                                    TextTrimming="CharacterEllipsis"
                                    ToolTip.Tip="{Binding DetailAliasText}" />
                     </StackPanel>
+                    <comp:EditableAliasList IsVisible="{Binding IsDetailEditMode}"
+                                            Aliases="{Binding EditingAliases}"
+                                            IsEditable="True" />
                 </StackPanel>
 
-                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <Button Command="{Binding DeleteSelectedCommand}"
-                            Foreground="{DynamicResource SystemFillColorCriticalBrush}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Text="✕" FontSize="13" />
-                            <TextBlock Text="删除" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
+                <Grid Grid.Column="3" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                IsVisible="{Binding ShowDetailReadActions}">
+                        <Button Command="{Binding EnterDetailEditCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="✏️" FontSize="13" />
+                                <TextBlock Text="编辑" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding DeleteSelectedCommand}"
+                                Foreground="{DynamicResource SystemFillColorCriticalBrush}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="✕" FontSize="13" />
+                                <TextBlock Text="删除" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8"
+                                IsVisible="{Binding ShowDetailEditActions}">
+                        <Button Command="{Binding SaveDetailCommand}"
+                                IsEnabled="{Binding !IsSavingDetail}"
+                                Classes="accent">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="💾" FontSize="13" />
+                                <TextBlock Text="保存" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding CancelDetailEditCommand}"
+                                IsEnabled="{Binding !IsSavingDetail}"
+                                Content="取消" />
+                        <ui:FAProgressRing IsIndeterminate="True"
+                                           Width="18" Height="18"
+                                           IsVisible="{Binding IsSavingDetail}" />
+                    </StackPanel>
+                </Grid>
             </Grid>
 
-            <Border Grid.Row="1" Margin="32,0,32,16"
-                    Padding="14,12"
-                    CornerRadius="8"
-                    Background="{DynamicResource LayerFillColorAltBrush}"
-                    IsVisible="{Binding HasDescription}">
-                <TextBlock Text="{Binding DetailDescription}"
-                           FontSize="13"
-                           TextWrapping="Wrap"
-                           MaxWidth="900"
-                           Opacity="0.85" />
+            <Border Margin="32,0,32,12"
+                    IsVisible="{Binding DetailSaveError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    Padding="12,8"
+                    CornerRadius="{DynamicResource ControlCornerRadius}"
+                    Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="⚠" FontSize="13" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding DetailSaveError}" FontSize="12" VerticalAlignment="Center" />
+                </StackPanel>
             </Border>
+
+            <Grid Grid.Row="1" Margin="32,0,32,16">
+                <Border Padding="14,12"
+                        CornerRadius="8"
+                        Background="{DynamicResource LayerFillColorAltBrush}">
+                    <Border.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="!IsDetailEditMode" />
+                            <Binding Path="HasDescription" />
+                        </MultiBinding>
+                    </Border.IsVisible>
+                    <TextBlock Text="{Binding DetailDescription}"
+                               FontSize="13"
+                               TextWrapping="Wrap"
+                               MaxWidth="900"
+                               Opacity="0.85" />
+                </Border>
+                <StackPanel IsVisible="{Binding IsDetailEditMode}" Spacing="6">
+                    <TextBlock Text="描述" FontSize="12" Opacity="0.7" />
+                    <TextBox Text="{Binding EditingDescription, Mode=TwoWay}"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             MinHeight="100"
+                             MaxHeight="240"
+                             MaxLength="2000" />
+                </StackPanel>
+            </Grid>
 
             <Grid Grid.Row="2" Margin="32,0,32,16">
                 <Border IsVisible="{Binding !DetailHasMedias}"

@@ -51,24 +51,34 @@
                         MinHeight="280">
                     <Grid ColumnDefinitions="Auto,32,*">
 
-                        <!-- 大封面 200x280 -->
-                        <Border Grid.Column="0"
-                                Width="200" Height="280"
-                                CornerRadius="12"
-                                ClipToBounds="True"
-                                Background="{DynamicResource SubtleFillColorTertiaryBrush}">
-                            <Grid>
-                                <Image Source="{Binding Cover}"
-                                       Stretch="UniformToFill"
-                                       IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                <PathIcon Data="{Binding CategoryIcon}"
-                                          Width="64" Height="64"
-                                          Foreground="{Binding CategoryBrush}"
-                                          Opacity="0.5"
-                                          IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNull}}"
-                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Grid>
-                        </Border>
+                        <!-- 封面 200x280 + 编辑模式下方"更换封面"按钮 -->
+                        <StackPanel Grid.Column="0" Spacing="8" VerticalAlignment="Center">
+                            <Border Width="200" Height="280"
+                                    CornerRadius="12"
+                                    ClipToBounds="True"
+                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                                <Grid>
+                                    <Image Source="{Binding Cover}"
+                                           Stretch="UniformToFill"
+                                           IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                    <PathIcon Data="{Binding CategoryIcon}"
+                                              Width="64" Height="64"
+                                              Foreground="{Binding CategoryBrush}"
+                                              Opacity="0.5"
+                                              IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNull}}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+                            <Button Command="{Binding ChangePosterCommand}"
+                                    IsVisible="{Binding IsEditMode}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="🖼" FontSize="13" />
+                                    <TextBlock Text="更换封面" FontSize="12" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
 
                         <!-- 右侧文字 + 操作 -->
                         <StackPanel Grid.Column="2" Spacing="14" VerticalAlignment="Center">

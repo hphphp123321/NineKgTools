@@ -51,6 +51,8 @@ public partial class CreatorsViewModel : PageViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowList))]
     [NotifyPropertyChangedFor(nameof(ShowDetail))]
+    [NotifyPropertyChangedFor(nameof(ShowDetailReadActions))]
+    [NotifyPropertyChangedFor(nameof(ShowDetailEditActions))]
     [NotifyPropertyChangedFor(nameof(DetailName))]
     [NotifyPropertyChangedFor(nameof(DetailAvatarFallback))]
     [NotifyPropertyChangedFor(nameof(DetailTypesText))]
@@ -71,6 +73,30 @@ public partial class CreatorsViewModel : PageViewModelBase
 
     [ObservableProperty]
     private bool _detailHasMedias;
+
+    // ========== 详情编辑模式（§4.2 P1） ==========
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowDetailReadActions))]
+    [NotifyPropertyChangedFor(nameof(ShowDetailEditActions))]
+    private bool _isDetailEditMode;
+
+    [ObservableProperty]
+    private bool _isSavingDetail;
+
+    [ObservableProperty]
+    private string? _detailSaveError;
+
+    /// <summary>别名 draft（双向绑给 EditableAliasList）</summary>
+    [ObservableProperty]
+    private ObservableCollection<string> _editingAliases = new();
+
+    /// <summary>描述 draft（双向绑给 TextBox）</summary>
+    [ObservableProperty]
+    private string _editingDescription = "";
+
+    public bool ShowDetailReadActions => ShowDetail && !IsDetailEditMode;
+    public bool ShowDetailEditActions => ShowDetail && IsDetailEditMode;
 
     public bool ShowList => SelectedCreator is null;
     public bool ShowDetail => SelectedCreator is not null;
@@ -221,6 +247,68 @@ public partial class CreatorsViewModel : PageViewModelBase
         DetailAvatar = null;
         CreatorMedias = new ObservableCollection<MediaCardViewModel>();
         DetailHasMedias = false;
+        IsDetailEditMode = false;
+        DetailSaveError = null;
+    }
+
+    // ========== 详情编辑模式命令 ==========
+
+    [RelayCommand]
+    private void EnterDetailEdit()
+    {
+        if (SelectedCreator is null || IsDetailEditMode) return;
+        EditingAliases = new ObservableCollection<string>(SelectedCreator.AliasNames ?? new List<string>());
+        EditingDescription = SelectedCreator.Description ?? "";
+        DetailSaveError = null;
+        IsDetailEditMode = true;
+    }
+
+    [RelayCommand]
+    private void CancelDetailEdit()
+    {
+        if (!IsDetailEditMode) return;
+        EditingAliases = new ObservableCollection<string>();
+        EditingDescription = "";
+        DetailSaveError = null;
+        IsDetailEditMode = false;
+    }
+
+    [RelayCommand]
+    private async Task SaveDetailAsync()
+    {
+        if (SelectedCreator is null || !IsDetailEditMode || IsSavingDetail) return;
+        IsSavingDetail = true;
+        DetailSaveError = null;
+
+        try
+        {
+            // 用 draft 字段构造 Creator 实例传给 FindAndUpdateCreatorAsync
+            var updated = new Creator
+            {
+                Id = SelectedCreator.Id,
+                Name = SelectedCreator.Name,
+                AliasNames = EditingAliases.ToList(),
+                Description = string.IsNullOrWhiteSpace(EditingDescription) ? null : EditingDescription.Trim(),
+                Types = SelectedCreator.Types?.ToList() ?? new List<CreatorType>(),
+                // Avatar 暂保持原值——头像编辑留 P3 后续（依赖 ImageService 注入）
+            };
+
+            await _creatorService.FindAndUpdateCreatorAsync(updated);
+            Log.Information("CreatorDetail 保存成功：Id={Id}, Name={Name}", updated.Id, updated.Name);
+
+            // 重新加载详情拿真实 db 状态
+            await LoadDetailByIdAsync(SelectedCreator.Id);
+            IsDetailEditMode = false;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "CreatorDetail 保存失败：Id={Id}", SelectedCreator?.Id);
+            DetailSaveError = "保存失败，请稍后重试。";
+        }
+        finally
+        {
+            IsSavingDetail = false;
+        }
     }
 
     [RelayCommand]

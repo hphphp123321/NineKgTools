@@ -52,6 +52,8 @@ public partial class CirclesViewModel : PageViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowList))]
     [NotifyPropertyChangedFor(nameof(ShowDetail))]
+    [NotifyPropertyChangedFor(nameof(ShowDetailReadActions))]
+    [NotifyPropertyChangedFor(nameof(ShowDetailEditActions))]
     [NotifyPropertyChangedFor(nameof(DetailName))]
     [NotifyPropertyChangedFor(nameof(DetailAvatarFallback))]
     [NotifyPropertyChangedFor(nameof(DetailAliasText))]
@@ -71,6 +73,28 @@ public partial class CirclesViewModel : PageViewModelBase
 
     [ObservableProperty]
     private bool _detailHasMedias;
+
+    // ========== 详情编辑模式（§4.4 P1） ==========
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowDetailReadActions))]
+    [NotifyPropertyChangedFor(nameof(ShowDetailEditActions))]
+    private bool _isDetailEditMode;
+
+    [ObservableProperty]
+    private bool _isSavingDetail;
+
+    [ObservableProperty]
+    private string? _detailSaveError;
+
+    [ObservableProperty]
+    private ObservableCollection<string> _editingAliases = new();
+
+    [ObservableProperty]
+    private string _editingDescription = "";
+
+    public bool ShowDetailReadActions => ShowDetail && !IsDetailEditMode;
+    public bool ShowDetailEditActions => ShowDetail && IsDetailEditMode;
 
     public bool ShowList => SelectedCircle is null;
     public bool ShowDetail => SelectedCircle is not null;
@@ -210,6 +234,70 @@ public partial class CirclesViewModel : PageViewModelBase
         DetailAvatar = null;
         CircleMedias = new ObservableCollection<MediaCardViewModel>();
         DetailHasMedias = false;
+        IsDetailEditMode = false;
+        DetailSaveError = null;
+    }
+
+    // ========== 详情编辑模式 ==========
+
+    [RelayCommand]
+    private void EnterDetailEdit()
+    {
+        if (SelectedCircle is null || IsDetailEditMode) return;
+        EditingAliases = new ObservableCollection<string>(SelectedCircle.AliasNames ?? new List<string>());
+        EditingDescription = SelectedCircle.Description ?? "";
+        DetailSaveError = null;
+        IsDetailEditMode = true;
+    }
+
+    [RelayCommand]
+    private void CancelDetailEdit()
+    {
+        if (!IsDetailEditMode) return;
+        EditingAliases = new ObservableCollection<string>();
+        EditingDescription = "";
+        DetailSaveError = null;
+        IsDetailEditMode = false;
+    }
+
+    [RelayCommand]
+    private async Task SaveDetailAsync()
+    {
+        if (SelectedCircle is null || !IsDetailEditMode || IsSavingDetail) return;
+        IsSavingDetail = true;
+        DetailSaveError = null;
+
+        try
+        {
+            var updated = new Circle
+            {
+                Id = SelectedCircle.Id,
+                Name = SelectedCircle.Name,
+                AliasNames = EditingAliases.ToList(),
+                Description = string.IsNullOrWhiteSpace(EditingDescription) ? null : EditingDescription.Trim(),
+            };
+
+            await _creatorService.FindAndUpdateCircleAsync(updated);
+            Log.Information("CircleDetail 保存成功：Id={Id}, Name={Name}", updated.Id, updated.Name);
+
+            // 重新加载详情拿真实 db 状态——复用 OpenCircleDetailAsync 但需要 CircleItemViewModel
+            // 这里直接 GetCircleAsync + 重设字段（避免重新构造列表 VM）
+            var refreshed = await _creatorService.GetCircleAsync(SelectedCircle.Id);
+            if (refreshed is not null)
+            {
+                SelectedCircle = refreshed;
+            }
+            IsDetailEditMode = false;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "CircleDetail 保存失败：Id={Id}", SelectedCircle?.Id);
+            DetailSaveError = "保存失败，请稍后重试。";
+        }
+        finally
+        {
+            IsSavingDetail = false;
+        }
     }
 
     [RelayCommand]

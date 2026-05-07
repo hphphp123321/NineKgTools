@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NineKgTools.Core.Models.Categories;
@@ -445,6 +447,74 @@ public partial class MediaDetailViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task ChangePosterAsync()
+    {
+        if (!IsEditMode || _media is null) return;
+
+        var topLevel = GetTopLevel();
+        if (topLevel?.StorageProvider is null)
+        {
+            Log.Warning("ChangePosterAsync: 无法获取 StorageProvider");
+            return;
+        }
+
+        try
+        {
+            var picked = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "选择封面图片",
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("图片")
+                    {
+                        Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.webp", "*.bmp" },
+                    },
+                },
+            });
+            var file = picked.FirstOrDefault();
+            var path = file?.TryGetLocalPath();
+            if (string.IsNullOrEmpty(path)) return;
+
+            var bytes = await File.ReadAllBytesAsync(path);
+            var ext = Path.GetExtension(path);
+            var newName = $"poster_{Guid.NewGuid():N}{ext}";
+
+            // 写回 tracked _media.Poster：同实例字段更新 → EF tracker 自动持久化 byte[]
+            // _media.Poster=null 时新建（但不 attach 到 tracker，UpdateMediaAsync 路径下
+            // 可能不会写入 db；识别入库流程一般会建 Poster placeholder，此路径少见）
+            if (_media.Poster is null)
+            {
+                _media.Poster = new Image
+                {
+                    Name = newName,
+                    Content = bytes,
+                };
+                Log.Warning("ChangePosterAsync: _media.Poster 原本为 null，新建 Image 实例（可能需要 ImageService 兜底持久化）");
+            }
+            else
+            {
+                _media.Poster.Name = newName;
+                _media.Poster.Content = bytes;
+                _media.Poster.Hash = null;        // 重新由后端 EnsureMediaImagesAsync 算
+                _media.Poster.File = null;        // 旧 .cache 文件作废
+                _media.Poster.Width = 0;
+                _media.Poster.Height = 0;
+            }
+
+            // 立即更新 UI 预览
+            using var ms = new MemoryStream(bytes);
+            Cover = new Bitmap(ms);
+            Log.Information("ChangePosterAsync: 已加载新封面 {Path} ({Size} bytes)", path, bytes.Length);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "ChangePosterAsync 失败");
+            SaveError = "封面更换失败，请稍后重试。";
+        }
+    }
+
+    [RelayCommand]
     private async Task EditCategoryAsync()
     {
         if (!IsEditMode) return;
@@ -493,6 +563,17 @@ public partial class MediaDetailViewModel : ObservableObject
         {
             Log.Error(ex, "EditCategoryAsync 失败");
         }
+    }
+
+    /// <summary>取主窗 TopLevel——给 OS 原生 picker 用。与 MediaOverviewViewModel.GetTopLevel 复制；放共享 service 里更干净。</summary>
+    private static Avalonia.Controls.TopLevel? GetTopLevel()
+    {
+        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime
+            && lifetime.MainWindow is not null)
+        {
+            return Avalonia.Controls.TopLevel.GetTopLevel(lifetime.MainWindow);
+        }
+        return null;
     }
 
     private static string FormatBytes(long bytes)
