@@ -309,7 +309,9 @@ internal static class Program
         services.AddTransient<SourcesViewModel>();
         services.AddTransient<BackgroundTasksViewModel>();
         services.AddTransient<TagsViewModel>();
+        services.AddTransient<TagsMappingsViewModel>();
         services.AddTransient<CreatorsViewModel>();
+        services.AddTransient<CirclesViewModel>();
         services.AddTransient<FavoritesViewModel>();
         services.AddTransient<WebsitesViewModel>();
         services.AddTransient<SettingsViewModel>();

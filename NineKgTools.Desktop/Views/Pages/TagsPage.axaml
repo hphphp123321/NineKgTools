@@ -243,7 +243,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:TagItemViewModel">
                                 <Border Classes="tag-row">
-                                    <Grid ColumnDefinitions="Auto,12,*,Auto,8,Auto,4,Auto">
+                                    <Grid ColumnDefinitions="Auto,12,*,Auto,8,Auto,4,Auto,4,Auto">
                                         <PathIcon Grid.Column="0"
                                                   Data="{StaticResource IconTags}"
                                                   Width="14" Height="14"
@@ -270,6 +270,18 @@
                                                        Opacity="0.75" />
                                         </Border>
                                         <Button Grid.Column="5"
+                                                Command="{Binding #PageRoot.((vm:TagsViewModel)DataContext).OpenTagDetailCommand}"
+                                                CommandParameter="{Binding}"
+                                                Padding="8,4"
+                                                Background="Transparent"
+                                                ToolTip.Tip="查看关联媒体"
+                                                VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="📂" FontSize="13" />
+                                                <TextBlock Text="查看" FontSize="12" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Column="7"
                                                 Command="{Binding #PageRoot.((vm:TagsViewModel)DataContext).EditTagCommand}"
                                                 CommandParameter="{Binding}"
                                                 Padding="8,4"
@@ -278,7 +290,7 @@
                                                 VerticalAlignment="Center">
                                             <TextBlock Text="✏" FontSize="13" />
                                         </Button>
-                                        <Button Grid.Column="7"
+                                        <Button Grid.Column="9"
                                                 Command="{Binding #PageRoot.((vm:TagsViewModel)DataContext).DeleteTagCommand}"
                                                 CommandParameter="{Binding}"
                                                 Padding="8,4"
@@ -295,6 +307,135 @@
                     </ItemsControl>
                 </ScrollViewer>
 
+            </Grid>
+        </Grid>
+
+        <!-- ==================== 标签详情态（第三层）：关联媒体网格 ==================== -->
+        <Grid IsVisible="{Binding ShowTagDetail}" RowDefinitions="Auto,Auto,*">
+
+            <!-- 头部：返回 + 标签名 + 媒体计数 -->
+            <Grid Grid.Row="0" Margin="32,24,32,8" ColumnDefinitions="Auto,12,*">
+                <Button Grid.Column="0"
+                        Command="{Binding GoBackToTagsListCommand}"
+                        VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="←" FontSize="16" FontWeight="SemiBold" />
+                        <TextBlock Text="返回" />
+                    </StackPanel>
+                </Button>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <PathIcon Data="{StaticResource IconTags}" Width="22" Height="22"
+                              Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                              VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding SelectedTagName}"
+                               FontSize="22" FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding SelectedTagMediaCountText}"
+                               FontSize="13" Opacity="0.65"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+
+            <!-- 描述（如有） -->
+            <Border Grid.Row="1" Margin="32,0,32,12"
+                    Padding="14,10"
+                    CornerRadius="8"
+                    Background="{DynamicResource LayerFillColorAltBrush}"
+                    IsVisible="{Binding HasTagDescription}">
+                <TextBlock Text="{Binding SelectedTagDescription}"
+                           FontSize="13"
+                           Opacity="0.85"
+                           TextWrapping="Wrap" />
+            </Border>
+
+            <!-- 关联媒体 -->
+            <Grid Grid.Row="2" Margin="32,0,32,16">
+                <!-- 加载态 -->
+                <Border IsVisible="{Binding DetailLoading}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <ui:FAProgressRing IsIndeterminate="True" Width="40" Height="40" />
+                </Border>
+
+                <!-- 空态 -->
+                <Border IsVisible="{Binding !DetailHasMedias}"
+                        Background="{DynamicResource LayerFillColorAltBrush}"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="36,32"
+                        Margin="0,16"
+                        MaxWidth="440"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                    <StackPanel Spacing="12" HorizontalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconLibrary}" Width="48" Height="48"
+                                  Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                  Opacity="0.5" HorizontalAlignment="Center" />
+                        <TextBlock Text="此标签还没有关联媒体"
+                                   HorizontalAlignment="Center"
+                                   FontSize="15" FontWeight="SemiBold" />
+                    </StackPanel>
+                </Border>
+
+                <!-- 媒体卡片网格 -->
+                <ScrollViewer IsVisible="{Binding DetailHasMedias}">
+                    <ItemsControl ItemsSource="{Binding TagMedias}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:MediaCardViewModel">
+                                <Button Command="{Binding OpenDetailCommand}"
+                                        Padding="0" Background="Transparent" BorderThickness="0"
+                                        HorizontalContentAlignment="Stretch"
+                                        VerticalContentAlignment="Stretch"
+                                        Margin="0,0,12,12"
+                                        CornerRadius="8"
+                                        ClipToBounds="True">
+                                    <Border Width="180" Height="320"
+                                            Background="{DynamicResource LayerFillColorDefaultBrush}"
+                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            ClipToBounds="True">
+                                        <Grid RowDefinitions="*,Auto">
+                                            <Grid Grid.Row="0" Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                                                <Image Source="{Binding Cover}"
+                                                       Stretch="UniformToFill"
+                                                       IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                <PathIcon Data="{Binding CategoryIcon}"
+                                                          Width="48" Height="48"
+                                                          Foreground="{Binding CategoryBrush}"
+                                                          Opacity="0.5"
+                                                          IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNull}}"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Grid>
+                                            <Border Grid.Row="1" Padding="10,8">
+                                                <StackPanel Spacing="3">
+                                                    <TextBlock Text="{Binding Title}"
+                                                               FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip.Tip="{Binding Title}" />
+                                                    <TextBlock Text="{Binding CircleName}"
+                                                               FontSize="11" Opacity="0.6"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               IsVisible="{Binding CircleName, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                    <TextBlock Text="{Binding RatingText}"
+                                                               FontSize="11"
+                                                               Foreground="{DynamicResource SystemFillColorAttentionBrush}"
+                                                               IsVisible="{Binding HasRating}" />
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
             </Grid>
         </Grid>
 

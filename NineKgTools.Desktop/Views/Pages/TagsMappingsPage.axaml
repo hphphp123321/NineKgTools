@@ -1,0 +1,208 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Pages"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="NineKgTools.Desktop.Views.Pages.TagsMappingsPage"
+             x:DataType="vm:TagsMappingsViewModel"
+             x:Name="PageRoot">
+
+    <UserControl.Styles>
+        <Style Selector="Button.filter-chip">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="Padding" Value="12,6" />
+        </Style>
+        <Style Selector="Button.filter-chip.sel-all">
+            <Setter Property="Background" Value="{DynamicResource BrandCategoryAllFillBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BrandCategoryAllBrush}" />
+        </Style>
+        <Style Selector="Button.filter-chip.sel-active">
+            <Setter Property="Background" Value="{DynamicResource BrandStatusSuccessFillBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorSuccessBrush}" />
+        </Style>
+        <Style Selector="Button.filter-chip.sel-inactive">
+            <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+        </Style>
+        <Style Selector="Button.filter-chip.sel-unused">
+            <Setter Property="Background" Value="{DynamicResource BrandStatusFailedFillBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+        </Style>
+
+        <Style Selector="Border.mapping-row">
+            <Setter Property="Background" Value="{DynamicResource LayerFillColorAltBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="14,10" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
+
+        <!-- 头部 -->
+        <Grid Grid.Row="0" Margin="32,24,32,8" ColumnDefinitions="*,Auto,8,Auto">
+            <StackPanel Grid.Column="0" Spacing="4">
+                <TextBlock Text="标签映射" FontSize="28" FontWeight="SemiBold" />
+                <TextBlock Text="把识别得到的标签别名归化到主标签：例如「美少女游戏 → 美少女游戏」"
+                           Opacity="0.7" FontSize="13" />
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Command="{Binding DeleteUnusedCommand}"
+                    VerticalAlignment="Center"
+                    IsEnabled="{Binding UnusedCount}">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="🧹" FontSize="13" />
+                    <TextBlock Text="清理未使用" />
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="3" Command="{Binding RefreshCommand}" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
+                    <TextBlock Text="刷新" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- 统计 chip 行 -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="32,8,32,12">
+            <Button Classes="filter-chip" Classes.sel-all="{Binding IsFilterAll}"
+                    Command="{Binding SelectFilterCommand}" CommandParameter="All">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="全部" />
+                    <TextBlock Text="{Binding TotalCount, StringFormat='[{0}]'}" Opacity="0.65" />
+                </StackPanel>
+            </Button>
+            <Button Classes="filter-chip" Classes.sel-active="{Binding IsFilterActive}"
+                    Command="{Binding SelectFilterCommand}" CommandParameter="Active">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="✓ 启用" Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
+                    <TextBlock Text="{Binding ActiveCount, StringFormat='[{0}]'}" Opacity="0.65" />
+                </StackPanel>
+            </Button>
+            <Button Classes="filter-chip" Classes.sel-inactive="{Binding IsFilterInactive}"
+                    Command="{Binding SelectFilterCommand}" CommandParameter="Inactive">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="◯ 禁用" />
+                    <TextBlock Text="{Binding InactiveCount, StringFormat='[{0}]'}" Opacity="0.65" />
+                </StackPanel>
+            </Button>
+            <Button Classes="filter-chip" Classes.sel-unused="{Binding IsFilterUnused}"
+                    Command="{Binding SelectFilterCommand}" CommandParameter="Unused">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="⚠ 未使用" Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                    <TextBlock Text="{Binding UnusedCount, StringFormat='[{0}]'}" Opacity="0.65" />
+                </StackPanel>
+            </Button>
+            <Border Padding="12,6"
+                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                    CornerRadius="14"
+                    VerticalAlignment="Center">
+                <TextBlock Text="{Binding TotalHits, StringFormat='总命中 {0}'}"
+                           FontSize="11"
+                           Opacity="0.75" />
+            </Border>
+        </StackPanel>
+
+        <!-- 搜索 -->
+        <Grid Grid.Row="2" Margin="32,0,32,12">
+            <TextBox PlaceholderText="搜索源名 / 目标标签 / 描述..."
+                     Text="{Binding SearchText, Mode=TwoWay}" />
+        </Grid>
+
+        <!-- 列表 -->
+        <Grid Grid.Row="3" Margin="32,0,32,16">
+
+            <Border IsVisible="{Binding ShowEmpty}"
+                    Background="{DynamicResource LayerFillColorAltBrush}"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="40,32"
+                    Margin="0,16"
+                    MaxWidth="480"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <StackPanel Spacing="14" HorizontalAlignment="Center">
+                    <TextBlock Text="🔗" FontSize="48" HorizontalAlignment="Center" Opacity="0.5" />
+                    <TextBlock Text="没有匹配的映射"
+                               FontSize="16" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="标签映射在媒体识别遇到未知标签时由用户手动创建。也可在 tags.yaml 里预定义。"
+                               Opacity="0.7"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <ScrollViewer IsVisible="{Binding !ShowEmpty}">
+                <ItemsControl ItemsSource="{Binding Items}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TagMappingItemViewModel">
+                            <Border Classes="mapping-row">
+                                <Grid ColumnDefinitions="Auto,12,*,12,Auto,12,Auto,8,Auto">
+                                    <!-- 启用 toggle -->
+                                    <ToggleSwitch Grid.Column="0"
+                                                  IsChecked="{Binding IsActive, Mode=TwoWay}"
+                                                  OnContent="启用"
+                                                  OffContent="禁用"
+                                                  VerticalAlignment="Center" />
+
+                                    <!-- 主信息：源 → 目标 -->
+                                    <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="{Binding SourceName}"
+                                                       FontWeight="SemiBold" FontSize="13"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="→" Opacity="0.5" />
+                                            <TextBlock Text="{Binding TargetTagFullPath}"
+                                                       FontSize="13" Opacity="0.85"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Description}"
+                                                   FontSize="11" Opacity="0.6"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   IsVisible="{Binding HasDescription}" />
+                                    </StackPanel>
+
+                                    <!-- 命中次数 chip -->
+                                    <Border Grid.Column="4"
+                                            Padding="8,3" CornerRadius="10"
+                                            Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding HitCount, StringFormat='命中 {0}'}"
+                                                   FontSize="11" Opacity="0.8" />
+                                    </Border>
+
+                                    <!-- 优先级 chip -->
+                                    <Border Grid.Column="6"
+                                            Padding="8,3" CornerRadius="10"
+                                            Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Priority, StringFormat='优先级 {0}'}"
+                                                   FontSize="11" Opacity="0.8" />
+                                    </Border>
+
+                                    <!-- 删除 -->
+                                    <Button Grid.Column="8"
+                                            Command="{Binding #PageRoot.((vm:TagsMappingsViewModel)DataContext).DeleteMappingCommand}"
+                                            CommandParameter="{Binding}"
+                                            Padding="8,4"
+                                            Background="Transparent"
+                                            Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                            ToolTip.Tip="删除映射"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="✕" FontSize="13" />
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+
+</UserControl>

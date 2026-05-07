@@ -116,15 +116,23 @@
                                VerticalAlignment="Center" />
                 </StackPanel>
 
-                <Button Grid.Column="1"
-                        Command="{Binding DeleteSelectedCommand}"
-                        IsVisible="{Binding CanDeleteSelected}"
-                        VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="✕" Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
-                        <TextBlock Text="删除收藏夹" />
-                    </StackPanel>
-                </Button>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                            VerticalAlignment="Center">
+                    <Button Command="{Binding RenameSelectedCommand}"
+                            IsVisible="{Binding CanRenameSelected}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="✏️" />
+                            <TextBlock Text="重命名" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding DeleteSelectedCommand}"
+                            IsVisible="{Binding CanDeleteSelected}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="✕" Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                            <TextBlock Text="删除收藏夹" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </Grid>
 
             <!-- 主区域：媒体卡片网格 / 空状态 -->
@@ -166,52 +174,72 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:MediaCardViewModel">
-                                <Button Command="{Binding OpenDetailCommand}"
-                                        Padding="0" Background="Transparent" BorderThickness="0"
-                                        HorizontalContentAlignment="Stretch"
-                                        VerticalContentAlignment="Stretch"
-                                        Margin="0,0,12,12"
-                                        CornerRadius="8"
-                                        ClipToBounds="True">
-                                <Border Width="180" Height="320"
-                                        Background="{DynamicResource LayerFillColorDefaultBrush}"
-                                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                                        BorderThickness="1"
-                                        CornerRadius="8"
-                                        ClipToBounds="True">
-                                    <Grid RowDefinitions="*,Auto">
-                                        <Grid Grid.Row="0" Background="{DynamicResource SubtleFillColorTertiaryBrush}">
-                                            <Image Source="{Binding Cover}"
-                                                   Stretch="UniformToFill"
-                                                   IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                            <Border IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNull}}"
-                                                    Background="{Binding TopCategory, Converter={x:Static conv:CategoryFillBrushConverter.Instance}}">
-                                                <PathIcon Data="{Binding CategoryIcon}"
-                                                          Width="48" Height="48"
-                                                          Foreground="{Binding CategoryBrush}"
-                                                          Opacity="0.6"
-                                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                            </Border>
-                                        </Grid>
-                                        <Border Grid.Row="1" Padding="10,8">
-                                            <StackPanel Spacing="3">
-                                                <TextBlock Text="{Binding Title}"
-                                                           FontWeight="SemiBold"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           ToolTip.Tip="{Binding Title}" />
-                                                <TextBlock Text="{Binding CircleName}"
-                                                           FontSize="11" Opacity="0.6"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           IsVisible="{Binding CircleName, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                                <TextBlock Text="{Binding RatingText}"
-                                                           FontSize="11"
-                                                           Foreground="{DynamicResource SystemFillColorAttentionBrush}"
-                                                           IsVisible="{Binding HasRating}" />
-                                            </StackPanel>
+                                <Grid Margin="0,0,12,12">
+                                    <Button Command="{Binding OpenDetailCommand}"
+                                            Padding="0" Background="Transparent" BorderThickness="0"
+                                            HorizontalContentAlignment="Stretch"
+                                            VerticalContentAlignment="Stretch"
+                                            CornerRadius="8"
+                                            ClipToBounds="True">
+                                        <Border Width="180" Height="320"
+                                                Background="{DynamicResource LayerFillColorDefaultBrush}"
+                                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="8"
+                                                ClipToBounds="True">
+                                            <Grid RowDefinitions="*,Auto">
+                                                <Grid Grid.Row="0" Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                                                    <Image Source="{Binding Cover}"
+                                                           Stretch="UniformToFill"
+                                                           IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                    <Border IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNull}}"
+                                                            Background="{Binding TopCategory, Converter={x:Static conv:CategoryFillBrushConverter.Instance}}">
+                                                        <PathIcon Data="{Binding CategoryIcon}"
+                                                                  Width="48" Height="48"
+                                                                  Foreground="{Binding CategoryBrush}"
+                                                                  Opacity="0.6"
+                                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                </Grid>
+                                                <Border Grid.Row="1" Padding="10,8">
+                                                    <StackPanel Spacing="3">
+                                                        <TextBlock Text="{Binding Title}"
+                                                                   FontWeight="SemiBold"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   ToolTip.Tip="{Binding Title}" />
+                                                        <TextBlock Text="{Binding CircleName}"
+                                                                   FontSize="11" Opacity="0.6"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   IsVisible="{Binding CircleName, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                        <TextBlock Text="{Binding RatingText}"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource SystemFillColorAttentionBrush}"
+                                                                   IsVisible="{Binding HasRating}" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </Grid>
                                         </Border>
-                                    </Grid>
-                                </Border>
-                                </Button>
+                                    </Button>
+
+                                    <!-- 右上角浮动 × 移除按钮：从当前选中收藏夹移除媒体（不删媒体本身） -->
+                                    <Button HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="0,6,6,0"
+                                            Width="26" Height="26"
+                                            Padding="0"
+                                            CornerRadius="13"
+                                            Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}"
+                                            BorderBrush="{DynamicResource SystemFillColorCriticalBrush}"
+                                            BorderThickness="1"
+                                            ToolTip.Tip="从此收藏夹移除（不会删除媒体）"
+                                            Command="{Binding #PageRoot.((vm:FavoritesViewModel)DataContext).RemoveMediaFromFavoriteCommand}"
+                                            CommandParameter="{Binding}">
+                                        <TextBlock Text="✕"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Button>
+                                </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

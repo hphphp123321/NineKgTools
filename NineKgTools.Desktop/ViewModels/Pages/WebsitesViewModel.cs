@@ -75,10 +75,30 @@ public partial class WebsitesViewModel : PageViewModelBase
     [ObservableProperty]
     private string? _saveStatusText;
 
+    // ========== 网站优先级（§6.1，上下箭头版——拖拽留 SortableList 落地后再做） ==========
+
+    public ObservableCollection<PriorityCategoryChoice> PriorityCategories { get; } = new()
+    {
+        new("Video", "视频"),
+        new("Audio", "音频"),
+        new("Game", "游戏"),
+        new("Picture", "图片"),
+        new("Text", "文本"),
+    };
+
+    [ObservableProperty]
+    private PriorityCategoryChoice _selectedPriorityCategory;
+
+    /// <summary>当前所选分类下的网站顺序——双向：移动时改这个 + 落到 Config + 防抖保存</summary>
+    [ObservableProperty]
+    private ObservableCollection<string> _priorityItems = new();
+
     public WebsitesViewModel(Config config)
     {
         _config = config;
+        _selectedPriorityCategory = PriorityCategories[0];
         LoadFromConfig();
+        RebuildPriorityItems();
     }
 
     private void LoadFromConfig()
@@ -214,8 +234,63 @@ public partial class WebsitesViewModel : PageViewModelBase
             Log.Error(ex, "打开 Bangumi 申请页失败");
         }
     }
+
+    // ========== 优先级编辑命令 ==========
+
+    partial void OnSelectedPriorityCategoryChanged(PriorityCategoryChoice value)
+    {
+        RebuildPriorityItems();
+    }
+
+    private void RebuildPriorityItems()
+    {
+        var src = GetPriorityListForCategory(SelectedPriorityCategory.Key);
+        PriorityItems = new ObservableCollection<string>(src ?? new List<string>());
+    }
+
+    /// <summary>从 Config.Website.Priority 取对应分类的 List 引用——直接修改也会反映到 Config 上</summary>
+    private List<string>? GetPriorityListForCategory(string key) => key switch
+    {
+        "Video" => _config.Website?.Priority?.Video,
+        "Audio" => _config.Website?.Priority?.Audio,
+        "Game" => _config.Website?.Priority?.Game,
+        "Picture" => _config.Website?.Priority?.Picture,
+        "Text" => _config.Website?.Priority?.Text,
+        _ => null,
+    };
+
+    [RelayCommand]
+    private void MovePriorityUp(string? siteName)
+    {
+        if (string.IsNullOrEmpty(siteName)) return;
+        var idx = PriorityItems.IndexOf(siteName);
+        if (idx <= 0) return; // 已在顶
+        PriorityItems.Move(idx, idx - 1);
+        ApplyPriorityToConfig();
+    }
+
+    [RelayCommand]
+    private void MovePriorityDown(string? siteName)
+    {
+        if (string.IsNullOrEmpty(siteName)) return;
+        var idx = PriorityItems.IndexOf(siteName);
+        if (idx < 0 || idx >= PriorityItems.Count - 1) return;
+        PriorityItems.Move(idx, idx + 1);
+        ApplyPriorityToConfig();
+    }
+
+    private void ApplyPriorityToConfig()
+    {
+        var list = GetPriorityListForCategory(SelectedPriorityCategory.Key);
+        if (list is null) return;
+        list.Clear();
+        list.AddRange(PriorityItems);
+        DebouncedSave();
+    }
 }
 
 public record SteamLanguageOption(string Code, string Display);
 
 public record SteamCountryOption(string Code, string Display);
+
+public record PriorityCategoryChoice(string Key, string DisplayName);

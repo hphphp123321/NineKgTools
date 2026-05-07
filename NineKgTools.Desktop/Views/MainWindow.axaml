@@ -77,7 +77,19 @@
                 </ui:FANavigationViewItem.IconSource>
             </ui:FANavigationViewItem>
 
+            <ui:FANavigationViewItem Content="标签映射" Tag="TagsMappingsViewModel">
+                <ui:FANavigationViewItem.IconSource>
+                    <ui:FAPathIconSource Data="{StaticResource IconTags}" />
+                </ui:FANavigationViewItem.IconSource>
+            </ui:FANavigationViewItem>
+
             <ui:FANavigationViewItem Content="创作者" Tag="CreatorsViewModel">
+                <ui:FANavigationViewItem.IconSource>
+                    <ui:FAPathIconSource Data="{StaticResource IconCreators}" />
+                </ui:FANavigationViewItem.IconSource>
+            </ui:FANavigationViewItem>
+
+            <ui:FANavigationViewItem Content="社团" Tag="CirclesViewModel">
                 <ui:FANavigationViewItem.IconSource>
                     <ui:FAPathIconSource Data="{StaticResource IconCreators}" />
                 </ui:FANavigationViewItem.IconSource>

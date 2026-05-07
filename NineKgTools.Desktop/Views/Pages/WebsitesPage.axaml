@@ -226,15 +226,74 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ==================== 优先级配置占位（Phase 2.2 后续） ==================== -->
+                <!-- ==================== 优先级配置（§6.1，上下箭头版） ==================== -->
                 <Border Classes="site-card">
-                    <StackPanel Spacing="10">
-                        <TextBlock Text="识别优先级" FontSize="14" FontWeight="SemiBold" />
-                        <ui:FAInfoBar Severity="Informational"
-                                    IsOpen="True"
-                                    IsClosable="False"
-                                    Title="拖拽优先级配置（即将到来）"
-                                    Message="按 5 个媒体分类分别配置 DLsite/Bangumi/Steam 的识别优先级，需要 Avalonia DragDrop 实现。当前先编辑 config.yaml 的 website.priority 节点生效。" />
+                    <StackPanel Spacing="14">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                <TextBlock Text="识别优先级" FontSize="14" FontWeight="SemiBold" />
+                                <TextBlock Text="按媒体类型分别设置识别源顺序。每行 ↑/↓ 调整位置，自动保存到 config.yaml"
+                                           FontSize="11" Opacity="0.65" />
+                            </StackPanel>
+                            <ComboBox Grid.Column="1"
+                                      ItemsSource="{Binding PriorityCategories}"
+                                      SelectedItem="{Binding SelectedPriorityCategory, Mode=TwoWay}"
+                                      MinWidth="120">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:PriorityCategoryChoice">
+                                        <TextBlock Text="{Binding DisplayName}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </Grid>
+
+                        <Border Background="{DynamicResource ControlStrokeColorDefaultBrush}" Height="1" />
+
+                        <ItemsControl ItemsSource="{Binding PriorityItems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <Border Padding="14,10" Margin="0,0,0,6"
+                                            CornerRadius="6"
+                                            Background="{DynamicResource LayerFillColorAltBrush}"
+                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                            BorderThickness="1">
+                                        <Grid ColumnDefinitions="Auto,12,*,Auto,4,Auto">
+                                            <!-- 序号点 -->
+                                            <Border Grid.Column="0"
+                                                    Width="24" Height="24"
+                                                    CornerRadius="12"
+                                                    Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="◆"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+
+                                            <TextBlock Grid.Column="2"
+                                                       Text="{Binding}"
+                                                       FontSize="13" FontWeight="SemiBold"
+                                                       VerticalAlignment="Center" />
+
+                                            <Button Grid.Column="3"
+                                                    Command="{Binding $parent[ItemsControl].((vm:WebsitesViewModel)DataContext).MovePriorityUpCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Padding="8,4"
+                                                    ToolTip.Tip="上移">
+                                                <TextBlock Text="↑" FontSize="13" />
+                                            </Button>
+                                            <Button Grid.Column="5"
+                                                    Command="{Binding $parent[ItemsControl].((vm:WebsitesViewModel)DataContext).MovePriorityDownCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Padding="8,4"
+                                                    ToolTip.Tip="下移">
+                                                <TextBlock Text="↓" FontSize="13" />
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </Border>
 

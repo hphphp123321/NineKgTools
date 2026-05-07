@@ -2,7 +2,10 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NineKgTools.Core.Models.Tags;
+using NineKgTools.Core.Services.Media;
+using NineKgTools.Core.Services.Media.QueryParameters;
 using NineKgTools.Core.Services.Tags;
+using NineKgTools.Desktop.Services;
 using NineKgTools.Desktop.Views.Dialogs;
 using Serilog;
 
@@ -15,6 +18,11 @@ namespace NineKgTools.Desktop.ViewModels.Pages;
 public partial class TagsViewModel : PageViewModelBase
 {
     private readonly TagService _tagService;
+    private readonly MediaService _mediaService;
+    private readonly ImageCacheService _imageCache;
+
+    /// <summary>标签详情页媒体数硬上限——超过提示用户改用媒体库的多维筛选。</summary>
+    private const int MaxMediasOnTagDetail = 200;
 
     public override string Title => "标签";
 
@@ -31,6 +39,29 @@ public partial class TagsViewModel : PageViewModelBase
     [NotifyPropertyChangedFor(nameof(SelectedTopCountText))]
     private TopTagItemViewModel? _selectedTopTag;
 
+    /// <summary>三态枢纽：选中具体子标签时进入"标签详情"，看其关联媒体网格。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowTopList))]
+    [NotifyPropertyChangedFor(nameof(ShowTopDetail))]
+    [NotifyPropertyChangedFor(nameof(ShowTagDetail))]
+    [NotifyPropertyChangedFor(nameof(SelectedTagName))]
+    [NotifyPropertyChangedFor(nameof(SelectedTagDescription))]
+    [NotifyPropertyChangedFor(nameof(HasTagDescription))]
+    [NotifyPropertyChangedFor(nameof(SelectedTagMediaCountText))]
+    private TagItemViewModel? _selectedTagDetail;
+
+    [ObservableProperty]
+    private ObservableCollection<MediaCardViewModel> _tagMedias = new();
+
+    [ObservableProperty]
+    private bool _detailLoading;
+
+    [ObservableProperty]
+    private bool _detailHasMedias;
+
+    [ObservableProperty]
+    private bool _detailMediasTruncated;
+
     [ObservableProperty]
     private string _searchText = "";
 
@@ -43,18 +74,27 @@ public partial class TagsViewModel : PageViewModelBase
     [ObservableProperty]
     private bool _showEmptyTagList;
 
-    public bool ShowTopList => SelectedTopTag is null;
-    public bool ShowTopDetail => SelectedTopTag is not null;
+    public bool ShowTopList => SelectedTopTag is null && SelectedTagDetail is null;
+    public bool ShowTopDetail => SelectedTopTag is not null && SelectedTagDetail is null;
+    public bool ShowTagDetail => SelectedTagDetail is not null;
     public string SelectedTopName => SelectedTopTag?.Name ?? "—";
     public string SelectedTopCountText => SelectedTopTag is null
         ? ""
         : $"({Tags.Count} 个标签)";
+    public string SelectedTagName => SelectedTagDetail?.Name ?? "—";
+    public string? SelectedTagDescription => SelectedTagDetail?.Description;
+    public bool HasTagDescription => !string.IsNullOrWhiteSpace(SelectedTagDescription);
+    public string SelectedTagMediaCountText => SelectedTagDetail is null
+        ? ""
+        : $"({TagMedias.Count} 条媒体" + (DetailMediasTruncated ? $" · 仅展示前 {MaxMediasOnTagDetail}" : "") + ")";
 
     private List<TagItemViewModel> _allTagsForSelectedTop = new();
 
-    public TagsViewModel(TagService tagService)
+    public TagsViewModel(TagService tagService, MediaService mediaService, ImageCacheService imageCache)
     {
         _tagService = tagService;
+        _mediaService = mediaService;
+        _imageCache = imageCache;
     }
 
     public override Task OnEnterAsync() => LoadTopTagsAsync();
@@ -131,6 +171,58 @@ public partial class TagsViewModel : PageViewModelBase
         Tags = new ObservableCollection<TagItemViewModel>();
         _allTagsForSelectedTop = new List<TagItemViewModel>();
         SearchText = "";
+    }
+
+    // ==================== 标签详情态（第三层） ====================
+
+    [RelayCommand]
+    private async Task OpenTagDetailAsync(TagItemViewModel? item)
+    {
+        if (item is null) return;
+
+        SelectedTagDetail = item;
+        DetailLoading = true;
+        TagMedias = new ObservableCollection<MediaCardViewModel>();
+        DetailHasMedias = false;
+        DetailMediasTruncated = false;
+
+        try
+        {
+            // 走 MediaService.GetPagedMediaList + TagNames 过滤——比 Tag.Medias.ToList()
+            // 完整 Include 字段（Poster/Circle/Category），卡片渲染需要这些
+            var parameters = new MediaQueryParameters
+            {
+                TagNames = new List<string> { item.Name },
+                FilterByTopCategoryOnly = true,
+                SortOption = MediaSortOption.IdDesc,
+                PageNumber = 1,
+                PageSize = MaxMediasOnTagDetail,
+            };
+            var paged = _mediaService.GetPagedMediaList(parameters);
+
+            TagMedias = new ObservableCollection<MediaCardViewModel>(
+                paged.Select(m => new MediaCardViewModel(m, _imageCache)));
+            DetailHasMedias = TagMedias.Count > 0;
+            DetailMediasTruncated = paged.TotalItemCount > MaxMediasOnTagDetail;
+            OnPropertyChanged(nameof(SelectedTagMediaCountText));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "加载标签关联媒体失败：{Id}", item.Id);
+        }
+        finally
+        {
+            DetailLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private void GoBackToTagsList()
+    {
+        SelectedTagDetail = null;
+        TagMedias = new ObservableCollection<MediaCardViewModel>();
+        DetailHasMedias = false;
+        DetailMediasTruncated = false;
     }
 
     partial void OnSearchTextChanged(string value)

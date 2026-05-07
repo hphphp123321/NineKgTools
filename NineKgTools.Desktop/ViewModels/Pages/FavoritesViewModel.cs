@@ -115,20 +115,86 @@ public partial class FavoritesViewModel : PageViewModelBase
     [RelayCommand]
     private async Task NewFavoriteAsync()
     {
-        // Phase 2.6 MVP：用 confirm dialog 当输入框（简化实现）。Phase 后续可换 Avalonia 输入对话框
-        // 暂时简化为：自动生成"新建收藏夹 N"名字，用户后续重命名
-        var newName = $"新建收藏夹 {DateTime.Now:HHmmss}";
+        // 不允许与已有收藏夹重名（包括默认收藏夹）
+        var existingNames = Favorites.Select(f => f.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var name = await InputDialog.ShowAsync(
+            title: "新建收藏夹",
+            message: "起一个名字（可以稍后重命名）",
+            placeholder: "例如：游戏精选 / 想看 / 已通关...",
+            confirmText: "创建",
+            maxLength: 64,
+            validate: v => !existingNames.Contains(v));
+        if (string.IsNullOrEmpty(name)) return;
+
         try
         {
-            await _favoriteService.AddFavoriteAsync(new Favorite { Name = newName });
+            await _favoriteService.AddFavoriteAsync(new Favorite { Name = name });
             await ReloadFavoritesAsync();
-            // 选中新建的收藏夹
-            var newOne = Favorites.LastOrDefault();
+            // 选中新建的收藏夹（按名字找，避免依赖 Last 顺序）
+            var newOne = Favorites.FirstOrDefault(f => f.Name == name);
             if (newOne is not null) await SelectFavoriteAsync(newOne);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "新建收藏夹失败");
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanRenameSelected))]
+    private async Task RenameSelectedAsync()
+    {
+        if (SelectedFavorite is null || SelectedFavorite.IsDefault) return;
+        var item = SelectedFavorite;
+
+        var existingNames = Favorites
+            .Where(f => f.Id != item.Id)
+            .Select(f => f.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var newName = await InputDialog.ShowAsync(
+            title: "重命名收藏夹",
+            message: $"将「{item.Name}」改为新名字",
+            initialValue: item.Name,
+            confirmText: "保存",
+            maxLength: 64,
+            validate: v => !existingNames.Contains(v) && v != item.Name);
+        if (string.IsNullOrEmpty(newName) || newName == item.Name) return;
+
+        try
+        {
+            // FavoriteService.UpdateFavoriteAsync 接收 Favorite 实例（id + 新 name）
+            await _favoriteService.UpdateFavoriteAsync(new Favorite { Id = item.Id, Name = newName });
+            await ReloadFavoritesAsync();
+            // 重命名后选中态可能丢（实例换了）—— 按 Id 找回
+            var refreshed = Favorites.FirstOrDefault(f => f.Id == item.Id);
+            if (refreshed is not null) await SelectFavoriteAsync(refreshed);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "重命名收藏夹失败：{Id}", item.Id);
+        }
+    }
+
+    [RelayCommand]
+    private async Task RemoveMediaFromFavoriteAsync(MediaCardViewModel? media)
+    {
+        if (media is null || SelectedFavorite is null) return;
+        var fav = SelectedFavorite;
+
+        // 默认收藏夹的"移除"语义有歧义——意味着取消所有收藏？这里仍然走 RemoveMediaFromFavoriteAsync
+        // （仅解除该 media 与默认收藏夹的关联），但用户可能没意识到——保持一致即可
+        try
+        {
+            await _favoriteService.RemoveMediaFromFavoriteAsync(fav.Id, media.Id);
+            // UI 立即移除（避免完整重新拉媒体列表）
+            Items.Remove(media);
+            ShowEmpty = Items.Count == 0;
+            OnPropertyChanged(nameof(SelectedFavoriteCountText));
+            Log.Information("已从收藏夹移除媒体：FavoriteId={FavoriteId}, MediaId={MediaId}", fav.Id, media.Id);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "从收藏夹移除媒体失败：FavoriteId={FavoriteId}, MediaId={MediaId}", fav.Id, media.Id);
         }
     }
 
