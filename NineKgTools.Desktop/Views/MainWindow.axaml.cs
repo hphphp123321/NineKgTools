@@ -15,6 +15,13 @@ public partial class MainWindow : Window
     private DispatcherTimer? _dragHoverTimer;
     private bool _dragHasFiles;
 
+    /// <summary>
+    /// 反向同步 NavView.SelectedItem 时屏蔽 SelectionChanged 处理，避免：
+    /// HomePage 命令 NavigateAsync → CurrentPageChanged → set SelectedItem
+    /// → SelectionChanged 再触发一次 NavigateAsync → 创建第二个 VM 实例（页面闪烁）。
+    /// </summary>
+    private bool _suppressSelectionChanged;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -34,6 +41,48 @@ public partial class MainWindow : Window
 
         // 全局快捷键：Ctrl+1..9 跳到对应导航项；Ctrl+W 不响应（避免误关主窗）
         AddHandler(KeyDownEvent, OnGlobalKeyDown, handledEventsToo: false);
+
+        // 订阅 NavigationService.CurrentPageChanged，把代码触发的导航（例如 HomePage 的
+        // GoToMediaLibrary 命令）反向同步到侧栏 SelectedItem 上——否则用户在首页点击
+        // "进入媒体库"后，左栏依旧高亮"首页"。
+        try
+        {
+            var nav = Program.Services?.GetService<NavigationService>();
+            if (nav is not null)
+                nav.CurrentPageChanged += OnNavigationCurrentPageChanged;
+        }
+        catch (Exception ex) { Log.Warning(ex, "MainWindow 订阅 NavigationService.CurrentPageChanged 失败"); }
+    }
+
+    private void OnNavigationCurrentPageChanged(object? sender, PageViewModelBase? page)
+    {
+        if (page is null) return;
+        try
+        {
+            object? target;
+            if (page is SettingsViewModel)
+            {
+                // FluentAvalonia FANavigationView 把"设置"作为单独的 SettingsItem 暴露
+                target = NavView.SettingsItem;
+            }
+            else
+            {
+                var typeName = page.GetType().Name;
+                target = NavView.MenuItems.OfType<FANavigationViewItem>()
+                    .FirstOrDefault(it => (it.Tag as string) == typeName);
+            }
+
+            if (target is null) return;
+            if (ReferenceEquals(NavView.SelectedItem, target)) return;
+
+            _suppressSelectionChanged = true;
+            try { NavView.SelectedItem = target; }
+            finally { _suppressSelectionChanged = false; }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "反向同步 NavView.SelectedItem 失败：{Type}", page.GetType().Name);
+        }
     }
 
     private void OnGlobalKeyDown(object? sender, KeyEventArgs e)
@@ -104,6 +153,9 @@ public partial class MainWindow : Window
 
     private async void OnNavigationSelectionChanged(object? sender, FANavigationViewSelectionChangedEventArgs args)
     {
+        // 反向同步触发的 set（HomePage 命令 → CurrentPageChanged → SelectedItem 赋值）会
+        // 再次触发本事件——必须吃掉，否则会重入 NavigateAsync 创建第二个 VM 实例
+        if (_suppressSelectionChanged) return;
         if (DataContext is not MainWindowViewModel vm) return;
 
         Type? targetType = null;
