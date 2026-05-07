@@ -223,8 +223,27 @@
                     <TextBlock Text="{Binding DetailName}"
                                FontSize="28" FontWeight="SemiBold"
                                TextTrimming="CharacterEllipsis" />
+                    <!-- 类型：只读模式紧凑文字 / 编辑模式 chip 多选 -->
                     <TextBlock Text="{Binding DetailTypesText}"
-                               FontSize="13" Opacity="0.7" />
+                               FontSize="13" Opacity="0.7"
+                               IsVisible="{Binding !IsDetailEditMode}" />
+                    <ItemsControl ItemsSource="{Binding EditingCreatorTypes}"
+                                  IsVisible="{Binding IsDetailEditMode}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:CreatorTypeToggleVm">
+                                <ToggleButton IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                              Margin="0,0,6,4"
+                                              Padding="10,3"
+                                              CornerRadius="12"
+                                              Content="{Binding DisplayName}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                     <!-- 别名：只读模式紧凑文字 / 编辑模式 EditableAliasList chip -->
                     <StackPanel Orientation="Horizontal" Spacing="6"
                                 IsVisible="{Binding HasAlias}">

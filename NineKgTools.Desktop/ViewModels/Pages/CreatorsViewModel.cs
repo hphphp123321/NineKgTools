@@ -101,6 +101,9 @@ public partial class CreatorsViewModel : PageViewModelBase
     private byte[]? _editingAvatarBytes;
     private string? _editingAvatarExt;
 
+    /// <summary>类型 toggle 列表（§4.2 P2）——编辑模式下 chip 多选；Save 时 collect IsSelected=true</summary>
+    public ObservableCollection<CreatorTypeToggleVm> EditingCreatorTypes { get; } = new();
+
     public bool ShowDetailReadActions => ShowDetail && !IsDetailEditMode;
     public bool ShowDetailEditActions => ShowDetail && IsDetailEditMode;
 
@@ -267,6 +270,20 @@ public partial class CreatorsViewModel : PageViewModelBase
         EditingDescription = SelectedCreator.Description ?? "";
         _editingAvatarBytes = null;
         _editingAvatarExt = null;
+
+        // 重建 7 项类型 toggle，按当前 SelectedCreator.Types 标 IsSelected
+        EditingCreatorTypes.Clear();
+        var selected = SelectedCreator.Types?.ToHashSet() ?? new HashSet<CreatorType>();
+        foreach (var type in new[]
+                 {
+                     CreatorType.Author, CreatorType.Illustrator, CreatorType.Musician,
+                     CreatorType.ScreenWriter, CreatorType.VoiceActor,
+                     CreatorType.Director, CreatorType.Actor,
+                 })
+        {
+            EditingCreatorTypes.Add(new CreatorTypeToggleVm(type, MapType(type), selected.Contains(type)));
+        }
+
         DetailSaveError = null;
         IsDetailEditMode = true;
     }
@@ -350,13 +367,18 @@ public partial class CreatorsViewModel : PageViewModelBase
         try
         {
             // 用 draft 字段构造 Creator 实例传给 FindAndUpdateCreatorAsync
+            // Types 来自 EditingCreatorTypes 中 IsSelected=true 的项
+            var pickedTypes = EditingCreatorTypes
+                .Where(t => t.IsSelected)
+                .Select(t => t.Type)
+                .ToList();
             var updated = new Creator
             {
                 Id = SelectedCreator.Id,
                 Name = SelectedCreator.Name,
                 AliasNames = EditingAliases.ToList(),
                 Description = string.IsNullOrWhiteSpace(EditingDescription) ? null : EditingDescription.Trim(),
-                Types = SelectedCreator.Types?.ToList() ?? new List<CreatorType>(),
+                Types = pickedTypes,
             };
 
             // 头像：用户选过新图 → 新 Image（service 内 AddOrFindImageAsync 走 hash 去重 + 写 .cache）；
@@ -485,4 +507,21 @@ public partial class CreatorsViewModel : PageViewModelBase
         CreatorType.Actor => "演员",
         _ => t.ToString()
     };
+}
+
+/// <summary>创作者类型 chip toggle VM——双向绑 ToggleButton.IsChecked。</summary>
+public partial class CreatorTypeToggleVm : ObservableObject
+{
+    public CreatorType Type { get; }
+    public string DisplayName { get; }
+
+    [ObservableProperty]
+    private bool _isSelected;
+
+    public CreatorTypeToggleVm(CreatorType type, string displayName, bool initiallySelected)
+    {
+        Type = type;
+        DisplayName = displayName;
+        _isSelected = initiallySelected;
+    }
 }

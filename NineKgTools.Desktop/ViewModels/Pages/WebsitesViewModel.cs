@@ -269,6 +269,16 @@ public partial class WebsitesViewModel : PageViewModelBase
         ApplyPriorityToConfig();
     }
 
+    /// <summary>给拖拽 reorder 用——直接指定 from/to。完成后写回 Config + 防抖保存。</summary>
+    public void MovePriorityItem(int from, int to)
+    {
+        if (from < 0 || from >= PriorityItems.Count) return;
+        if (to < 0 || to >= PriorityItems.Count) return;
+        if (from == to) return;
+        PriorityItems.Move(from, to);
+        ApplyPriorityToConfig();
+    }
+
     [RelayCommand]
     private void MovePriorityDown(string? siteName)
     {
