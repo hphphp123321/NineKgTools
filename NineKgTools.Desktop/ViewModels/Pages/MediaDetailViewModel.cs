@@ -38,6 +38,10 @@ public partial class MediaDetailViewModel : ObservableObject
     private List<Favorite> _editingFavorites = new();
     private Category? _editingCategory;
 
+    /// <summary>别名 draft——直接绑给 EditableAliasList.Aliases，用户增删立即反映</summary>
+    [ObservableProperty]
+    private ObservableCollection<string> _editingAliases = new();
+
     /// <summary>删除成功后由 Window 订阅以关闭自身——VM 内部不持有 Window 引用。</summary>
     public event EventHandler? DeleteCompleted;
 
@@ -52,6 +56,8 @@ public partial class MediaDetailViewModel : ObservableObject
 
     /// <summary>编辑模式：true=各字段为可编辑控件 + 显示 Save/Cancel/Delete；false=显示 Edit/Reidentify/...</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowFavoritesSection))]
+    [NotifyPropertyChangedFor(nameof(ShowAliasSection))]
     private bool _isEditMode;
 
     [ObservableProperty]
@@ -89,7 +95,11 @@ public partial class MediaDetailViewModel : ObservableObject
     private string _aliasText = "";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowAliasSection))]
     private bool _hasAlias;
+
+    /// <summary>编辑模式总显示别名区（让用户能添加首个别名）；只读模式仅当有别名时显示</summary>
+    public bool ShowAliasSection => IsEditMode || HasAlias;
 
     [ObservableProperty]
     private string _filePath = "";
@@ -122,7 +132,11 @@ public partial class MediaDetailViewModel : ObservableObject
     private ObservableCollection<string> _favorites = new();
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowFavoritesSection))]
     private bool _hasFavorites;
+
+    /// <summary>编辑模式下总显示（让"编辑"按钮可见）；只读模式下仅当有收藏夹时才显示</summary>
+    public bool ShowFavoritesSection => IsEditMode || HasFavorites;
 
     public IBrush? CategoryBrush => TopCategoryStyles.ResolveAccentBrush(TopCategory);
     public Geometry? CategoryIcon => TopCategoryStyles.ResolveIconGeometry(TopCategory);
@@ -271,6 +285,7 @@ public partial class MediaDetailViewModel : ObservableObject
         _editingCreators = _media.Creators?.ToList() ?? new List<NineKgTools.Core.Models.Media.Creator>();
         _editingFavorites = _media.Favorites?.ToList() ?? new List<Favorite>();
         _editingCategory = _media.Category;
+        EditingAliases = new ObservableCollection<string>(_media.AliasTitles ?? new List<string>());
         SaveError = null;
 
         IsEditMode = true;
@@ -284,6 +299,7 @@ public partial class MediaDetailViewModel : ObservableObject
         _editingCreators = new();
         _editingFavorites = new();
         _editingCategory = null;
+        EditingAliases = new ObservableCollection<string>();
         SaveError = null;
 
         // 字段从 _media 还原
@@ -317,6 +333,9 @@ public partial class MediaDetailViewModel : ObservableObject
 
             _media.Favorites.Clear();
             foreach (var f in _editingFavorites) _media.Favorites.Add(f);
+
+            // 别名：List<string>，直接替换
+            _media.AliasTitles = EditingAliases.ToList();
 
             await _mediaService.UpdateMediaAsync(_media);
             Log.Information("MediaDetail 保存成功：mediaId={Id}, title={Title}", _media.Id, _media.Title);
@@ -400,6 +419,28 @@ public partial class MediaDetailViewModel : ObservableObject
         catch (Exception ex)
         {
             Log.Error(ex, "EditCreatorsAsync 失败");
+        }
+    }
+
+    [RelayCommand]
+    private async Task EditFavoritesAsync()
+    {
+        if (!IsEditMode) return;
+        try
+        {
+            var result = await FavoriteSelectorDialog.ShowAsync(
+                _editingFavorites,
+                allowMultiSelect: true,
+                _favoriteService);
+            if (result is null) return;
+            _editingFavorites = result;
+            // 同步 UI 显示
+            Favorites = new ObservableCollection<string>(_editingFavorites.Select(f => f.Name));
+            HasFavorites = Favorites.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "EditFavoritesAsync 失败");
         }
     }
 

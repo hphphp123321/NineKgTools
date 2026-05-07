@@ -7,6 +7,7 @@ using NineKgTools.Core.Models.Tasks;
 using NineKgTools.Core.Services.Configs;
 using NineKgTools.Core.Services.Progress;
 using NineKgTools.Core.Services.Tasks;
+using NineKgTools.Desktop.Views.Dialogs;
 using NineKgTools.Desktop.Views.Windows;
 using Serilog;
 
@@ -210,6 +211,21 @@ public partial class BackgroundTasksViewModel : PageViewModelBase
         catch (Exception ex)
         {
             Log.Error(ex, "打开识别诊断窗口失败：{Id}", item.TaskId);
+        }
+    }
+
+    /// <summary>由运行中行 / 历史行的"详情"按钮触发。dialog 内部按 history > progress 优先级聚合。</summary>
+    [RelayCommand]
+    private async Task OpenTaskDetailsAsync(string? taskId)
+    {
+        if (string.IsNullOrEmpty(taskId)) return;
+        try
+        {
+            await TaskDetailsDialog.ShowAsync(taskId, _progressService, _taskService);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "打开任务详情失败：{Id}", taskId);
         }
     }
 

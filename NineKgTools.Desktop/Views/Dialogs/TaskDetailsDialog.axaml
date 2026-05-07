@@ -1,0 +1,167 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Dialogs"
+             xmlns:tasks="using:NineKgTools.Core.Models.Tasks"
+             x:Class="NineKgTools.Desktop.Views.Dialogs.TaskDetailsDialog"
+             x:DataType="vm:TaskDetailsDialogContext"
+             MinWidth="560" MaxWidth="780">
+
+    <ScrollViewer MaxHeight="600" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Spacing="14">
+
+            <!-- Hero：状态 + 任务名 + 类型 -->
+            <Border Padding="16,12"
+                    CornerRadius="{DynamicResource OverlayCornerRadius}"
+                    Background="{DynamicResource LayerFillColorDefaultBrush}">
+                <StackPanel Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Border Width="32" Height="32" CornerRadius="16"
+                                Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding StatusIcon}"
+                                       FontSize="16"
+                                       Foreground="{Binding StatusBrush}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding TaskName}"
+                                       Theme="{StaticResource SubtitleTextBlockStyle}" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{Binding StatusText}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="{Binding StatusBrush}" />
+                                <TextBlock Text="·" FontSize="12" Opacity="0.4" />
+                                <Border Padding="6,1" CornerRadius="3"
+                                        Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                    <TextBlock Text="{Binding TaskTypeText}" FontSize="11" />
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                    <TextBlock Text="{Binding TaskId}"
+                               FontSize="10"
+                               Opacity="0.45"
+                               FontFamily="Consolas, Courier New, monospace" />
+                </StackPanel>
+            </Border>
+
+            <!-- 进度（运行中） -->
+            <Border IsVisible="{Binding ShowProgress}"
+                    Padding="14,10"
+                    CornerRadius="{DynamicResource ControlCornerRadius}"
+                    Background="{DynamicResource LayerFillColorAltBrush}">
+                <StackPanel Spacing="6">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="{Binding CurrentItemText}"
+                                   FontSize="11" Opacity="0.75"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="1" Text="{Binding ProgressText}"
+                                   FontSize="11" FontWeight="SemiBold" />
+                    </Grid>
+                    <ProgressBar Minimum="0" Maximum="100"
+                                 Value="{Binding ProgressPercentage}"
+                                 Foreground="{Binding StatusBrush}" />
+                </StackPanel>
+            </Border>
+
+            <!-- 时间 + 统计 -->
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                <StackPanel Grid.Column="0" Spacing="3">
+                    <TextBlock Text="开始时间" FontSize="11" Opacity="0.6" />
+                    <TextBlock Text="{Binding StartTimeText}" FontSize="12" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="3">
+                    <TextBlock Text="结束时间" FontSize="11" Opacity="0.6" />
+                    <TextBlock Text="{Binding EndTimeText}" FontSize="12" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="3">
+                    <TextBlock Text="耗时" FontSize="11" Opacity="0.6" />
+                    <TextBlock Text="{Binding DurationText}" FontSize="12" />
+                </StackPanel>
+            </Grid>
+
+            <!-- 处理统计 -->
+            <Border IsVisible="{Binding HasItemStats}"
+                    Padding="14,10"
+                    CornerRadius="{DynamicResource ControlCornerRadius}"
+                    Background="{DynamicResource LayerFillColorAltBrush}">
+                <StackPanel Orientation="Horizontal" Spacing="14">
+                    <TextBlock Text="处理统计" FontSize="11" Opacity="0.7" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding ItemStatsText}"
+                               FontSize="12" FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- 路径（识别类任务） -->
+            <Border IsVisible="{Binding HasSourcePath}"
+                    Padding="14,10"
+                    CornerRadius="{DynamicResource ControlCornerRadius}"
+                    Background="{DynamicResource LayerFillColorAltBrush}">
+                <StackPanel Spacing="3">
+                    <TextBlock Text="源路径" FontSize="11" Opacity="0.7" />
+                    <TextBlock Text="{Binding SourcePath}"
+                               FontSize="12"
+                               FontFamily="Consolas, Courier New, monospace"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- 错误信息 -->
+            <Border IsVisible="{Binding HasError}"
+                    Padding="14,10"
+                    CornerRadius="{DynamicResource ControlCornerRadius}"
+                    Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}">
+                <StackPanel Spacing="3">
+                    <TextBlock Text="错误信息" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                    <TextBlock Text="{Binding ErrorMessage}"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <!-- 日志（如有） -->
+            <StackPanel IsVisible="{Binding HasLogs}" Spacing="6">
+                <TextBlock Text="日志" FontSize="14" FontWeight="SemiBold" />
+                <Border Padding="10,8"
+                        CornerRadius="{DynamicResource ControlCornerRadius}"
+                        Background="{DynamicResource LayerFillColorAltBrush}"
+                        MaxHeight="240">
+                    <ScrollViewer>
+                        <ItemsControl ItemsSource="{Binding Logs}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="tasks:TaskLogEntry">
+                                    <Grid ColumnDefinitions="Auto,8,Auto,8,*"
+                                          Margin="0,0,0,2">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding Timestamp, StringFormat='HH:mm:ss'}"
+                                                   FontSize="10"
+                                                   Opacity="0.55"
+                                                   FontFamily="Consolas, Courier New, monospace"
+                                                   VerticalAlignment="Top" />
+                                        <Border Grid.Column="2" Padding="4,1"
+                                                CornerRadius="3"
+                                                Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                VerticalAlignment="Top">
+                                            <TextBlock Text="{Binding Level}"
+                                                       FontSize="10" />
+                                        </Border>
+                                        <TextBlock Grid.Column="4"
+                                                   Text="{Binding Message}"
+                                                   FontSize="11"
+                                                   TextWrapping="Wrap" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+            </StackPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>
