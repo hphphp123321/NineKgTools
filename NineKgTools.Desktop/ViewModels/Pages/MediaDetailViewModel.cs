@@ -9,6 +9,7 @@ using NineKgTools.Core.Models.Categories;
 using NineKgTools.Core.Models.Favorites;
 using NineKgTools.Core.Models.Media;
 using NineKgTools.Core.Models.Tags;
+using NineKgTools.Core.Services.AI;
 using NineKgTools.Core.Services.Favorites;
 using NineKgTools.Core.Services.Files;
 using NineKgTools.Core.Services.Media;
@@ -32,6 +33,7 @@ public partial class MediaDetailViewModel : ObservableObject
     private readonly TagService _tagService;
     private readonly NineKgTools.Core.Services.Media.CreatorService _creatorService;
     private readonly FavoriteService _favoriteService;
+    private readonly OpenaiService _openaiService;
     private MediaBase? _media;
 
     // ===== 编辑模式临时状态（draft）—— 进入编辑时初始化、Save/Cancel 时清空 =====
@@ -43,6 +45,24 @@ public partial class MediaDetailViewModel : ObservableObject
     /// <summary>别名 draft——直接绑给 EditableAliasList.Aliases，用户增删立即反映</summary>
     [ObservableProperty]
     private ObservableCollection<string> _editingAliases = new();
+
+    // ===== AI 翻译 draft（编辑模式才用） =====
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasEditingSummaryTranslated))]
+    private string _editingSummaryTranslated = "";
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasEditingDescriptionTranslated))]
+    private string _editingDescriptionTranslated = "";
+
+    [ObservableProperty]
+    private bool _isTranslatingSummary;
+
+    [ObservableProperty]
+    private bool _isTranslatingDescription;
+
+    public bool HasEditingSummaryTranslated => !string.IsNullOrWhiteSpace(EditingSummaryTranslated);
+    public bool HasEditingDescriptionTranslated => !string.IsNullOrWhiteSpace(EditingDescriptionTranslated);
 
     /// <summary>删除成功后由 Window 订阅以关闭自身——VM 内部不持有 Window 引用。</summary>
     public event EventHandler? DeleteCompleted;
@@ -149,7 +169,8 @@ public partial class MediaDetailViewModel : ObservableObject
         FilesService filesService,
         TagService tagService,
         NineKgTools.Core.Services.Media.CreatorService creatorService,
-        FavoriteService favoriteService)
+        FavoriteService favoriteService,
+        OpenaiService openaiService)
     {
         _mediaService = mediaService;
         _imageCache = imageCache;
@@ -157,6 +178,7 @@ public partial class MediaDetailViewModel : ObservableObject
         _tagService = tagService;
         _creatorService = creatorService;
         _favoriteService = favoriteService;
+        _openaiService = openaiService;
     }
 
     public async Task LoadAsync(int mediaId)
@@ -288,6 +310,8 @@ public partial class MediaDetailViewModel : ObservableObject
         _editingFavorites = _media.Favorites?.ToList() ?? new List<Favorite>();
         _editingCategory = _media.Category;
         EditingAliases = new ObservableCollection<string>(_media.AliasTitles ?? new List<string>());
+        EditingSummaryTranslated = _media.SummaryTranslated ?? "";
+        EditingDescriptionTranslated = _media.DescriptionTranslated ?? "";
         SaveError = null;
 
         IsEditMode = true;
@@ -302,6 +326,8 @@ public partial class MediaDetailViewModel : ObservableObject
         _editingFavorites = new();
         _editingCategory = null;
         EditingAliases = new ObservableCollection<string>();
+        EditingSummaryTranslated = "";
+        EditingDescriptionTranslated = "";
         SaveError = null;
 
         // 字段从 _media 还原
@@ -338,6 +364,12 @@ public partial class MediaDetailViewModel : ObservableObject
 
             // 别名：List<string>，直接替换
             _media.AliasTitles = EditingAliases.ToList();
+
+            // AI 翻译字段：写回 db（用户可能在编辑时点过翻译）
+            _media.SummaryTranslated = string.IsNullOrWhiteSpace(EditingSummaryTranslated)
+                ? null : EditingSummaryTranslated.Trim();
+            _media.DescriptionTranslated = string.IsNullOrWhiteSpace(EditingDescriptionTranslated)
+                ? null : EditingDescriptionTranslated.Trim();
 
             await _mediaService.UpdateMediaAsync(_media);
             Log.Information("MediaDetail 保存成功：mediaId={Id}, title={Title}", _media.Id, _media.Title);
@@ -443,6 +475,64 @@ public partial class MediaDetailViewModel : ObservableObject
         catch (Exception ex)
         {
             Log.Error(ex, "EditFavoritesAsync 失败");
+        }
+    }
+
+    /// <summary>AI 翻译简介——返回中文。结果填到 EditingSummaryTranslated，Save 时写入 db。</summary>
+    [RelayCommand]
+    private async Task TranslateSummaryAsync()
+    {
+        if (!IsEditMode || IsTranslatingSummary || string.IsNullOrWhiteSpace(Summary)) return;
+        IsTranslatingSummary = true;
+        SaveError = null;
+        try
+        {
+            var translated = await _openaiService.Translate(Summary, "中文");
+            if (string.IsNullOrEmpty(translated))
+            {
+                SaveError = "翻译失败：可能未启用 AI 或返回空。请到设置启用 AI + 配置 OpenAI Key。";
+                return;
+            }
+            EditingSummaryTranslated = translated;
+            Log.Information("简介翻译完成 mediaId={Id}", _media?.Id);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "TranslateSummaryAsync 失败");
+            SaveError = "翻译失败，请稍后重试。";
+        }
+        finally
+        {
+            IsTranslatingSummary = false;
+        }
+    }
+
+    /// <summary>AI 翻译详细描述——返回中文。</summary>
+    [RelayCommand]
+    private async Task TranslateDescriptionAsync()
+    {
+        if (!IsEditMode || IsTranslatingDescription || string.IsNullOrWhiteSpace(Description)) return;
+        IsTranslatingDescription = true;
+        SaveError = null;
+        try
+        {
+            var translated = await _openaiService.Translate(Description, "中文");
+            if (string.IsNullOrEmpty(translated))
+            {
+                SaveError = "翻译失败：可能未启用 AI 或返回空。请到设置启用 AI + 配置 OpenAI Key。";
+                return;
+            }
+            EditingDescriptionTranslated = translated;
+            Log.Information("描述翻译完成 mediaId={Id}", _media?.Id);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "TranslateDescriptionAsync 失败");
+            SaveError = "翻译失败，请稍后重试。";
+        }
+        finally
+        {
+            IsTranslatingDescription = false;
         }
     }
 

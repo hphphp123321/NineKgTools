@@ -29,16 +29,18 @@ public partial class MainWindowViewModel : ObservableObject
     public Task NavigateAsync(Type viewModelType) => _nav.NavigateToAsync(viewModelType);
 
     /// <summary>
-    /// 全局搜索：导航到媒体库并以输入的关键词预填搜索框，OnEnterAsync 自动加载结果。
-    /// 关键词为空时也允许（等价于"清空搜索 + 跳到媒体库"）。
+    /// 全局搜索：导航到 SearchResultPage，预填 Query 触发 4 类型搜索（媒体 / 标签 / 创作者 / 社团）。
+    /// AI 语义搜索由用户在结果页 ToggleSwitch 控制。
     /// </summary>
     [RelayCommand]
     private async Task ExecuteSearchAsync()
     {
         var term = SearchText?.Trim() ?? "";
-        await _nav.NavigateToAsync<MediaOverviewViewModel>(vm =>
+        if (string.IsNullOrEmpty(term)) return;
+
+        await _nav.NavigateToAsync<SearchResultViewModel>(vm =>
         {
-            vm.SearchText = term;
+            vm.Query = term;
         });
     }
 }

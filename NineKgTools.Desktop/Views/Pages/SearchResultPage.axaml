@@ -1,0 +1,340 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Pages"
+             xmlns:conv="using:NineKgTools.Desktop.Converters"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="NineKgTools.Desktop.Views.Pages.SearchResultPage"
+             x:DataType="vm:SearchResultViewModel"
+             x:Name="PageRoot">
+
+    <Grid RowDefinitions="Auto,Auto,*">
+
+        <!-- 头部：搜索框 + 选项 + 摘要 -->
+        <StackPanel Grid.Row="0" Margin="32,24,32,16" Spacing="12">
+            <Grid ColumnDefinitions="*,12,Auto,12,Auto">
+                <TextBox Grid.Column="0"
+                         Text="{Binding Query, Mode=TwoWay}"
+                         PlaceholderText="搜索关键词..."
+                         FontSize="14" />
+                <ToggleSwitch Grid.Column="2"
+                              IsChecked="{Binding EnableVectorSearch, Mode=TwoWay}"
+                              OnContent="AI 语义"
+                              OffContent="关键词"
+                              VerticalAlignment="Center"
+                              ToolTip.Tip="向量搜索（需在设置启用 AI + Embedding 模型）" />
+                <Button Grid.Column="4"
+                        Command="{Binding ExecuteSearchCommand}"
+                        IsEnabled="{Binding !IsLoading}"
+                        Classes="accent">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <ui:FAProgressRing IsIndeterminate="True"
+                                           Width="14" Height="14"
+                                           IsVisible="{Binding IsLoading}" />
+                        <TextBlock Text="搜索" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- 摘要行 -->
+            <StackPanel Orientation="Horizontal" Spacing="12"
+                        IsVisible="{Binding HasSearched}">
+                <TextBlock Text="{Binding SummaryText}"
+                           FontSize="12" Opacity="0.7"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- 错误条 -->
+            <Border IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    Padding="12,8"
+                    CornerRadius="{DynamicResource ControlCornerRadius}"
+                    Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="⚠" FontSize="13" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding ErrorMessage}" FontSize="12" VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- 4-Tab 类型切换 -->
+        <TabControl Grid.Row="2" Margin="32,0,32,16"
+                    SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
+                    IsVisible="{Binding HasSearched}">
+
+            <!-- ============== Tab 0: 媒体 ============== -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="媒体" />
+                        <Border Padding="6,1" CornerRadius="8"
+                                Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                            <TextBlock Text="{Binding MediaCount}" FontSize="11" />
+                        </Border>
+                    </StackPanel>
+                </TabItem.Header>
+                <Grid Margin="0,12,0,0">
+                    <Border IsVisible="{Binding !MediaCount}"
+                            Padding="32"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="无媒体匹配"
+                                   FontSize="14" Opacity="0.6"
+                                   HorizontalAlignment="Center" />
+                    </Border>
+                    <ScrollViewer IsVisible="{Binding MediaCount}">
+                        <ItemsControl ItemsSource="{Binding MediaItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:MediaCardViewModel">
+                                    <Button Command="{Binding OpenDetailCommand}"
+                                            Padding="0" Background="Transparent" BorderThickness="0"
+                                            Margin="0,0,12,12"
+                                            CornerRadius="8"
+                                            ClipToBounds="True">
+                                        <Border Width="180" Height="320"
+                                                Background="{DynamicResource LayerFillColorDefaultBrush}"
+                                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="8"
+                                                ClipToBounds="True">
+                                            <Grid RowDefinitions="*,Auto">
+                                                <Grid Grid.Row="0" Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                                                    <Image Source="{Binding Cover}"
+                                                           Stretch="UniformToFill"
+                                                           IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                    <PathIcon Data="{Binding CategoryIcon}"
+                                                              Width="48" Height="48"
+                                                              Foreground="{Binding CategoryBrush}"
+                                                              Opacity="0.5"
+                                                              IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNull}}"
+                                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Grid>
+                                                <Border Grid.Row="1" Padding="10,8">
+                                                    <StackPanel Spacing="3">
+                                                        <TextBlock Text="{Binding Title}"
+                                                                   FontWeight="SemiBold"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   ToolTip.Tip="{Binding Title}" />
+                                                        <TextBlock Text="{Binding CircleName}"
+                                                                   FontSize="11" Opacity="0.6"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   IsVisible="{Binding CircleName, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- ============== Tab 1: 标签 ============== -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="标签" />
+                        <Border Padding="6,1" CornerRadius="8"
+                                Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                            <TextBlock Text="{Binding TagCount}" FontSize="11" />
+                        </Border>
+                    </StackPanel>
+                </TabItem.Header>
+                <Grid Margin="0,12,0,0">
+                    <Border IsVisible="{Binding !TagCount}"
+                            Padding="32"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="无标签匹配" FontSize="14" Opacity="0.6"
+                                   HorizontalAlignment="Center" />
+                    </Border>
+                    <ScrollViewer IsVisible="{Binding TagCount}">
+                        <ItemsControl ItemsSource="{Binding TagItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:TagItemViewModel">
+                                    <Border Padding="14,8" Margin="0,0,8,8"
+                                            CornerRadius="14"
+                                            Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                            BorderThickness="1">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="{Binding Name}" FontSize="13" />
+                                            <TextBlock Text="{Binding MediaCountText}"
+                                                       FontSize="11"
+                                                       Opacity="0.5" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- ============== Tab 2: 创作者 ============== -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="创作者" />
+                        <Border Padding="6,1" CornerRadius="8"
+                                Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                            <TextBlock Text="{Binding CreatorCount}" FontSize="11" />
+                        </Border>
+                    </StackPanel>
+                </TabItem.Header>
+                <Grid Margin="0,12,0,0">
+                    <Border IsVisible="{Binding !CreatorCount}"
+                            Padding="32"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="无创作者匹配" FontSize="14" Opacity="0.6"
+                                   HorizontalAlignment="Center" />
+                    </Border>
+                    <ScrollViewer IsVisible="{Binding CreatorCount}">
+                        <ItemsControl ItemsSource="{Binding CreatorItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CreatorItemViewModel">
+                                    <Border Width="180" Height="200"
+                                            Margin="0,0,12,12"
+                                            CornerRadius="8"
+                                            Background="{DynamicResource LayerFillColorDefaultBrush}"
+                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                            BorderThickness="1">
+                                        <StackPanel Margin="14,18,14,14" Spacing="8" HorizontalAlignment="Center">
+                                            <Border Width="72" Height="72" CornerRadius="36"
+                                                    ClipToBounds="True"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    HorizontalAlignment="Center">
+                                                <Grid>
+                                                    <Image Source="{Binding Avatar}"
+                                                           Stretch="UniformToFill"
+                                                           IsVisible="{Binding Avatar, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                    <TextBlock Text="{Binding AvatarFallback}"
+                                                               FontSize="28" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                               Opacity="0.5"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               IsVisible="{Binding Avatar, Converter={x:Static ObjectConverters.IsNull}}" />
+                                                </Grid>
+                                            </Border>
+                                            <TextBlock Text="{Binding Name}"
+                                                       FontWeight="SemiBold" FontSize="13"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       HorizontalAlignment="Center"
+                                                       ToolTip.Tip="{Binding Name}" />
+                                            <TextBlock Text="{Binding MediaCountText}"
+                                                       FontSize="11" Opacity="0.55"
+                                                       HorizontalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- ============== Tab 3: 社团 ============== -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="社团" />
+                        <Border Padding="6,1" CornerRadius="8"
+                                Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                            <TextBlock Text="{Binding CircleCount}" FontSize="11" />
+                        </Border>
+                    </StackPanel>
+                </TabItem.Header>
+                <Grid Margin="0,12,0,0">
+                    <Border IsVisible="{Binding !CircleCount}"
+                            Padding="32"
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="无社团匹配" FontSize="14" Opacity="0.6"
+                                   HorizontalAlignment="Center" />
+                    </Border>
+                    <ScrollViewer IsVisible="{Binding CircleCount}">
+                        <ItemsControl ItemsSource="{Binding CircleItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CircleItemViewModel">
+                                    <Border Width="180" Height="200"
+                                            Margin="0,0,12,12"
+                                            CornerRadius="8"
+                                            Background="{DynamicResource LayerFillColorDefaultBrush}"
+                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                            BorderThickness="1">
+                                        <StackPanel Margin="14,18,14,14" Spacing="8" HorizontalAlignment="Center">
+                                            <Border Width="72" Height="72" CornerRadius="36"
+                                                    ClipToBounds="True"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    HorizontalAlignment="Center">
+                                                <Grid>
+                                                    <Image Source="{Binding Avatar}"
+                                                           Stretch="UniformToFill"
+                                                           IsVisible="{Binding Avatar, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                    <TextBlock Text="{Binding AvatarFallback}"
+                                                               FontSize="28" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                               Opacity="0.5"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               IsVisible="{Binding Avatar, Converter={x:Static ObjectConverters.IsNull}}" />
+                                                </Grid>
+                                            </Border>
+                                            <TextBlock Text="{Binding Name}"
+                                                       FontWeight="SemiBold" FontSize="13"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       HorizontalAlignment="Center"
+                                                       ToolTip.Tip="{Binding Name}" />
+                                            <TextBlock Text="{Binding MediaCountText}"
+                                                       FontSize="11" Opacity="0.55"
+                                                       HorizontalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+        </TabControl>
+
+        <!-- 未搜索时占位 -->
+        <Border Grid.Row="2" Margin="32"
+                IsVisible="{Binding !HasSearched}"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                MaxWidth="480">
+            <StackPanel Spacing="14" HorizontalAlignment="Center">
+                <TextBlock Text="🔍" FontSize="64"
+                           HorizontalAlignment="Center"
+                           Opacity="0.4" />
+                <TextBlock Text="全局搜索"
+                           FontSize="18" FontWeight="SemiBold"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="一次搜索覆盖媒体 / 标签 / 创作者 / 社团 4 类型。开启 AI 语义后走向量搜索（需启用 AI 与 Embedding）。"
+                           FontSize="12" Opacity="0.65"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+    </Grid>
+
+</UserControl>

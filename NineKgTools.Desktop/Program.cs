@@ -312,6 +312,7 @@ internal static class Program
         services.AddTransient<TagsMappingsViewModel>();
         services.AddTransient<CreatorsViewModel>();
         services.AddTransient<CirclesViewModel>();
+        services.AddTransient<SearchResultViewModel>();
         services.AddTransient<FavoritesViewModel>();
         services.AddTransient<WebsitesViewModel>();
         services.AddTransient<SettingsViewModel>();
