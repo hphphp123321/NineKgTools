@@ -187,11 +187,13 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- 列表 -->
+                        <!-- 列表（TreeView 支持父子任务展开/折叠 §10.5 P1 #9） -->
                         <ScrollViewer IsVisible="{Binding !ShowEmpty}">
-                            <ItemsControl ItemsSource="{Binding Items}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:TaskItemViewModel">
+                            <TreeView ItemsSource="{Binding Items}"
+                                      Background="Transparent"
+                                      BorderThickness="0">
+                                <TreeView.ItemTemplate>
+                                    <TreeDataTemplate ItemsSource="{Binding ChildItems}" DataType="vm:TaskItemViewModel">
                                         <Border Classes="task-row" Margin="0,0,0,8">
                                             <Grid ColumnDefinitions="Auto,16,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto">
                                                 <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="3"
@@ -275,9 +277,9 @@
                                                 </Border>
                                             </Grid>
                                         </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                    </TreeDataTemplate>
+                                </TreeView.ItemTemplate>
+                            </TreeView>
                         </ScrollViewer>
                     </Grid>
                 </Grid>

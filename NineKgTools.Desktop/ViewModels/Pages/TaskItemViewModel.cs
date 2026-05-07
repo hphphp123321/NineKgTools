@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -8,14 +9,28 @@ namespace NineKgTools.Desktop.ViewModels.Pages;
 /// <summary>
 /// 后台任务页每一行 VM。包装 <see cref="TaskProgress"/> 引用，派生派生 UI 字段。
 /// 进度更新时由父 VM 调 <see cref="NotifyAll"/> 一次性 refresh 所有 binding。
+///
+/// §10.5 P1 #9 父子任务树：ChildItems 递归从 progress.ChildTasks 包装；NotifyAll 内
+/// SyncChildItems 做差量更新，保证树展开时实时刷新子任务进度。
 /// </summary>
 public partial class TaskItemViewModel : ObservableObject
 {
     public TaskProgress Progress { get; }
 
+    /// <summary>子任务（递归构造）。TreeView 用 TreeDataTemplate.ItemsSource 引用。</summary>
+    [ObservableProperty]
+    private ObservableCollection<TaskItemViewModel> _childItems = new();
+
+    public bool HasChildItems => ChildItems.Count > 0;
+
     public TaskItemViewModel(TaskProgress progress)
     {
         Progress = progress;
+        // 初始构造时递归包装现有 ChildTasks（GetAllRootTasks 已经 LoadChildTasks 填充）
+        foreach (var child in progress.ChildTasks)
+        {
+            ChildItems.Add(new TaskItemViewModel(child));
+        }
     }
 
     public string TaskId => Progress.TaskId;
@@ -132,7 +147,7 @@ public partial class TaskItemViewModel : ObservableObject
         return $"{(int)ts.TotalHours}h {ts.Minutes}m";
     }
 
-    /// <summary>父 VM 在 progress 字段刷新后调用，触发所有派生 binding 重新拉值</summary>
+    /// <summary>父 VM 在 progress 字段刷新后调用，触发所有派生 binding 重新拉值 + 同步子任务列表</summary>
     public void NotifyAll()
     {
         OnPropertyChanged(nameof(Status));
@@ -157,5 +172,42 @@ public partial class TaskItemViewModel : ObservableObject
         OnPropertyChanged(nameof(ErrorMessage));
         OnPropertyChanged(nameof(HasErrorMessage));
         OnPropertyChanged(nameof(HasDiagnostics));
+
+        SyncChildItems();
+    }
+
+    /// <summary>差量同步 ChildItems 与 Progress.ChildTasks——保留 instance 触发 NotifyAll，避免 TreeView 重建展开状态丢失</summary>
+    private void SyncChildItems()
+    {
+        var freshIds = Progress.ChildTasks.Select(c => c.TaskId).ToHashSet();
+
+        // 移除消失的
+        for (int i = ChildItems.Count - 1; i >= 0; i--)
+        {
+            if (!freshIds.Contains(ChildItems[i].TaskId))
+                ChildItems.RemoveAt(i);
+        }
+
+        // 添加新的 / 通知现有
+        for (int i = 0; i < Progress.ChildTasks.Count; i++)
+        {
+            var child = Progress.ChildTasks[i];
+            var existingIdx = -1;
+            for (int j = 0; j < ChildItems.Count; j++)
+            {
+                if (ChildItems[j].TaskId == child.TaskId) { existingIdx = j; break; }
+            }
+            if (existingIdx == -1)
+            {
+                ChildItems.Insert(i, new TaskItemViewModel(child));
+            }
+            else
+            {
+                if (existingIdx != i) ChildItems.Move(existingIdx, i);
+                ChildItems[i].NotifyAll();
+            }
+        }
+
+        OnPropertyChanged(nameof(HasChildItems));
     }
 }
