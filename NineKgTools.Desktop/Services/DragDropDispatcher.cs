@@ -23,10 +23,23 @@ public class DragDropDispatcher
     private readonly Config _config;
     private readonly FilesService _filesService;
 
+    /// <summary>
+    /// 任何路径成功提交识别任务后 fire（IdentifySingleMedia / IdentifyBatchMedia 返回非空 taskId 即触发）。
+    /// SourcesViewModel（媒体源工作台）订阅它实时跟踪拖入任务的进度。
+    /// 同时供主窗外层 DragOverlay 路径使用——用户在任意页面拖入，进 SourcesPage 时仍能看到本次会话内的进度。
+    /// </summary>
+    public event EventHandler<DropSubmittedEventArgs>? TaskSubmitted;
+
     public DragDropDispatcher(Config config, FilesService filesService)
     {
         _config = config;
         _filesService = filesService;
+    }
+
+    private void RaiseTaskSubmitted(string taskId, string path, DropTaskKind kind)
+    {
+        try { TaskSubmitted?.Invoke(this, new DropSubmittedEventArgs(taskId, path, kind)); }
+        catch (Exception ex) { Log.Warning(ex, "DragDropDispatcher.TaskSubmitted handler 异常"); }
     }
 
     /// <summary>
@@ -112,7 +125,9 @@ public class DragDropDispatcher
         // 单文件：直接进识别队列。
         try
         {
-            await _filesService.IdentifySingleMedia(path);
+            var taskId = await _filesService.IdentifySingleMedia(path);
+            if (!string.IsNullOrEmpty(taskId))
+                RaiseTaskSubmitted(taskId, path, DropTaskKind.SingleFile);
             Log.Information("拖入单文件已加入识别队列：{Path}", path);
         }
         catch (Exception ex)
@@ -144,9 +159,17 @@ public class DragDropDispatcher
             try
             {
                 if (Directory.Exists(p))
-                    await _filesService.IdentifyBatchMedia(p, startMonitoringAfterCompletion: false);
+                {
+                    var taskId = await _filesService.IdentifyBatchMedia(p, startMonitoringAfterCompletion: false);
+                    if (!string.IsNullOrEmpty(taskId))
+                        RaiseTaskSubmitted(taskId, p, DropTaskKind.BatchFolder);
+                }
                 else
-                    await _filesService.IdentifySingleMedia(p);
+                {
+                    var taskId = await _filesService.IdentifySingleMedia(p);
+                    if (!string.IsNullOrEmpty(taskId))
+                        RaiseTaskSubmitted(taskId, p, DropTaskKind.SingleFile);
+                }
             }
             catch (Exception ex)
             {
@@ -165,13 +188,17 @@ public class DragDropDispatcher
             _config.Source.WatchFolders.Add(path);
             await _config.SaveConfig();
         }
-        await _filesService.IdentifyBatchMedia(path, startMonitoringAfterCompletion: true);
+        var taskId = await _filesService.IdentifyBatchMedia(path, startMonitoringAfterCompletion: true);
+        if (!string.IsNullOrEmpty(taskId))
+            RaiseTaskSubmitted(taskId, path, DropTaskKind.WatchFolder);
         Log.Information("拖入文件夹已加入监视：{Path}", path);
     }
 
     private async Task IdentifyOnceAsync(string path)
     {
-        await _filesService.IdentifyBatchMedia(path, startMonitoringAfterCompletion: false);
+        var taskId = await _filesService.IdentifyBatchMedia(path, startMonitoringAfterCompletion: false);
+        if (!string.IsNullOrEmpty(taskId))
+            RaiseTaskSubmitted(taskId, path, DropTaskKind.BatchFolder);
         Log.Information("拖入文件夹已一次性识别（不加监视）：{Path}", path);
     }
 
@@ -209,4 +236,33 @@ public enum FolderDragAction
 {
     AddToWatch,
     IdentifyOnce,
+}
+
+/// <summary>用于 TaskSubmitted 事件区分提交来源。</summary>
+public enum DropTaskKind
+{
+    /// <summary>单文件直接识别。</summary>
+    SingleFile,
+    /// <summary>文件夹一次性识别（不加监视）。</summary>
+    BatchFolder,
+    /// <summary>文件夹加入长期监视。</summary>
+    WatchFolder,
+}
+
+/// <summary>
+/// DragDropDispatcher.TaskSubmitted 事件参数：包含 task id、源路径和提交类型，
+/// 让订阅方（SourcesViewModel）能展示"识别中：xxx"卡片并轮询进度。
+/// </summary>
+public sealed class DropSubmittedEventArgs : EventArgs
+{
+    public string TaskId { get; }
+    public string Path { get; }
+    public DropTaskKind Kind { get; }
+
+    public DropSubmittedEventArgs(string taskId, string path, DropTaskKind kind)
+    {
+        TaskId = taskId;
+        Path = path;
+        Kind = kind;
+    }
 }

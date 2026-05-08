@@ -4,248 +4,213 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using NineKgTools.Core.Models.Identification;
-using NineKgTools.Core.Services.Configs;
-using NineKgTools.Core.Services.Files;
-using NineKgTools.Desktop.Views.Dialogs;
+using NineKgTools.Core.Services.Progress;
+using NineKgTools.Desktop.Services;
 using Serilog;
 
 namespace NineKgTools.Desktop.ViewModels.Pages;
 
 /// <summary>
-/// 媒体源页（监视文件夹列表）。展示 Config.Source.WatchFolders 的配置项 + MonitorService 实时状态。
-/// 添加：原生 FolderPicker → 加入 WatchFolders + 提交 IdentifyBatchMedia（startMonitoringAfterCompletion=true）
-/// 删除：MonitorService.StopMonitoring + 从 WatchFolders 移除 + SaveConfig
-/// 重新扫描：IdentifyBatchMedia(folder, startMonitoringAfterCompletion=false) 触发一次性识别
-/// 拖入文件夹到主窗任意位置 → 弹双卡片选择，"加入监视"路径会落到这页
+/// 媒体源工作台（§5.1 §10.5 P2 重构）。从原"监视文件夹列表"重构为"拖拽即识别 + 实时进度"。
+///
+/// **职责分离**：
+/// - 媒体源（本页）：拖拽工作台，展示当前会话的实时识别进度卡组。重启清空。
+/// - 监视文件夹（<see cref="WatchFoldersViewModel"/>）：长期跟踪配置，从 header 按钮跳转。
+///
+/// **拖拽进度跟踪**：订阅 <see cref="DragDropDispatcher.TaskSubmitted"/>，每次有任何路径
+/// （主窗外层 DragOverlay 或本页内部拖拽区）成功提交识别任务，把 taskId 加进 TrackedTasks。
+/// 500ms DispatcherTimer 调每个卡的 NotifyAll() 让 UI 跟手。重启后清空（不持久化，靠任务页查历史）。
 /// </summary>
 public partial class SourcesViewModel : PageViewModelBase
 {
-    private readonly Config _config;
-    private readonly FilesService _filesService;
-    private readonly MonitorService _monitorService;
-    private DispatcherTimer? _refreshTimer;
+    /// <summary>进度卡组上限。超过后老的卡会被裁掉。</summary>
+    private const int MaxKeptCards = 20;
+
+    private readonly NavigationService _navigation;
+    private readonly DragDropDispatcher _dispatcher;
+    private readonly TaskProgressService _progressService;
+    private DispatcherTimer? _pollTimer;
 
     public override string Title => "媒体源";
 
+    /// <summary>正在跟踪的进度卡组（最新提交的在最前）。</summary>
     [ObservableProperty]
-    private ObservableCollection<WatchFolderItemViewModel> _folders = new();
+    [NotifyPropertyChangedFor(nameof(HasTasks))]
+    [NotifyPropertyChangedFor(nameof(ShowEmpty))]
+    private ObservableCollection<TaskItemViewModel> _trackedTasks = new();
 
+    /// <summary>用于 axaml 拖拽区 hover 视觉反馈（背景色 + 边框由 Style 切换）。</summary>
     [ObservableProperty]
-    private bool _isBusy;
+    private bool _isDragOver;
 
-    [ObservableProperty]
-    private bool _showEmpty = true;
+    public bool HasTasks => TrackedTasks.Count > 0;
+    public bool ShowEmpty => TrackedTasks.Count == 0;
 
-    [ObservableProperty]
-    private string? _statusMessage;
-
-    public SourcesViewModel(Config config, FilesService filesService, MonitorService monitorService)
+    public SourcesViewModel(NavigationService navigation, DragDropDispatcher dispatcher,
+        TaskProgressService progressService)
     {
-        _config = config;
-        _filesService = filesService;
-        _monitorService = monitorService;
+        _navigation = navigation;
+        _dispatcher = dispatcher;
+        _progressService = progressService;
+
+        TrackedTasks.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(HasTasks));
+            OnPropertyChanged(nameof(ShowEmpty));
+        };
     }
 
     public override Task OnEnterAsync()
     {
-        Refresh();
-        // 5s 轮询：MonitorService 状态可能变（外部停了 watcher、文件被识别等），保持 UI 跟手
-        _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
-        _refreshTimer.Tick += (_, _) => RefreshStatesOnly();
-        _refreshTimer.Start();
+        // 订阅拖拽提交事件——同窗内任何路径（外层 DragOverlay / 本页内部拖拽区）提交都会触发
+        _dispatcher.TaskSubmitted += OnTaskSubmitted;
+
+        // 500ms 轮询：让现有卡的 progress 字段刷新。比 BackgroundTasksPage 的 500ms 一致，避免高频卡顿。
+        _pollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        _pollTimer.Tick += (_, _) => RefreshTasks();
+        _pollTimer.Start();
         return Task.CompletedTask;
     }
 
     public override Task OnLeaveAsync()
     {
-        _refreshTimer?.Stop();
-        _refreshTimer = null;
+        _dispatcher.TaskSubmitted -= OnTaskSubmitted;
+        _pollTimer?.Stop();
+        _pollTimer = null;
         return Task.CompletedTask;
     }
 
+    /// <summary>跳转到监视文件夹子页面（参考"标签 / 标签映射"模式）。</summary>
     [RelayCommand]
-    private void Refresh()
-    {
-        try
-        {
-            var configured = _config.Source?.WatchFolders ?? new List<string>();
+    private Task GoToWatchFolders() => _navigation.NavigateToAsync<WatchFoldersViewModel>();
 
-            // 差量更新：保留现有 VM 实例（防止 ItemsControl 重渲闪屏）
-            // 1. 移除已不在配置里的
-            for (int i = Folders.Count - 1; i >= 0; i--)
-            {
-                if (!configured.Contains(Folders[i].Path)) Folders.RemoveAt(i);
-            }
-            // 2. 加入新配置项
-            foreach (var path in configured)
-            {
-                if (Folders.All(f => f.Path != path))
-                {
-                    Folders.Add(new WatchFolderItemViewModel(path));
-                }
-            }
-            // 3. 全部刷新状态
-            foreach (var f in Folders) f.RefreshFrom(_monitorService);
-
-            ShowEmpty = Folders.Count == 0;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "SourcesViewModel.Refresh 失败");
-        }
-    }
-
-    /// <summary>仅刷新现有项的运行状态——轮询时用，避免动 ObservableCollection。</summary>
-    private void RefreshStatesOnly()
-    {
-        try
-        {
-            foreach (var f in Folders) f.RefreshFrom(_monitorService);
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "SourcesViewModel.RefreshStatesOnly 失败");
-        }
-    }
-
+    /// <summary>选择文件夹（macOS 触控板拖拽体验差时的 fallback 入口）。</summary>
     [RelayCommand]
-    private async Task AddFolderAsync()
+    private async Task PickFolderAsync()
     {
-        if (IsBusy) return;
-        IsBusy = true;
+        var top = GetTopLevel();
+        if (top?.StorageProvider is null) return;
         try
         {
-            var topLevel = GetTopLevel();
-            if (topLevel?.StorageProvider is null)
+            var picked = await top.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
-                StatusMessage = "无法打开文件夹选择器";
-                return;
-            }
-
-            var picked = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-            {
-                Title = "选择要监视的文件夹",
+                Title = "选择文件夹以识别",
                 AllowMultiple = false,
             });
             if (picked.Count == 0) return;
-
             var path = picked[0].TryGetLocalPath();
             if (string.IsNullOrEmpty(path)) return;
 
-            await AddPathInternalAsync(path);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    private async Task AddPathInternalAsync(string path)
-    {
-        if (_config.Source is null) _config.Source = new SourceConfig();
-
-        if (_config.Source.WatchFolders.Contains(path))
-        {
-            StatusMessage = "该路径已在监视列表中";
-            return;
-        }
-
-        try
-        {
-            _config.Source.WatchFolders.Add(path);
-            await _config.SaveConfig();
-
-            var taskId = await _filesService.IdentifyBatchMedia(path, startMonitoringAfterCompletion: true);
-            StatusMessage = $"已加入监视：{System.IO.Path.GetFileName(path.TrimEnd(System.IO.Path.DirectorySeparatorChar))}（任务 {taskId}）";
-            Log.Information("SourcesViewModel 加入监视：{Path}, TaskId={TaskId}", path, taskId);
-
-            // 立刻插入新行
-            var item = new WatchFolderItemViewModel(path);
-            item.RefreshFrom(_monitorService);
-            Folders.Add(item);
-            ShowEmpty = false;
+            // 走 dispatcher 同样的"单文件夹 → 双卡片对话框"路径
+            await _dispatcher.HandleDropAsync(new[] { path });
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "添加监视文件夹失败：{Path}", path);
-            StatusMessage = "添加失败，请稍后重试";
+            Log.Error(ex, "SourcesViewModel.PickFolder 失败");
         }
     }
 
+    /// <summary>选择文件（多选）。</summary>
     [RelayCommand]
-    private async Task RemoveAsync(WatchFolderItemViewModel? item)
+    private async Task PickFilesAsync()
+    {
+        var top = GetTopLevel();
+        if (top?.StorageProvider is null) return;
+        try
+        {
+            var picked = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "选择文件以识别",
+                AllowMultiple = true,
+            });
+            if (picked.Count == 0) return;
+
+            var paths = picked.Select(p => p.TryGetLocalPath())
+                              .Where(p => !string.IsNullOrEmpty(p))
+                              .Cast<string>()
+                              .ToList();
+            if (paths.Count == 0) return;
+
+            await _dispatcher.HandleDropAsync(paths);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "SourcesViewModel.PickFiles 失败");
+        }
+    }
+
+    /// <summary>清空已完成 / 失败 / 取消的卡片，保留运行中。</summary>
+    [RelayCommand]
+    private void ClearCompleted()
+    {
+        for (int i = TrackedTasks.Count - 1; i >= 0; i--)
+        {
+            if (TrackedTasks[i].IsCompleted)
+                TrackedTasks.RemoveAt(i);
+        }
+    }
+
+    /// <summary>清空所有卡片（含运行中——只是从 UI 移除，任务本身仍在后台跑）。</summary>
+    [RelayCommand]
+    private void ClearAll() => TrackedTasks.Clear();
+
+    /// <summary>移除单张卡（不取消任务）。</summary>
+    [RelayCommand]
+    private void RemoveCard(TaskItemViewModel? item)
     {
         if (item is null) return;
+        TrackedTasks.Remove(item);
+    }
 
-        var confirmed = await NineKgConfirmDialog.ShowAsync(null,
-            title: "移除监视",
-            message: $"将停止监控该文件夹并从配置中删除。**已识别入库的媒体不会被删除**，仅停止后续新文件的自动识别。",
-            intent: DialogIntent.Destructive,
-            targetName: item.Path,
-            confirmText: "确认移除");
-        if (!confirmed) return;
+    /// <summary>SourcesPage code-behind 在 Drop 事件里调，把 paths 转给 dispatcher 处理。</summary>
+    public Task HandleDroppedPathsAsync(IReadOnlyList<string> paths)
+        => _dispatcher.HandleDropAsync(paths);
 
+    private void OnTaskSubmitted(object? sender, DropSubmittedEventArgs e)
+    {
+        // dispatcher 可能从非 UI 线程 fire（IdentifyXxx 是 async）；切回 UI 线程加卡
+        Dispatcher.UIThread.Post(() => AddTaskCard(e.TaskId));
+    }
+
+    private void AddTaskCard(string taskId)
+    {
         try
         {
-            await _monitorService.StopMonitoring(item.Path);
-            if (_config.Source is not null)
+            // 防 dup（同一 task 不应该被加两次）
+            if (TrackedTasks.Any(t => t.TaskId == taskId)) return;
+
+            var progress = _progressService.GetProgress(taskId);
+            if (progress is null)
             {
-                _config.Source.WatchFolders.RemoveAll(p =>
-                    string.Equals(p, item.Path, StringComparison.OrdinalIgnoreCase));
-                await _config.SaveConfig();
+                Log.Debug("SourcesViewModel.AddTaskCard：TaskProgressService 找不到 {TaskId}", taskId);
+                return;
             }
-            Folders.Remove(item);
-            ShowEmpty = Folders.Count == 0;
-            StatusMessage = "已移除";
+
+            // 最新插入到顶部
+            TrackedTasks.Insert(0, new TaskItemViewModel(progress));
+
+            // 超过上限裁底部老的
+            while (TrackedTasks.Count > MaxKeptCards)
+                TrackedTasks.RemoveAt(TrackedTasks.Count - 1);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "移除监视失败：{Path}", item.Path);
-            StatusMessage = "移除失败，请稍后重试";
+            Log.Warning(ex, "SourcesViewModel.AddTaskCard 失败：{TaskId}", taskId);
         }
     }
 
-    /// <summary>
-    /// 触发一次性强制重新识别（绕过 MediaSource.InDatabase 短路）。
-    /// 用 SkipCache=true 让识别流程重新爬取网页 + 重新下载 Poster/Pictures——
-    /// 修复早期 bug 留下的"Media.Poster=null"或"cache 文件丢失"等历史脏数据。
-    /// </summary>
-    [RelayCommand]
-    private async Task RescanAsync(WatchFolderItemViewModel? item)
+    private void RefreshTasks()
     {
-        if (item is null || !item.DirectoryExists) return;
         try
         {
-            var options = _config.Identification?.ToIdentificationOptions() ?? new IdentificationOptions();
-            options.SkipCache = true;  // 关键：绕过 GetMediaByPath 的"已存在"短路，重走完整识别
-            var taskId = await _filesService.IdentifyBatchMedia(item.Path, options, startMonitoringAfterCompletion: false);
-            StatusMessage = $"已开始重新扫描：{item.FolderName}（任务 {taskId}，强制刷新）";
-            Log.Information("Rescan (SkipCache=true)：{Path}, TaskId={TaskId}", item.Path, taskId);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "重新扫描失败：{Path}", item.Path);
-            StatusMessage = "重新扫描失败，请稍后重试";
-        }
-    }
-
-    [RelayCommand]
-    private void OpenInExplorer(WatchFolderItemViewModel? item)
-    {
-        if (item is null || !item.DirectoryExists) return;
-        try
-        {
-            // Win 用 explorer.exe；其他平台 try/catch 失败不报
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            foreach (var card in TrackedTasks)
             {
-                FileName = item.Path,
-                UseShellExecute = true,
-            });
+                card.NotifyAll();
+            }
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "打开资源管理器失败：{Path}", item.Path);
+            Log.Warning(ex, "SourcesViewModel.RefreshTasks 失败");
         }
     }
 

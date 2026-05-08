@@ -7,199 +7,247 @@
              x:Name="PageRoot">
 
     <UserControl.Styles>
-        <Style Selector="Border.folder-row">
+        <!-- 拖拽区基础样式 -->
+        <Style Selector="Border.drop-zone">
+            <Setter Property="Background" Value="{DynamicResource LayerFillColorAltBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Padding" Value="32" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.2" />
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.2" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2" />
+                </Transitions>
+            </Setter>
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+
+        <!-- DragOver 状态：accent 色背景 + 实线 border + 微放大 -->
+        <Style Selector="Border.drop-zone.over">
+            <Setter Property="Background" Value="{DynamicResource AccentFillColorTertiaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+            <Setter Property="RenderTransform" Value="scale(1.01)" />
+        </Style>
+
+        <!-- 进度卡片样式 -->
+        <Style Selector="Border.task-card">
             <Setter Property="Background" Value="{DynamicResource LayerFillColorDefaultBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Padding" Value="14,12" />
-            <Setter Property="Margin" Value="0,0,0,8" />
-            <Setter Property="Transitions">
-                <Transitions>
-                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Border.folder-row:pointerover">
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+            <Setter Property="Padding" Value="14,10" />
+            <Setter Property="Margin" Value="0,0,0,6" />
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <Grid RowDefinitions="Auto,*">
 
-        <!-- 头部 -->
-        <Grid Grid.Row="0" Margin="32,24,32,8" ColumnDefinitions="*,Auto,8,Auto">
+        <!-- 头部：标题 + 跳转监视文件夹 + 文件浏览器 fallback -->
+        <Grid Grid.Row="0" Margin="32,24,32,16" ColumnDefinitions="*,Auto,8,Auto,8,Auto">
             <StackPanel Grid.Column="0" Spacing="4">
                 <TextBlock Text="媒体源" FontSize="28" FontWeight="SemiBold" />
-                <TextBlock Text="长期跟踪的文件夹列表 · 新文件加入会自动触发识别"
+                <TextBlock Text="拖入文件 / 文件夹立即识别 · 实时显示进度"
                            Opacity="0.7" FontSize="13" />
             </StackPanel>
             <Button Grid.Column="1"
-                    Command="{Binding AddFolderCommand}"
-                    Background="{DynamicResource AccentFillColorDefaultBrush}"
-                    Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
-                    VerticalAlignment="Center">
+                    Command="{Binding GoToWatchFoldersCommand}"
+                    VerticalAlignment="Center"
+                    ToolTip.Tip="管理长期跟踪的监视文件夹">
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                    <TextBlock Text="+" FontSize="14" FontWeight="Bold" />
-                    <TextBlock Text="添加监视文件夹" />
+                    <PathIcon Data="{StaticResource IconFolderOpen}" Width="13" Height="13" />
+                    <TextBlock Text="监视文件夹" />
                 </StackPanel>
             </Button>
             <Button Grid.Column="3"
-                    Command="{Binding RefreshCommand}"
+                    Command="{Binding PickFolderCommand}"
                     VerticalAlignment="Center"
-                    ToolTip.Tip="重新读取配置 + 刷新监控状态">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
-                    <TextBlock Text="刷新" />
-                </StackPanel>
+                    ToolTip.Tip="选择文件夹">
+                <TextBlock Text="📁 文件夹" FontSize="12" />
+            </Button>
+            <Button Grid.Column="5"
+                    Command="{Binding PickFilesCommand}"
+                    VerticalAlignment="Center"
+                    ToolTip.Tip="选择文件（可多选）">
+                <TextBlock Text="📄 文件" FontSize="12" />
             </Button>
         </Grid>
 
-        <!-- 拖拽提示 InfoBar -->
-        <Border Grid.Row="1" Margin="32,8,32,16" Padding="14,10"
-                CornerRadius="8"
-                Background="{DynamicResource LayerFillColorAltBrush}"
-                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                BorderThickness="1">
-            <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBlock Text="📥" FontSize="18" VerticalAlignment="Center" />
-                <StackPanel Spacing="2" VerticalAlignment="Center">
-                    <TextBlock Text="拖拽快捷方式" FontSize="13" FontWeight="SemiBold" />
-                    <TextBlock Text="把文件夹拖到主窗任意位置 → 弹双卡片选择「加入监视」或「一次性识别」。单个文件直接拖入会立即进识别队列。"
-                               FontSize="11" Opacity="0.75"
-                               TextWrapping="Wrap" />
-                </StackPanel>
-            </StackPanel>
-        </Border>
+        <!-- 主区：自适应布局
+             无任务时：拖拽区占满全部
+             有任务时：拖拽区上半（缩到 40% 高），进度卡组下半 -->
+        <Grid Grid.Row="1" Margin="32,0,32,24">
+            <Grid.RowDefinitions>
+                <!-- 无任务时：* / 0；有任务时：300 / *  —— 用 Style/Triggers 切 -->
+                <RowDefinition Height="*" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-        <!-- 主区：列表 / 空状态 -->
-        <Grid Grid.Row="2" Margin="32,0,32,12">
+            <Grid.Styles>
+                <!-- 默认无任务态：第二行高度=0，拖拽区占满 -->
+                <Style Selector="Grid#MainArea">
+                    <Setter Property="Tag" Value="empty" />
+                </Style>
+            </Grid.Styles>
 
-            <Border IsVisible="{Binding ShowEmpty}"
-                    Background="{DynamicResource LayerFillColorAltBrush}"
-                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8"
-                    Padding="48,40"
-                    Margin="0,16"
-                    MaxWidth="520"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center">
-                <StackPanel Spacing="16" HorizontalAlignment="Center">
-                    <PathIcon Data="{StaticResource IconFolderOpen}" Width="64" Height="64"
-                              Foreground="{DynamicResource AccentFillColorDefaultBrush}"
-                              Opacity="0.5" HorizontalAlignment="Center" />
-                    <TextBlock Text="暂无监视文件夹"
-                               HorizontalAlignment="Center"
-                               FontSize="18" FontWeight="SemiBold" />
-                    <TextBlock Text="点击右上角「+ 添加监视文件夹」选择目录，或直接把文件夹拖入主窗任意位置——文件加入后会自动触发识别。"
-                               HorizontalAlignment="Center"
-                               TextAlignment="Center"
-                               Opacity="0.7"
-                               TextWrapping="Wrap"
-                               MaxWidth="380" />
-                </StackPanel>
+            <!-- 上半：拖拽区 -->
+            <Border Grid.Row="0"
+                    Classes="drop-zone"
+                    Classes.over="{Binding IsDragOver}"
+                    MinHeight="240"
+                    Margin="0,0,0,8">
+
+                <Grid VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <!-- 默认状态 -->
+                    <StackPanel IsVisible="{Binding !IsDragOver}"
+                                Spacing="14"
+                                HorizontalAlignment="Center">
+                        <TextBlock Text="📥" FontSize="56"
+                                   HorizontalAlignment="Center" Opacity="0.55" />
+                        <TextBlock Text="拖入文件 / 文件夹以开始识别"
+                                   FontSize="18" FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   MaxWidth="440"
+                                   FontSize="12" Opacity="0.65">
+                            <Run Text="单个文件 → 立即识别 · 单个文件夹 → 选「加入监视」或「一次性识别」 · 多个项 → 批量确认" />
+                            <LineBreak />
+                            <Run Text="也可点击右上角 📁 或 📄 选择，或在「监视文件夹」配置长期跟踪的目录。" />
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- DragOver 状态 -->
+                    <StackPanel IsVisible="{Binding IsDragOver}"
+                                Spacing="10"
+                                HorizontalAlignment="Center">
+                        <TextBlock Text="✨" FontSize="56"
+                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="松开开始识别"
+                                   FontSize="20" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
             </Border>
 
-            <ScrollViewer IsVisible="{Binding !ShowEmpty}">
-                <ItemsControl ItemsSource="{Binding Folders}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:WatchFolderItemViewModel">
-                            <Border Classes="folder-row">
-                                <Grid ColumnDefinitions="Auto,12,*,16,Auto" RowDefinitions="Auto,Auto">
+            <!-- 下半：进度卡组（仅有任务时占据空间） -->
+            <Grid Grid.Row="1"
+                  IsVisible="{Binding HasTasks}"
+                  RowDefinitions="Auto,*">
 
-                                    <!-- 左侧：状态点 -->
-                                    <TextBlock Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
-                                               Text="{Binding StatusIcon}"
-                                               Foreground="{Binding StatusBrush}"
-                                               FontSize="20"
-                                               VerticalAlignment="Top"
-                                               Margin="0,2,0,0" />
+                <!-- 卡组头部：进度计数 + 清空按钮 -->
+                <Grid Grid.Row="0" Margin="0,8,0,8" ColumnDefinitions="*,Auto,8,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <TextBlock Text="本次会话进度"
+                                   FontSize="13" FontWeight="SemiBold" />
+                        <Border Padding="8,2"
+                                CornerRadius="10"
+                                Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding TrackedTasks.Count, StringFormat='{}{0} 个任务'}"
+                                       FontSize="11" Opacity="0.75" />
+                        </Border>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Command="{Binding ClearCompletedCommand}"
+                            Padding="10,4"
+                            Background="Transparent"
+                            ToolTip.Tip="移除已完成 / 失败 / 取消的卡（运行中保留）">
+                        <TextBlock Text="清理完成项" FontSize="11" />
+                    </Button>
+                    <Button Grid.Column="3"
+                            Command="{Binding ClearAllCommand}"
+                            Padding="10,4"
+                            Background="Transparent"
+                            ToolTip.Tip="清空所有卡（任务仍在后台跑）">
+                        <TextBlock Text="全部清空" FontSize="11" />
+                    </Button>
+                </Grid>
 
-                                    <!-- 中部 Row 0：路径 + 状态 chip -->
-                                    <StackPanel Grid.Column="2" Grid.Row="0" Orientation="Horizontal" Spacing="10">
-                                        <TextBlock Text="{Binding FolderName}"
-                                                   FontWeight="SemiBold"
-                                                   FontSize="14" />
-                                        <Border Padding="6,1"
-                                                CornerRadius="10"
-                                                Background="{DynamicResource SubtleFillColorTertiaryBrush}"
-                                                VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding StatusText}"
-                                                       FontSize="10"
-                                                       Foreground="{Binding StatusBrush}" />
-                                        </Border>
-                                    </StackPanel>
+                <!-- 卡组列表 -->
+                <ScrollViewer Grid.Row="1">
+                    <ItemsControl ItemsSource="{Binding TrackedTasks}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:TaskItemViewModel">
+                                <Border Classes="task-card">
+                                    <Grid ColumnDefinitions="Auto,12,*,16,Auto" RowDefinitions="Auto,Auto,Auto">
 
-                                    <!-- 中部 Row 1：完整路径 + 统计 -->
-                                    <StackPanel Grid.Column="2" Grid.Row="1" Spacing="2" Margin="0,2,0,0">
-                                        <TextBlock Text="{Binding Path}"
-                                                   FontFamily="Consolas, monospace"
-                                                   FontSize="11"
-                                                   Opacity="0.65"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   ToolTip.Tip="{Binding Path}" />
-                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                            <TextBlock Text="{Binding StatsText}"
-                                                       FontSize="11" Opacity="0.55" />
-                                            <TextBlock Text="·" FontSize="11" Opacity="0.3"
-                                                       IsVisible="{Binding StartTimeText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                            <TextBlock FontSize="11" Opacity="0.55"
-                                                       IsVisible="{Binding StartTimeText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                                <Run Text="启动于" />
-                                                <Run Text="{Binding StartTimeText}" />
-                                            </TextBlock>
+                                        <!-- 状态图标 -->
+                                        <TextBlock Grid.Column="0" Grid.Row="0" Grid.RowSpan="3"
+                                                   Text="{Binding StatusIcon}"
+                                                   Foreground="{Binding StatusBrush}"
+                                                   FontSize="22"
+                                                   VerticalAlignment="Top"
+                                                   Margin="0,2,0,0" />
+
+                                        <!-- 任务名 + 状态文本 -->
+                                        <StackPanel Grid.Column="2" Grid.Row="0"
+                                                    Orientation="Horizontal" Spacing="10">
+                                            <TextBlock Text="{Binding DisplayName}"
+                                                       FontWeight="SemiBold"
+                                                       FontSize="13"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <Border Padding="6,1"
+                                                    CornerRadius="10"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding StatusText}"
+                                                           FontSize="10"
+                                                           Foreground="{Binding StatusBrush}" />
+                                            </Border>
                                         </StackPanel>
-                                    </StackPanel>
 
-                                    <!-- 右侧：行操作组 -->
-                                    <StackPanel Grid.Column="4" Grid.Row="0" Grid.RowSpan="2"
-                                                Orientation="Horizontal" Spacing="6"
-                                                VerticalAlignment="Center">
-                                        <Button Command="{Binding #PageRoot.((vm:SourcesViewModel)DataContext).OpenInExplorerCommand}"
-                                                CommandParameter="{Binding}"
-                                                IsEnabled="{Binding DirectoryExists}"
-                                                Padding="10,5"
-                                                Background="Transparent"
-                                                ToolTip.Tip="在资源管理器中打开">
-                                            <TextBlock Text="📂" FontSize="13" />
-                                        </Button>
-                                        <Button Command="{Binding #PageRoot.((vm:SourcesViewModel)DataContext).RescanCommand}"
-                                                CommandParameter="{Binding}"
-                                                IsEnabled="{Binding DirectoryExists}"
-                                                Padding="10,5"
-                                                Background="Transparent"
-                                                ToolTip.Tip="重新扫描该文件夹（一次性识别）">
-                                            <PathIcon Data="{StaticResource IconRefresh}" Width="13" Height="13" />
-                                        </Button>
-                                        <Button Command="{Binding #PageRoot.((vm:SourcesViewModel)DataContext).RemoveCommand}"
-                                                CommandParameter="{Binding}"
-                                                Padding="10,5"
-                                                Background="Transparent"
-                                                Foreground="{DynamicResource SystemFillColorCriticalBrush}"
-                                                ToolTip.Tip="移除监视">
-                                            <TextBlock Text="✕" FontSize="13" />
-                                        </Button>
-                                    </StackPanel>
+                                        <!-- 当前消息 / 子任务统计 -->
+                                        <StackPanel Grid.Column="2" Grid.Row="1"
+                                                    Orientation="Horizontal" Spacing="8" Margin="0,2,0,0"
+                                                    IsVisible="{Binding CurrentMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                            <TextBlock Text="{Binding CurrentMessage}"
+                                                       FontSize="11" Opacity="0.7"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding ChildrenStatsText}"
+                                                       FontSize="11" Opacity="0.55"
+                                                       IsVisible="{Binding HasChildren}" />
+                                        </StackPanel>
 
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+                                        <!-- 进度条（仅运行 / 排队时显示） -->
+                                        <ProgressBar Grid.Column="2" Grid.Row="2"
+                                                     Value="{Binding ProgressPercentage}"
+                                                     Minimum="0" Maximum="100"
+                                                     Height="4"
+                                                     Margin="0,6,0,0"
+                                                     IsVisible="{Binding ShowProgressBar}"
+                                                     Foreground="{Binding StatusBrush}" />
+
+                                        <!-- 完成态：耗时（替换 progress bar 位置） -->
+                                        <TextBlock Grid.Column="2" Grid.Row="2"
+                                                   Text="{Binding TimingText}"
+                                                   FontSize="10" Opacity="0.55"
+                                                   Margin="0,6,0,0"
+                                                   IsVisible="{Binding IsCompleted}" />
+
+                                        <!-- 右侧：移除卡按钮 -->
+                                        <Button Grid.Column="4" Grid.Row="0" Grid.RowSpan="3"
+                                                Command="{Binding #PageRoot.((vm:SourcesViewModel)DataContext).RemoveCardCommand}"
+                                                CommandParameter="{Binding}"
+                                                Padding="8,4"
+                                                Background="Transparent"
+                                                VerticalAlignment="Center"
+                                                ToolTip.Tip="从列表移除（不取消任务）">
+                                            <TextBlock Text="✕" FontSize="13" Opacity="0.55" />
+                                        </Button>
+
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
 
         </Grid>
-
-        <!-- 底部状态消息 -->
-        <Border Grid.Row="3" Padding="32,8"
-                Background="{DynamicResource LayerFillColorAltBrush}"
-                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                BorderThickness="0,1,0,0"
-                IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-            <TextBlock Text="{Binding StatusMessage}"
-                       FontSize="11" Opacity="0.75" />
-        </Border>
 
     </Grid>
 

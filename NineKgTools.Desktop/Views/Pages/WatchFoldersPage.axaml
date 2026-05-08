@@ -1,0 +1,194 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Pages"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             x:Class="NineKgTools.Desktop.Views.Pages.WatchFoldersPage"
+             x:DataType="vm:WatchFoldersViewModel"
+             x:Name="PageRoot">
+
+    <UserControl.Styles>
+        <Style Selector="Border.folder-row">
+            <Setter Property="Background" Value="{DynamicResource LayerFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="14,12" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.folder-row:pointerover">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <!-- 头部：返回 + 标题 + 添加 + 刷新 -->
+        <Grid Grid.Row="0" Margin="32,24,32,16" ColumnDefinitions="Auto,12,*,Auto,8,Auto">
+            <Button Grid.Column="0"
+                    Command="{Binding GoBackToSourcesCommand}"
+                    VerticalAlignment="Center"
+                    ToolTip.Tip="返回媒体源工作台">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="←" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Text="媒体源" />
+                </StackPanel>
+            </Button>
+            <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
+                <TextBlock Text="监视文件夹" FontSize="28" FontWeight="SemiBold" />
+                <TextBlock Text="长期跟踪的文件夹列表 · 新文件加入会自动触发识别"
+                           Opacity="0.7" FontSize="13" />
+            </StackPanel>
+            <Button Grid.Column="3"
+                    Command="{Binding AddFolderCommand}"
+                    Background="{DynamicResource AccentFillColorDefaultBrush}"
+                    Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                    VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="+" FontSize="14" FontWeight="Bold" />
+                    <TextBlock Text="添加文件夹" />
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="5"
+                    Command="{Binding RefreshCommand}"
+                    VerticalAlignment="Center"
+                    ToolTip.Tip="重新读取配置 + 刷新监控状态">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
+                    <TextBlock Text="刷新" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- 主区：列表 / 空状态 -->
+        <Grid Grid.Row="1" Margin="32,0,32,12">
+
+            <Border IsVisible="{Binding ShowEmpty}"
+                    Background="{DynamicResource LayerFillColorAltBrush}"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="48,40"
+                    Margin="0,16"
+                    MaxWidth="520"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+                <StackPanel Spacing="16" HorizontalAlignment="Center">
+                    <PathIcon Data="{StaticResource IconFolderOpen}" Width="64" Height="64"
+                              Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                              Opacity="0.5" HorizontalAlignment="Center" />
+                    <TextBlock Text="暂无监视文件夹"
+                               HorizontalAlignment="Center"
+                               FontSize="18" FontWeight="SemiBold" />
+                    <TextBlock Text="点击右上角「+ 添加文件夹」选择目录，或在「媒体源」工作台拖入文件夹时选择「加入监视」。"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
+                               Opacity="0.7"
+                               TextWrapping="Wrap"
+                               MaxWidth="380" />
+                </StackPanel>
+            </Border>
+
+            <ScrollViewer IsVisible="{Binding !ShowEmpty}">
+                <ItemsControl ItemsSource="{Binding Folders}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:WatchFolderItemViewModel">
+                            <Border Classes="folder-row">
+                                <Grid ColumnDefinitions="Auto,12,*,16,Auto" RowDefinitions="Auto,Auto">
+
+                                    <TextBlock Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
+                                               Text="{Binding StatusIcon}"
+                                               Foreground="{Binding StatusBrush}"
+                                               FontSize="20"
+                                               VerticalAlignment="Top"
+                                               Margin="0,2,0,0" />
+
+                                    <StackPanel Grid.Column="2" Grid.Row="0" Orientation="Horizontal" Spacing="10">
+                                        <TextBlock Text="{Binding FolderName}"
+                                                   FontWeight="SemiBold"
+                                                   FontSize="14" />
+                                        <Border Padding="6,1"
+                                                CornerRadius="10"
+                                                Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding StatusText}"
+                                                       FontSize="10"
+                                                       Foreground="{Binding StatusBrush}" />
+                                        </Border>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2" Grid.Row="1" Spacing="2" Margin="0,2,0,0">
+                                        <TextBlock Text="{Binding Path}"
+                                                   FontFamily="Consolas, monospace"
+                                                   FontSize="11"
+                                                   Opacity="0.65"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   ToolTip.Tip="{Binding Path}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="{Binding StatsText}"
+                                                       FontSize="11" Opacity="0.55" />
+                                            <TextBlock Text="·" FontSize="11" Opacity="0.3"
+                                                       IsVisible="{Binding StartTimeText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            <TextBlock FontSize="11" Opacity="0.55"
+                                                       IsVisible="{Binding StartTimeText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                                <Run Text="启动于" />
+                                                <Run Text="{Binding StartTimeText}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="4" Grid.Row="0" Grid.RowSpan="2"
+                                                Orientation="Horizontal" Spacing="6"
+                                                VerticalAlignment="Center">
+                                        <Button Command="{Binding #PageRoot.((vm:WatchFoldersViewModel)DataContext).OpenInExplorerCommand}"
+                                                CommandParameter="{Binding}"
+                                                IsEnabled="{Binding DirectoryExists}"
+                                                Padding="10,5"
+                                                Background="Transparent"
+                                                ToolTip.Tip="在资源管理器中打开">
+                                            <TextBlock Text="📂" FontSize="13" />
+                                        </Button>
+                                        <Button Command="{Binding #PageRoot.((vm:WatchFoldersViewModel)DataContext).RescanCommand}"
+                                                CommandParameter="{Binding}"
+                                                IsEnabled="{Binding DirectoryExists}"
+                                                Padding="10,5"
+                                                Background="Transparent"
+                                                ToolTip.Tip="重新扫描该文件夹（一次性识别）">
+                                            <PathIcon Data="{StaticResource IconRefresh}" Width="13" Height="13" />
+                                        </Button>
+                                        <Button Command="{Binding #PageRoot.((vm:WatchFoldersViewModel)DataContext).RemoveCommand}"
+                                                CommandParameter="{Binding}"
+                                                Padding="10,5"
+                                                Background="Transparent"
+                                                Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                                ToolTip.Tip="移除监视">
+                                            <TextBlock Text="✕" FontSize="13" />
+                                        </Button>
+                                    </StackPanel>
+
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+        </Grid>
+
+        <!-- 底部状态消息 -->
+        <Border Grid.Row="2" Padding="32,8"
+                Background="{DynamicResource LayerFillColorAltBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                BorderThickness="0,1,0,0"
+                IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="{Binding StatusMessage}"
+                       FontSize="11" Opacity="0.75" />
+        </Border>
+
+    </Grid>
+
+</UserControl>

@@ -307,6 +307,7 @@ internal static class Program
         services.AddTransient<MediaOverviewViewModel>();
         services.AddTransient<PendingMediaViewModel>();
         services.AddTransient<SourcesViewModel>();
+        services.AddTransient<WatchFoldersViewModel>();
         services.AddTransient<BackgroundTasksViewModel>();
         services.AddTransient<TagsViewModel>();
         services.AddTransient<TagsMappingsViewModel>();
