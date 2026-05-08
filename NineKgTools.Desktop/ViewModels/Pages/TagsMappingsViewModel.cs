@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NineKgTools.Core.Models.Tags;
 using NineKgTools.Core.Services.Tags;
+using NineKgTools.Desktop.Services;
 using NineKgTools.Desktop.Views.Dialogs;
 using Serilog;
 
@@ -17,6 +18,7 @@ public enum TagMappingFilter { All, Active, Inactive, Unused }
 public partial class TagsMappingsViewModel : PageViewModelBase
 {
     private readonly TagMappingService _mappingService;
+    private readonly NavigationService _navigation;
 
     public override string Title => "标签映射";
 
@@ -63,12 +65,17 @@ public partial class TagsMappingsViewModel : PageViewModelBase
     public bool IsFilterInactive => SelectedFilter == TagMappingFilter.Inactive;
     public bool IsFilterUnused => SelectedFilter == TagMappingFilter.Unused;
 
-    public TagsMappingsViewModel(TagMappingService mappingService)
+    public TagsMappingsViewModel(TagMappingService mappingService, NavigationService navigation)
     {
         _mappingService = mappingService;
+        _navigation = navigation;
     }
 
     public override Task OnEnterAsync() => RefreshAsync();
+
+    /// <summary>从"标签映射"子页面返回到"标签"主页面。</summary>
+    [RelayCommand]
+    private Task GoBackToTags() => _navigation.NavigateToAsync<TagsViewModel>();
 
     [RelayCommand]
     private async Task RefreshAsync()

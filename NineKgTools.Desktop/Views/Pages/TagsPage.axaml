@@ -50,13 +50,22 @@
         <Grid IsVisible="{Binding ShowTopList}" RowDefinitions="Auto,*">
 
             <!-- 头部 -->
-            <Grid Grid.Row="0" Margin="32,24,32,16" ColumnDefinitions="*,Auto,8,Auto">
+            <Grid Grid.Row="0" Margin="32,24,32,16" ColumnDefinitions="*,Auto,8,Auto,8,Auto">
                 <StackPanel Grid.Column="0" Spacing="4">
                     <TextBlock Text="标签" FontSize="28" FontWeight="SemiBold" />
                     <TextBlock Text="按主题组织你的媒体 · 顶级分类 → 子标签 → 关联媒体"
                                Opacity="0.7" FontSize="13" />
                 </StackPanel>
                 <Button Grid.Column="1"
+                        Command="{Binding OpenTagMappingsCommand}"
+                        VerticalAlignment="Center"
+                        ToolTip.Tip="管理识别别名归一化规则">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="🔗" FontSize="13" />
+                        <TextBlock Text="标签映射" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="3"
                         Command="{Binding AddTopTagCommand}"
                         Background="{DynamicResource AccentFillColorDefaultBrush}"
                         Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
@@ -66,7 +75,7 @@
                         <TextBlock Text="新建分组" />
                     </StackPanel>
                 </Button>
-                <Button Grid.Column="3"
+                <Button Grid.Column="5"
                         Command="{Binding LoadTopTagsCommand}"
                         VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" Spacing="6">

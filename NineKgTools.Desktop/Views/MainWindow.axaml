@@ -8,6 +8,7 @@
         x:Class="NineKgTools.Desktop.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="NineKgTools"
+        Icon="avares://NineKgTools.Desktop/Assets/Logos/logo-9-icon.png"
         Width="1280" Height="800"
         MinWidth="640" MinHeight="480"
         TransparencyLevelHint="Mica,AcrylicBlur,Blur"
@@ -72,12 +73,6 @@
             <ui:FANavigationViewItemSeparator />
 
             <ui:FANavigationViewItem Content="标签" Tag="TagsViewModel">
-                <ui:FANavigationViewItem.IconSource>
-                    <ui:FAPathIconSource Data="{StaticResource IconTags}" />
-                </ui:FANavigationViewItem.IconSource>
-            </ui:FANavigationViewItem>
-
-            <ui:FANavigationViewItem Content="标签映射" Tag="TagsMappingsViewModel">
                 <ui:FANavigationViewItem.IconSource>
                     <ui:FAPathIconSource Data="{StaticResource IconTags}" />
                 </ui:FANavigationViewItem.IconSource>

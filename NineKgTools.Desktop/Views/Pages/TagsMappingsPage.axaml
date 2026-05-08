@@ -42,14 +42,23 @@
 
     <Grid RowDefinitions="Auto,Auto,Auto,*">
 
-        <!-- 头部 -->
-        <Grid Grid.Row="0" Margin="32,24,32,8" ColumnDefinitions="*,Auto,8,Auto">
-            <StackPanel Grid.Column="0" Spacing="4">
+        <!-- 头部：返回 → 标题 → 清理 → 刷新 -->
+        <Grid Grid.Row="0" Margin="32,24,32,8" ColumnDefinitions="Auto,12,*,Auto,8,Auto">
+            <Button Grid.Column="0"
+                    Command="{Binding GoBackToTagsCommand}"
+                    VerticalAlignment="Center"
+                    ToolTip.Tip="返回标签管理">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="←" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock Text="标签" />
+                </StackPanel>
+            </Button>
+            <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
                 <TextBlock Text="标签映射" FontSize="28" FontWeight="SemiBold" />
                 <TextBlock Text="把识别得到的标签别名归化到主标签：例如「美少女游戏 → 美少女游戏」"
                            Opacity="0.7" FontSize="13" />
             </StackPanel>
-            <Button Grid.Column="1"
+            <Button Grid.Column="3"
                     Command="{Binding DeleteUnusedCommand}"
                     VerticalAlignment="Center"
                     IsEnabled="{Binding UnusedCount}">
@@ -58,7 +67,7 @@
                     <TextBlock Text="清理未使用" />
                 </StackPanel>
             </Button>
-            <Button Grid.Column="3" Command="{Binding RefreshCommand}" VerticalAlignment="Center">
+            <Button Grid.Column="5" Command="{Binding RefreshCommand}" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
                     <TextBlock Text="刷新" />

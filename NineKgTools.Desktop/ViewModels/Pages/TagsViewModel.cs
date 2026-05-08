@@ -20,6 +20,7 @@ public partial class TagsViewModel : PageViewModelBase
     private readonly TagService _tagService;
     private readonly MediaService _mediaService;
     private readonly ImageCacheService _imageCache;
+    private readonly NavigationService _navigation;
 
     /// <summary>标签详情页媒体数硬上限——超过提示用户改用媒体库的多维筛选。</summary>
     private const int MaxMediasOnTagDetail = 200;
@@ -90,12 +91,18 @@ public partial class TagsViewModel : PageViewModelBase
 
     private List<TagItemViewModel> _allTagsForSelectedTop = new();
 
-    public TagsViewModel(TagService tagService, MediaService mediaService, ImageCacheService imageCache)
+    public TagsViewModel(TagService tagService, MediaService mediaService, ImageCacheService imageCache,
+        NavigationService navigation)
     {
         _tagService = tagService;
         _mediaService = mediaService;
         _imageCache = imageCache;
+        _navigation = navigation;
     }
+
+    /// <summary>跳到"标签映射"子页面（§3.3）。从 NavigationView 移除独立入口后由本按钮承接。</summary>
+    [RelayCommand]
+    private Task OpenTagMappings() => _navigation.NavigateToAsync<TagsMappingsViewModel>();
 
     public override Task OnEnterAsync() => LoadTopTagsAsync();
 
