@@ -55,9 +55,19 @@ public partial class App : Application
             var vm = Program.Services.GetRequiredService<MainWindowViewModel>();
             var window = new MainWindow { DataContext = vm };
 
-            // 主窗显示后再触发 AfterStartup（拉起文件夹监控、定时任务），避免阻塞 UI 初始化
+            // 主窗显示后再触发 AfterStartup（拉起文件夹监控、定时任务），避免阻塞 UI 初始化。
+            //
+            // **once-only guard**：close-to-tray 后用户从托盘单击恢复主窗会再调 main.Show()，
+            // Avalonia 12 的 Window.Opened 在每次 Show() 都会触发——若不挡，会让
+            // RunAfterStartupAsync 重跑，里面 StartProcessConfiguredFolders 对每个监视
+            // 文件夹除了启动监控外还会调 IdentifyBatchMedia 把整个文件夹重新批量识别一遍。
+            // 用闭包 boolean 兜住，启动期任务只跑一次。
+            bool startupTasksRan = false;
             window.Opened += async (_, _) =>
             {
+                if (startupTasksRan) return;
+                startupTasksRan = true;
+
                 try
                 {
                     await vm.InitializeAsync();
