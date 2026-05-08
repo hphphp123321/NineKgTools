@@ -38,6 +38,16 @@ public partial class App : Application
             // 不开启则 OnMainWindowClose 默认会在 Hide 时也判定 lastWindowClose 退出。
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
+            // 禁用 FluentAvalonia 全局动画——根因：FANavigationView 内部
+            // PlayIndicatorAnimations 用 StepEasingFunction { Steps = 5 } 量化 position
+            // 关键帧的进度（NavigationView.cs:3447），把"从旧位置滑到新位置"切成 5 档台阶。
+            // 相邻 tab 距离小（每档几像素）肉眼看不出量化；跨多 tab 时每档几十上百像素，
+            // 视觉上变成"几次跳跃" + 后续 400ms 静止 hold——感觉像低帧率瞬移。
+            // FA 没有公开 API 单独关 indicator 动画或调 Steps；只能整体关。
+            // trade-off：FAContentDialog / TeachingTip 等的 fade-in/scale-in 也会去掉，
+            // 改成直接显示（这在桌面端很常见，VS/Rider 也是 instant 弹出）。
+            FluentAvalonia.Core.FAUISettings.SetAnimationsEnabledAtAppLevel(false);
+
             // 应用启动时按 DesktopPreferences 还原主题
             var prefs = Program.Services.GetRequiredService<DesktopPreferences>();
             ApplyPersistedTheme(prefs.Theme);
