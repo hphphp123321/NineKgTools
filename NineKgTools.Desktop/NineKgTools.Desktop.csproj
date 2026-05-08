@@ -8,6 +8,11 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
         <ApplicationManifest>app.manifest</ApplicationManifest>
+        <!-- 嵌入 multi-size .ico 到 PE resource：Win11 任务栏 / 资源管理器 / Alt+Tab
+             看到的图标都从 exe 资源读，单独的 Window.Icon 只控制运行中实例的标题栏。
+             ico 由 scripts/build-app-ico.ps1 从 logo-9-icon-transparent.png 生成
+             (16/24/32/48/64/128/256 七个尺寸，Windows 自动按 DPI 选最合适的)。 -->
+        <ApplicationIcon>Assets/app.ico</ApplicationIcon>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     </PropertyGroup>
 

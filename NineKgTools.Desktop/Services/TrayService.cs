@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -35,6 +36,9 @@ public class TrayService : IDisposable
     private DispatcherTimer? _pollTimer;
     private TrayState _currentState = TrayState.Idle;
     private bool _disposed;
+
+    /// <summary>项目品牌 logo（一次性加载缓存）。失败 → 用 IconLibrary geometry fallback。</summary>
+    private Bitmap? _brandLogo;
 
     /// <summary>
     /// 用户从托盘"退出"或快捷键退出时置 true，让 MainWindow.Closing 跳过 close-to-tray 拦截。
@@ -207,10 +211,73 @@ public class TrayService : IDisposable
     }
 
     /// <summary>
-    /// 把 IconLibrary 几何图形渲染成 32×32 PNG，按状态着色。
-    /// Avalonia RenderTargetBitmap 在所有平台都可用，无需 ICO 文件资产。
+    /// 32×32 托盘图标：默认用项目 logo（avares Assets/Logos/logo-9-icon-transparent.png）。
+    /// 状态非 Idle 时叠加右下角彩色 badge（运行中=蓝、失败=红）。
+    /// logo 加载失败（avares 资源缺失等）→ 回退到 IconLibrary geometry 着色版本。
     /// </summary>
     private WindowIcon RenderTrayIcon(TrayState state)
+    {
+        // 一次性加载 logo bitmap 到 field（status 切换时不重新解码）
+        if (_brandLogo is null)
+        {
+            try
+            {
+                using var stream = AssetLoader.Open(new Uri(
+                    "avares://NineKgTools.Desktop/Assets/Logos/logo-9-icon-transparent.png"));
+                _brandLogo = new Bitmap(stream);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "加载托盘 logo 失败，回退到 geometry 渲染");
+            }
+        }
+
+        const int size = 32;
+
+        if (_brandLogo is null)
+            return RenderFallbackIcon(state, size);
+
+        // logo 底图 + 可选 badge
+        var grid = new Grid { Width = size, Height = size };
+        grid.Children.Add(new Image
+        {
+            Source = _brandLogo,
+            Stretch = Stretch.Uniform,
+        });
+
+        if (state != TrayState.Idle)
+        {
+            var badgeColor = state == TrayState.HasFailures
+                ? Color.FromRgb(0xE5, 0x53, 0x53)   // critical 红
+                : Color.FromRgb(0x55, 0xB3, 0xF0);  // attention 蓝
+            grid.Children.Add(new Ellipse
+            {
+                Width = 12,
+                Height = 12,
+                Fill = new SolidColorBrush(badgeColor),
+                Stroke = new SolidColorBrush(Colors.White),
+                StrokeThickness = 1.5,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Bottom,
+            });
+        }
+
+        grid.Measure(new Size(size, size));
+        grid.Arrange(new Rect(0, 0, size, size));
+
+        var rtb = new RenderTargetBitmap(new PixelSize(size, size));
+        rtb.Render(grid);
+
+        using var ms = new MemoryStream();
+        rtb.Save(ms);
+        ms.Position = 0;
+        return new WindowIcon(ms);
+    }
+
+    /// <summary>
+    /// 回退渲染：avares logo 资源不可用时（理论上不应发生，但防御性兜底）用旧的 geometry 路径。
+    /// </summary>
+    private static WindowIcon RenderFallbackIcon(TrayState state, int size)
     {
         var brushKey = state switch
         {
@@ -233,7 +300,6 @@ public class TrayService : IDisposable
             geometry = gg;
         }
 
-        const int size = 32;
         var path = new AvaloniaPath
         {
             Data = geometry,
