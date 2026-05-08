@@ -4,6 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:NineKgTools.Desktop.ViewModels"
         xmlns:ui="using:FluentAvalonia.UI.Controls"
+        xmlns:anim="using:NineKgTools.Desktop.Animations"
         mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
         x:Class="NineKgTools.Desktop.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -103,8 +104,14 @@
             </ui:FANavigationViewItem>
         </ui:FANavigationView.MenuItems>
 
-        <!-- 主内容区：ViewLocator 自动把 PageViewModelBase 渲染为对应 View -->
-        <ContentControl Content="{Binding CurrentPage}" />
+        <!-- 主内容区：ViewLocator 自动把 PageViewModelBase 渲染为对应 View
+             用 TransitioningContentControl + FadeSlideUpTransition 给 view 切换加 160ms
+             fade + 8px 上浮过渡（FA 全局动画已禁，这里独立提供桌面端规范的页面过渡）。 -->
+        <TransitioningContentControl Content="{Binding CurrentPage}">
+            <TransitioningContentControl.PageTransition>
+                <anim:FadeSlideUpTransition Duration="0:0:0.16" SlideOffset="8" />
+            </TransitioningContentControl.PageTransition>
+        </TransitioningContentControl>
 
     </ui:FANavigationView>
 
