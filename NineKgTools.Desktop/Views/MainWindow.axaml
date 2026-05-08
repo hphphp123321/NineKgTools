@@ -109,7 +109,7 @@
              fade + 8px 上浮过渡（FA 全局动画已禁，这里独立提供桌面端规范的页面过渡）。 -->
         <TransitioningContentControl Content="{Binding CurrentPage}">
             <TransitioningContentControl.PageTransition>
-                <anim:FadeSlideUpTransition Duration="0:0:0.16" SlideOffset="8" />
+                <anim:FadeSlideUpTransition Duration="0:0:0.2" SlideOffset="8" />
             </TransitioningContentControl.PageTransition>
         </TransitioningContentControl>
 
