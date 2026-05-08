@@ -58,11 +58,14 @@
                         <Grid ColumnDefinitions="Auto,12,*,Auto">
                             <Border Grid.Column="0" Width="44" Height="44"
                                     CornerRadius="10"
-                                    Background="{DynamicResource BrandCategoryPictureFillBrush}"
-                                    VerticalAlignment="Center">
-                                <TextBlock Text="DL" FontWeight="Bold" FontSize="16"
-                                           Foreground="{DynamicResource BrandCategoryPictureBrush}"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    Background="White"
+                                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    VerticalAlignment="Center"
+                                    ClipToBounds="True">
+                                <Image Source="avares://NineKgTools.Desktop/Assets/Logos/logo-dlsite.png"
+                                       Stretch="Uniform"
+                                       Margin="4" />
                             </Border>
                             <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
                                 <TextBlock Text="DLsite" FontSize="16" FontWeight="SemiBold" />
@@ -107,11 +110,14 @@
                         <Grid ColumnDefinitions="Auto,12,*,Auto">
                             <Border Grid.Column="0" Width="44" Height="44"
                                     CornerRadius="10"
-                                    Background="{DynamicResource BrandCategoryVideoFillBrush}"
-                                    VerticalAlignment="Center">
-                                <TextBlock Text="bgm" FontWeight="Bold" FontSize="14"
-                                           Foreground="{DynamicResource BrandCategoryVideoBrush}"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    Background="White"
+                                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    VerticalAlignment="Center"
+                                    ClipToBounds="True">
+                                <Image Source="avares://NineKgTools.Desktop/Assets/Logos/logo-bangumi.png"
+                                       Stretch="Uniform"
+                                       Margin="4" />
                             </Border>
                             <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
                                 <TextBlock Text="Bangumi" FontSize="16" FontWeight="SemiBold" />
