@@ -153,11 +153,44 @@ public static class HtmlInlinesParser
                         {
                             var rawHref = node.GetAttributeValue("href", "")?.Trim();
                             var href = NormalizeUrl(rawHref);
-                            var text = HtmlEntity.DeEntitize(node.InnerText) ?? "";
-                            if (!string.IsNullOrEmpty(href) && IsSafeUrl(href))
-                                inlines.Add(MakeHyperlink(text, href));
-                            else
+
+                            if (string.IsNullOrEmpty(href) || !IsSafeUrl(href))
+                            {
+                                // 无 href / 协议不允许：剥 a 标签，children 加下划线
                                 ProcessNodes(node.ChildNodes, inlines, weight, style, underline: true);
+                                break;
+                            }
+
+                            // 先把 children 收集到 sub-list（不直接拼到 inlines）。
+                            // 关键：原版用 InnerText 会把 <a><img></a> 这种嵌套的 img 直接吃掉
+                            // 变成空文本，结果只显示一个超链接 fallback 到 href，图片永远不渲染。
+                            // 现在递归 children 让 img case 真正触发 LoadImageAsync。
+                            var childInlines = new List<Inline>();
+                            ProcessNodes(node.ChildNodes, childInlines, weight, style, underline);
+
+                            if (childInlines.Count == 0)
+                            {
+                                // 真无 children：href 自己当文本显示
+                                inlines.Add(MakeHyperlink(href, href));
+                            }
+                            else if (childInlines.Count == 1
+                                && childInlines[0] is Run only
+                                && !string.IsNullOrEmpty(only.Text))
+                            {
+                                // 纯文本链接：走标准 hyperlink 路径（accent 色 + 下划线）
+                                inlines.Add(MakeHyperlink(only.Text, href));
+                            }
+                            else
+                            {
+                                // 复杂 children（含 img / 多个 inline）：保留原样，给每个
+                                // InlineUIContainer 的 child 加 PointerPressed 让它们都可点击。
+                                // Run 等纯 Inline 不支持 pointer events，被点击时无响应——可接受。
+                                foreach (var child in childInlines)
+                                {
+                                    AttachClickHandler(child, href);
+                                    inlines.Add(child);
+                                }
+                            }
                             break;
                         }
 
@@ -200,6 +233,29 @@ public static class HtmlInlinesParser
         if (style != FontStyle.Normal) run.FontStyle = style;
         if (underline) run.TextDecorations = TextDecorations.Underline;
         return run;
+    }
+
+    /// <summary>
+    /// 给已有 InlineUIContainer 的内嵌 Control 加 PointerPressed → OpenUrl。
+    /// 用于处理 <c>&lt;a&gt;&lt;img/&gt;&lt;/a&gt;</c> 这类嵌套：a 不能直接包成单个 InlineUIContainer
+    /// （children 已经各自是 InlineUIContainer 了），改给每个 child Control 各自挂 click。
+    /// 副作用：Cursor 改 Hand，ToolTip 设 href。
+    /// </summary>
+    private static void AttachClickHandler(Inline inline, string href)
+    {
+        if (inline is InlineUIContainer container && container.Child is Control control)
+        {
+            control.Cursor = new Cursor(StandardCursorType.Hand);
+            control.PointerPressed += (_, e) =>
+            {
+                if (!e.GetCurrentPoint(control).Properties.IsLeftButtonPressed) return;
+                OpenUrl(href);
+                e.Handled = true;
+            };
+            ToolTip.SetTip(control, href);
+        }
+        // Run / Bold / Italic / LineBreak 等基础 Inline 不能加 pointer events——
+        // 被点击时无响应。a 中混合的纯文本部分可点性丢失，但视觉上已经被 Run 表达了。
     }
 
     /// <summary>
