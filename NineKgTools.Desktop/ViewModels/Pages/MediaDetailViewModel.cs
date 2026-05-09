@@ -47,22 +47,17 @@ public partial class MediaDetailViewModel : ObservableObject
     private ObservableCollection<string> _editingAliases = new();
 
     // ===== AI 翻译 draft（编辑模式才用） =====
+    // Description 字段在桌面端 UI 已弃用（视觉用图片画廊取代，HTML 渲染抖动调不好），
+    // 但 _media.Description / _media.DescriptionTranslated 数据库字段保留——SaveAsync 不再
+    // 写这俩字段，避免破坏 Web 端编辑结果或识别源回填的内容。
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasEditingSummaryTranslated))]
     private string _editingSummaryTranslated = "";
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasEditingDescriptionTranslated))]
-    private string _editingDescriptionTranslated = "";
-
-    [ObservableProperty]
     private bool _isTranslatingSummary;
 
-    [ObservableProperty]
-    private bool _isTranslatingDescription;
-
     public bool HasEditingSummaryTranslated => !string.IsNullOrWhiteSpace(EditingSummaryTranslated);
-    public bool HasEditingDescriptionTranslated => !string.IsNullOrWhiteSpace(EditingDescriptionTranslated);
 
     /// <summary>发售日期 draft（DatePicker 用 DateTimeOffset?，Save 时转 DateTime?）</summary>
     [ObservableProperty]
@@ -114,8 +109,30 @@ public partial class MediaDetailViewModel : ObservableObject
     [ObservableProperty]
     private string _summary = "";
 
+    // ===== 图片画廊（Pictures slider，取代原 Description UI）=====
+    /// <summary>媒体的 Pictures 集合 VM；ImageCacheService 异步加载每张 bitmap。</summary>
     [ObservableProperty]
-    private string _description = "";
+    private ObservableCollection<MediaPictureItemViewModel> _pictures = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedPicture))]
+    [NotifyPropertyChangedFor(nameof(PictureCounterText))]
+    [NotifyPropertyChangedFor(nameof(CanGoPrevPicture))]
+    [NotifyPropertyChangedFor(nameof(CanGoNextPicture))]
+    private int _selectedPictureIndex;
+
+    public MediaPictureItemViewModel? SelectedPicture =>
+        Pictures.Count > 0 && SelectedPictureIndex >= 0 && SelectedPictureIndex < Pictures.Count
+            ? Pictures[SelectedPictureIndex]
+            : null;
+
+    public string PictureCounterText =>
+        Pictures.Count > 0 ? $"{SelectedPictureIndex + 1} / {Pictures.Count}" : "";
+
+    public bool HasPictures => Pictures.Count > 0;
+    public bool HasMultiplePictures => Pictures.Count > 1;
+    public bool CanGoPrevPicture => SelectedPictureIndex > 0;
+    public bool CanGoNextPicture => SelectedPictureIndex < Pictures.Count - 1;
 
     [ObservableProperty]
     private string _aliasText = "";
@@ -250,7 +267,17 @@ public partial class MediaDetailViewModel : ObservableObject
         RatingText = HasRating ? $"★ {Rating:F1}" : "";
 
         Summary = string.IsNullOrWhiteSpace(media.Summary) ? "" : media.Summary;
-        Description = string.IsNullOrWhiteSpace(media.Description) ? "" : media.Description;
+
+        // 图片画廊：取代原 Description 区域
+        var pictures = (media.Pictures ?? new List<Core.Models.Media.Image>())
+            .Where(p => !string.IsNullOrEmpty(p.Name))
+            .Select(p => new MediaPictureItemViewModel(p, _imageCache))
+            .ToList();
+        Pictures = new ObservableCollection<MediaPictureItemViewModel>(pictures);
+        if (Pictures.Count > 0) Pictures[0].IsSelected = true;
+        SelectedPictureIndex = 0;
+        OnPropertyChanged(nameof(HasPictures));
+        OnPropertyChanged(nameof(HasMultiplePictures));
 
         AliasText = media.AliasTitles?.Count > 0
             ? string.Join("、", media.AliasTitles)
@@ -315,7 +342,6 @@ public partial class MediaDetailViewModel : ObservableObject
         _editingCategory = _media.Category;
         EditingAliases = new ObservableCollection<string>(_media.AliasTitles ?? new List<string>());
         EditingSummaryTranslated = _media.SummaryTranslated ?? "";
-        EditingDescriptionTranslated = _media.DescriptionTranslated ?? "";
         EditingReleaseDate = _media.ReleaseDate.HasValue
             ? new DateTimeOffset(_media.ReleaseDate.Value)
             : null;
@@ -334,7 +360,6 @@ public partial class MediaDetailViewModel : ObservableObject
         _editingCategory = null;
         EditingAliases = new ObservableCollection<string>();
         EditingSummaryTranslated = "";
-        EditingDescriptionTranslated = "";
         EditingReleaseDate = null;
         SaveError = null;
 
@@ -355,7 +380,7 @@ public partial class MediaDetailViewModel : ObservableObject
             // 把 ViewModel draft 字段写回 tracked _media 实例——SaveChanges 会 detect 变化持久化
             _media.Title = string.IsNullOrWhiteSpace(Title) ? _media.Title : Title.Trim();
             _media.Summary = string.IsNullOrWhiteSpace(Summary) ? "暂无简介" : Summary.Trim();
-            _media.Description = string.IsNullOrWhiteSpace(Description) ? "暂无描述" : Description.Trim();
+            // _media.Description 不再写——桌面端已取消该字段 UI，避免覆盖识别源 / Web 端编辑结果
             _media.Rating = Math.Clamp(Rating, 0f, 5f);
 
             if (_editingCategory is not null) _media.Category = _editingCategory;
@@ -376,8 +401,7 @@ public partial class MediaDetailViewModel : ObservableObject
             // AI 翻译字段：写回 db（用户可能在编辑时点过翻译）
             _media.SummaryTranslated = string.IsNullOrWhiteSpace(EditingSummaryTranslated)
                 ? null : EditingSummaryTranslated.Trim();
-            _media.DescriptionTranslated = string.IsNullOrWhiteSpace(EditingDescriptionTranslated)
-                ? null : EditingDescriptionTranslated.Trim();
+            // _media.DescriptionTranslated 不再写——同上，桌面端已不维护 description
 
             // 发售日期：DatePicker 返回 DateTimeOffset?，转 DateTime?
             _media.ReleaseDate = EditingReleaseDate?.DateTime;
@@ -518,33 +542,34 @@ public partial class MediaDetailViewModel : ObservableObject
         }
     }
 
-    /// <summary>AI 翻译详细描述——返回中文。</summary>
+    // ===== 图片画廊翻页命令 =====
+
     [RelayCommand]
-    private async Task TranslateDescriptionAsync()
+    private void NextPicture()
     {
-        if (!IsEditMode || IsTranslatingDescription || string.IsNullOrWhiteSpace(Description)) return;
-        IsTranslatingDescription = true;
-        SaveError = null;
-        try
-        {
-            var translated = await _openaiService.Translate(Description, "中文");
-            if (string.IsNullOrEmpty(translated))
-            {
-                SaveError = "翻译失败：可能未启用 AI 或返回空。请到设置启用 AI + 配置 OpenAI Key。";
-                return;
-            }
-            EditingDescriptionTranslated = translated;
-            Log.Information("描述翻译完成 mediaId={Id}", _media?.Id);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "TranslateDescriptionAsync 失败");
-            SaveError = "翻译失败，请稍后重试。";
-        }
-        finally
-        {
-            IsTranslatingDescription = false;
-        }
+        if (CanGoNextPicture) SelectedPictureIndex++;
+    }
+
+    [RelayCommand]
+    private void PrevPicture()
+    {
+        if (CanGoPrevPicture) SelectedPictureIndex--;
+    }
+
+    /// <summary>缩略图条点击切到指定图。CommandParameter 是 MediaPictureItemViewModel。</summary>
+    [RelayCommand]
+    private void SelectPicture(MediaPictureItemViewModel? item)
+    {
+        if (item is null) return;
+        var idx = Pictures.IndexOf(item);
+        if (idx >= 0) SelectedPictureIndex = idx;
+    }
+
+    /// <summary>SelectedPictureIndex 变化时维护各 thumb.IsSelected——缩略图选中态高亮用。</summary>
+    partial void OnSelectedPictureIndexChanged(int value)
+    {
+        for (int i = 0; i < Pictures.Count; i++)
+            Pictures[i].IsSelected = (i == value);
     }
 
     [RelayCommand]
