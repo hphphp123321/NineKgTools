@@ -83,10 +83,25 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
 
-        <!-- ========== Row 0: 分类切换栏（"全部" + 5 类别 = 6 列） ========== -->
-        <Grid Grid.Row="0" Margin="32,24,32,12"
+        <!-- ========== Row 0: 顶部细 ProgressBar（IsLoading 状态反馈，不影响布局） ==========
+             之前 IsLoading 用 6 张骨架卡 WrapPanel 占位，但骨架的"自然高度 ~640px" vs 真实
+             ScrollViewer "撑满 row 4" 切换时容器高度突变，加上滚动条出现/消失会让卡片 wrap
+             重新计算——视觉上"上下抖一下"。改成顶部 4px indeterminate 横条：
+             - Loading 中：显示 → 用户看到正在加载
+             - 不影响 row 4 主区高度（ProgressBar 自己 row=0，row 4 = * 占满 仍稳定） -->
+        <ProgressBar Grid.Row="0"
+                     IsIndeterminate="True"
+                     IsVisible="{Binding IsLoading}"
+                     Height="3"
+                     Margin="0,0,0,0"
+                     Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                     Background="Transparent"
+                     BorderThickness="0" />
+
+        <!-- ========== Row 1: 分类切换栏（"全部" + 5 类别 = 6 列） ========== -->
+        <Grid Grid.Row="1" Margin="32,21,32,12"
               ColumnDefinitions="*,12,*,12,*,12,*,12,*,12,*">
 
             <Grid Grid.Column="0">
@@ -193,8 +208,8 @@
 
         </Grid>
 
-        <!-- ========== Row 1: 筛选 / 排序 / 新建 ========== -->
-        <Grid Grid.Row="1" Margin="32,12,32,8"
+        <!-- ========== Row 2: 筛选 / 排序 / 新建 ========== -->
+        <Grid Grid.Row="2" Margin="32,12,32,8"
               ColumnDefinitions="Auto,12,*,12,Auto,12,Auto,12,Auto">
             <!-- 筛选按钮：HasActiveFilter 时变 accent 色 -->
             <Button Grid.Column="0"
@@ -250,8 +265,8 @@
             </Button>
         </Grid>
 
-        <!-- ========== Row 2: 已应用筛选状态条（仅 HasActiveFilter 显示） ========== -->
-        <Border Grid.Row="2" Margin="32,0,32,12"
+        <!-- ========== Row 3: 已应用筛选状态条（仅 HasActiveFilter 显示） ========== -->
+        <Border Grid.Row="3" Margin="32,0,32,12"
                 IsVisible="{Binding HasActiveFilter}"
                 Padding="12,6"
                 CornerRadius="{DynamicResource ControlCornerRadius}"
@@ -269,11 +284,13 @@
             </Grid>
         </Border>
 
-        <!-- ========== Row 3: 主内容（卡片网格 / 三态） ========== -->
-        <Grid Grid.Row="3" Margin="32,0,32,0">
+        <!-- ========== Row 4: 主内容（卡片网格 / 空 / 错误三态） ==========
+             不再用 IsLoading 骨架卡——Loading 反馈走 row 0 的顶部 ProgressBar 横条，
+             避免"骨架占位 vs 真实卡组"切换时容器高度突变（之前的"上下抖动"根因）。 -->
+        <Grid Grid.Row="4" Margin="32,0,32,0">
 
-            <!-- 加载中：6 张骨架卡 -->
-            <WrapPanel IsVisible="{Binding IsLoading}">
+            <!-- 加载中骨架（已删，留 placeholder 防误删此 region） -->
+            <WrapPanel IsVisible="False">
                 <Border Width="180" Height="320" Background="{DynamicResource ControlStrokeColorDefaultBrush}" Opacity="0.5" Margin="0,0,12,12" />
                 <Border Width="180" Height="320" Background="{DynamicResource ControlStrokeColorDefaultBrush}" Opacity="0.5" Margin="0,0,12,12" />
                 <Border Width="180" Height="320" Background="{DynamicResource ControlStrokeColorDefaultBrush}" Opacity="0.5" Margin="0,0,12,12" />
@@ -324,12 +341,12 @@
                         Content="重试" />
             </StackPanel>
 
-            <!-- 卡片网格 -->
+            <!-- 卡片网格（fade-items：分类切换时 children 重建，每张卡 attach 时跑 200ms opacity 渐入） -->
             <ScrollViewer IsVisible="{Binding HasItems}">
                 <ItemsControl ItemsSource="{Binding Items}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <WrapPanel />
+                            <WrapPanel Classes="fade-items" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
@@ -389,8 +406,8 @@
 
         </Grid>
 
-        <!-- ========== Row 4: 分页栏 ========== -->
-        <Border Grid.Row="4" Padding="32,12"
+        <!-- ========== Row 5: 分页栏 ========== -->
+        <Border Grid.Row="5" Padding="32,12"
                 Background="{DynamicResource LayerFillColorAltBrush}"
                 BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                 BorderThickness="0,1,0,0"

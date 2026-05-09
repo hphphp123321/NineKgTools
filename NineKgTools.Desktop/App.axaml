@@ -18,6 +18,8 @@
     </Application.Resources>
     <Application.Styles>
         <fluent:FluentAvaloniaTheme PreferUserAccentColor="True" />
+        <!-- 页内 tab / 数据切换 fade-in：给 Panel 加 Classes="fade-items" 即生效 -->
+        <StyleInclude Source="avares://NineKgTools.Desktop/Themes/InPageTransitions.axaml" />
         <!-- 全局把字体切换到 Inter（比 Segoe UI 更具品牌识别度，与 Win11 Fluent 兼容） -->
         <Style Selector="Window">
             <Setter Property="FontFamily" Value="{StaticResource BrandFontFamily}" />

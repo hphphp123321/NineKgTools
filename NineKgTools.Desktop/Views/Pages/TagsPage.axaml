@@ -114,12 +114,12 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 顶级标签卡片网格 -->
+                <!-- 顶级标签卡片网格（fade-items：列表替换时 200ms 渐入） -->
                 <ScrollViewer IsVisible="{Binding !ShowEmptyTopList}">
                     <ItemsControl ItemsSource="{Binding TopTags}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <WrapPanel />
+                                <WrapPanel Classes="fade-items" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
@@ -246,9 +246,14 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 子标签行表 -->
+                <!-- 子标签行表（fade-items：进入顶级详情态时 200ms 渐入） -->
                 <ScrollViewer IsVisible="{Binding !ShowEmptyTagList}">
                     <ItemsControl ItemsSource="{Binding Tags}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Classes="fade-items" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:TagItemViewModel">
                                 <Border Classes="tag-row">
@@ -387,12 +392,12 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 媒体卡片网格 -->
+                <!-- 媒体卡片网格（fade-items：进入标签详情态时 200ms 渐入） -->
                 <ScrollViewer IsVisible="{Binding DetailHasMedias}">
                     <ItemsControl ItemsSource="{Binding TagMedias}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <WrapPanel />
+                                <WrapPanel Classes="fade-items" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>

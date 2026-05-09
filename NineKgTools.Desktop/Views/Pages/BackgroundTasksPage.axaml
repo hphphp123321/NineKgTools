@@ -312,6 +312,11 @@
 
                     <ScrollViewer IsVisible="{Binding !ShowHistoryEmpty}">
                         <ItemsControl ItemsSource="{Binding HistoryItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Classes="fade-items" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:HistoryItemViewModel">
                                     <Border Classes="task-row" Margin="0,0,0,8">
@@ -410,6 +415,11 @@
 
                     <ScrollViewer IsVisible="{Binding !ShowScheduledEmpty}">
                         <ItemsControl ItemsSource="{Binding ScheduledItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Classes="fade-items" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:ScheduledItemViewModel">
                                     <Border Classes="task-row" Margin="0,0,0,8">

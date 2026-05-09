@@ -1,0 +1,31 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Reusable in-page tab/data switch fade-in style.
+
+        Usage: add Classes="fade-items" to an ItemsControl's ItemsPanel
+        (WrapPanel / StackPanel). When ItemsSource is replaced (e.g. category
+        tab switch), each new child's attach triggers a 200ms opacity fade-in.
+
+        Goal: keep cross-page transition (FadeSlideUpTransition with 8px slide)
+        distinct from in-page transition (no Y movement). Y movement on tab
+        switch causes vertical jitter, hence opacity-only here.
+
+        Caveat: do NOT apply to virtualizing lists (TreeView with virtualization
+        on). Recycled containers re-fade on scroll back into view.
+    -->
+    <Style Selector="Panel.fade-items > :is(Control)">
+        <Style.Animations>
+            <Animation Duration="0:0:0.2" FillMode="Forward" Easing="CubicEaseOut">
+                <KeyFrame Cue="0%">
+                    <Setter Property="Opacity" Value="0" />
+                </KeyFrame>
+                <KeyFrame Cue="100%">
+                    <Setter Property="Opacity" Value="1" />
+                </KeyFrame>
+            </Animation>
+        </Style.Animations>
+    </Style>
+
+</Styles>

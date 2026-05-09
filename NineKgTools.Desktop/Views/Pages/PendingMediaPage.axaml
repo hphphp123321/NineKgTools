@@ -69,9 +69,14 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 列表 -->
+                    <!-- 列表（fade-items：tab 切换 / 刷新时项 attach 跑 200ms 渐入） -->
                     <ScrollViewer IsVisible="{Binding !ShowIdentifyEmpty}">
                         <ItemsControl ItemsSource="{Binding PendingIdentifyItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Classes="fade-items" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:PendingMediaItemViewModel">
                                     <Border Padding="16,12" Margin="0,0,0,8"
@@ -166,9 +171,14 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 列表 -->
+                    <!-- 列表（fade-items） -->
                     <ScrollViewer IsVisible="{Binding !ShowDatabaseEmpty}">
                         <ItemsControl ItemsSource="{Binding PendingDatabaseItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Classes="fade-items" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:PendingMediaItemViewModel">
                                     <Border Padding="16,12" Margin="0,0,0,8"
