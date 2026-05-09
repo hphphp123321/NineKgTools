@@ -147,12 +147,7 @@
             </Border>
 
             <ScrollViewer IsVisible="{Binding !ShowEmpty}">
-                <ItemsControl ItemsSource="{Binding Items}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Classes="fade-items" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
+                <ItemsControl ItemsSource="{Binding Items}" Classes="fade-items">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:TagMappingItemViewModel">
                             <Border Classes="mapping-row">

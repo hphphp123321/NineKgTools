@@ -4,29 +4,29 @@
     <!--
         Reusable in-page tab/data switch fade-in style.
 
-        Usage: add Classes="fade-items" to an ItemsControl's ItemsPanel
-        (WrapPanel / StackPanel). When ItemsSource is replaced (e.g. category
-        tab switch), each new ContentPresenter attach triggers a 200ms
+        Usage: add Classes="fade-items" to the ItemsControl itself.
+        Each new ContentPresenter container attach triggers a 200ms
         opacity fade-in.
 
-        Two important Avalonia 12 details that broke v1:
-        - Panel is abstract; type selector "Panel" does NOT match WrapPanel
-          or StackPanel by default. Must use :is(Panel) for base-class match.
-        - ItemsControl wraps each item in a ContentPresenter when the item
-          is a ViewModel (not a Control). The selector must target
-          ContentPresenter, not the DataTemplate root.
-        - Style.Animations fire when the selector starts matching, but the
-          initial state at frame 0 is brittle — without an explicit Setter
-          Property="Opacity" Value="0", the first frame can render at 1.
+        Why class is on ItemsControl, not on the panel:
+        Avalonia's ChildSelector ('>') walks the LOGICAL tree, not the
+        visual tree. ItemsControl synthesises a ContentPresenter for each
+        VM item, but PanelContainerGenerator inserts the container as a
+        VISUAL child of the panel and a LOGICAL child of the ItemsControl
+        (PanelContainerGenerator.cs:128-151). So in the logical tree,
+        ContentPresenter.LogicalParent is the ItemsControl. Putting the
+        class on the panel makes the selector miss every item.
 
-        Goal: keep cross-page transition (FadeSlideUpTransition with 8px slide)
-        distinct from in-page transition (no Y movement). Y movement on tab
-        switch causes vertical jitter, hence opacity-only here.
+        Why explicit Setter Opacity=0:
+        Style.Animations auto-fire when the style first applies, but the
+        first frame can render before the 0%-cue Setter takes effect. An
+        explicit Setter writes Opacity=0 at style-apply time, then the
+        animation ramps to 1, eliminating the flash.
 
-        Caveat: do NOT apply to virtualizing lists (TreeView with virtualization
-        on). Recycled containers re-fade on scroll back into view.
+        Caveat: do NOT apply to virtualizing lists (TreeView with
+        virtualization on). Recycled containers re-fade on scroll.
     -->
-    <Style Selector=":is(Panel).fade-items > ContentPresenter">
+    <Style Selector="ItemsControl.fade-items > ContentPresenter">
         <Setter Property="Opacity" Value="0" />
         <Style.Animations>
             <Animation Duration="0:0:0.2" FillMode="Forward" Easing="CubicEaseOut">

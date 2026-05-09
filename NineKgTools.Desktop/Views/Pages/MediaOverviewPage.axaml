@@ -343,10 +343,10 @@
 
             <!-- 卡片网格（fade-items：分类切换时 children 重建，每张卡 attach 时跑 200ms opacity 渐入） -->
             <ScrollViewer IsVisible="{Binding HasItems}">
-                <ItemsControl ItemsSource="{Binding Items}">
+                <ItemsControl ItemsSource="{Binding Items}" Classes="fade-items">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <WrapPanel Classes="fade-items" />
+                            <WrapPanel />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
