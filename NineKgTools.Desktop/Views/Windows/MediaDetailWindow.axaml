@@ -5,6 +5,7 @@
         xmlns:vm="using:NineKgTools.Desktop.ViewModels.Pages"
         xmlns:ui="using:FluentAvalonia.UI.Controls"
         xmlns:comp="using:NineKgTools.Desktop.Views.Components"
+        xmlns:conv="using:NineKgTools.Desktop.Converters"
         mc:Ignorable="d" d:DesignWidth="1024" d:DesignHeight="720"
         x:Class="NineKgTools.Desktop.Views.Windows.MediaDetailWindow"
         x:DataType="vm:MediaDetailViewModel"
@@ -248,7 +249,9 @@
                                                        IsVisible="{Binding IsTranslatingSummary}" />
                                 </StackPanel>
                             </Grid>
-                            <TextBlock Text="{Binding Summary}"
+                            <!-- 显示态：用 conv:HtmlText.Source 渲染 HTML（DLsite 简介可能含 <p> <br> <strong>）。
+                                 不能同时用 Text 和 HtmlText.Source——后者会重建 Inlines。 -->
+                            <TextBlock conv:HtmlText.Source="{Binding Summary}"
                                        FontSize="14"
                                        LineHeight="22"
                                        Opacity="0.85"
@@ -297,7 +300,8 @@
                                                        IsVisible="{Binding IsTranslatingDescription}" />
                                 </StackPanel>
                             </Grid>
-                            <TextBlock Text="{Binding Description}"
+                            <!-- 显示态：HTML 富文本渲染（DLsite description 大量含 <p> <br> <strong> <em>） -->
+                            <TextBlock conv:HtmlText.Source="{Binding Description}"
                                        FontSize="13"
                                        LineHeight="20"
                                        Opacity="0.75"
