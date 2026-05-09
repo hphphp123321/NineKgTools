@@ -110,8 +110,17 @@ public partial class MediaDetailViewModel : ObservableObject
     private string _summary = "";
 
     // ===== 图片画廊（Pictures slider，取代原 Description UI）=====
-    /// <summary>媒体的 Pictures 集合 VM；ImageCacheService 异步加载每张 bitmap。</summary>
+    /// <summary>媒体的 Pictures 集合 VM；ImageCacheService 异步加载每张 bitmap。
+    /// 派生属性必须在这里同时 notify——SelectedPictureIndex 默认 0，LoadAsync 里 set 0→0
+    /// 不会触发 PropertyChanged，binding 第一次 evaluate SelectedPicture 时 Pictures 还空，
+    /// 此后 Pictures 替换没人通知 SelectedPicture 重算，结果第一张图初始显示空白。</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedPicture))]
+    [NotifyPropertyChangedFor(nameof(PictureCounterText))]
+    [NotifyPropertyChangedFor(nameof(HasPictures))]
+    [NotifyPropertyChangedFor(nameof(HasMultiplePictures))]
+    [NotifyPropertyChangedFor(nameof(CanGoPrevPicture))]
+    [NotifyPropertyChangedFor(nameof(CanGoNextPicture))]
     private ObservableCollection<MediaPictureItemViewModel> _pictures = new();
 
     [ObservableProperty]
@@ -268,16 +277,17 @@ public partial class MediaDetailViewModel : ObservableObject
 
         Summary = string.IsNullOrWhiteSpace(media.Summary) ? "" : media.Summary;
 
-        // 图片画廊：取代原 Description 区域
+        // 图片画廊：取代原 Description 区域。
+        // 顺序：先 set SelectedPictureIndex=0（强制 notify 即使值未变，让 SelectedPicture
+        // binding 第一次 evaluate 时已绑到对的 index），再 set Pictures（NotifyPropertyChangedFor
+        // 链会重算 SelectedPicture 等所有派生属性）。
         var pictures = (media.Pictures ?? new List<Core.Models.Media.Image>())
             .Where(p => !string.IsNullOrEmpty(p.Name))
             .Select(p => new MediaPictureItemViewModel(p, _imageCache))
             .ToList();
-        Pictures = new ObservableCollection<MediaPictureItemViewModel>(pictures);
-        if (Pictures.Count > 0) Pictures[0].IsSelected = true;
+        if (pictures.Count > 0) pictures[0].IsSelected = true;
         SelectedPictureIndex = 0;
-        OnPropertyChanged(nameof(HasPictures));
-        OnPropertyChanged(nameof(HasMultiplePictures));
+        Pictures = new ObservableCollection<MediaPictureItemViewModel>(pictures);
 
         AliasText = media.AliasTitles?.Count > 0
             ? string.Join("、", media.AliasTitles)
