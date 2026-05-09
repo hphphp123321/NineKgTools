@@ -63,9 +63,9 @@ public static class HtmlInlinesParser
         return client;
     }
 
-    /// <summary>HTML inline 图片显示尺寸上限（CSS box，与原图分辨率无关，会缩放）。</summary>
-    private const double MaxImageWidth = 480;
-    private const double MaxImageHeight = 320;
+    /// <summary>HTML inline 图片占位 box 尺寸。固定大小避免 InlineUIContainer + 动态 size 导致 TextBlock inline 流不重排（实测 dynamic measure 不冒泡到 TextBlock）。</summary>
+    private const double ImageBoxWidth = 240;
+    private const double ImageBoxHeight = 180;
 
     public static IReadOnlyList<Inline> Parse(string? html)
     {
@@ -289,44 +289,55 @@ public static class HtmlInlinesParser
     }
 
     /// <summary>
-    /// &lt;img src="..."&gt; → InlineUIContainer + StackPanel(Image + 占位 TextBlock)。
-    /// HttpClient 后台异步加载；加载中显示"图片加载中..."占位，加载完成隐藏占位 + set Source；
-    /// 失败显示"图片加载失败"+ HTTP code（用户能看到 hint，详细 ex 走 Log.Information）。
+    /// &lt;img src="..."&gt; → InlineUIContainer + Border(固定 240x180) + Grid(loading text + Image)。
+    ///
+    /// **关键：Border 固定尺寸**，让 InlineUIContainer 在 TextBlock 第一次 inline 流 layout
+    /// 时就知道占位大小。否则 Image.Source 异步 set 后 desired size 从 0 变 200x200，
+    /// 但 TextBlock inline 流不冒泡 invalidate（实测下载成功 log 但 UI 不显示），图片永远
+    /// 看不到。
+    ///
+    /// loading text 在 Image 后面，Image.Source 加载完 IsVisible=false 隐藏。
     /// </summary>
     private static Inline MakeImage(string src, string alt)
     {
         var image = new Image
         {
             Stretch = Stretch.Uniform,
-            StretchDirection = StretchDirection.DownOnly,
-            MaxWidth = MaxImageWidth,
-            MaxHeight = MaxImageHeight,
-            HorizontalAlignment = HorizontalAlignment.Left,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
         };
-        if (!string.IsNullOrEmpty(alt))
-            ToolTip.SetTip(image, alt);
 
-        var placeholder = new TextBlock
+        var loadingText = new TextBlock
         {
             Text = "🖼 图片加载中…",
             FontSize = 11,
             Opacity = 0.55,
-            HorizontalAlignment = HorizontalAlignment.Left,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
         };
 
-        var stack = new StackPanel
+        var grid = new Grid();
+        grid.Children.Add(loadingText); // 底层占位
+        grid.Children.Add(image);       // 上层图片
+
+        var border = new Border
         {
-            Spacing = 4,
+            Width = ImageBoxWidth,
+            Height = ImageBoxHeight,
+            CornerRadius = new Avalonia.CornerRadius(4),
+            ClipToBounds = true,
+            Child = grid,
             HorizontalAlignment = HorizontalAlignment.Left,
         };
-        stack.Children.Add(image);
-        stack.Children.Add(placeholder);
 
-        _ = LoadImageAsync(src, image, placeholder);
+        if (!string.IsNullOrEmpty(alt))
+            ToolTip.SetTip(border, alt);
+
+        _ = LoadImageAsync(src, image, loadingText);
 
         return new InlineUIContainer
         {
-            Child = stack,
+            Child = border,
             BaselineAlignment = BaselineAlignment.Center,
         };
     }
@@ -377,10 +388,8 @@ public static class HtmlInlinesParser
             {
                 target.Source = bitmap;
                 placeholder.IsVisible = false;
-                // 触发 Image 的 measure pass——Inline 流中的 InlineUIContainer 在 child
-                // size 变化时不一定自动 invalidate，显式调一下保险
-                target.InvalidateMeasure();
-                if (target.Parent is Layoutable parent) parent.InvalidateMeasure();
+                // Border 是固定尺寸，外层 layout 不需要重排——只让 Image 自己 invalidate
+                target.InvalidateVisual();
             });
             Log.Debug("HTML inline 图片加载成功：{Url} ({W}x{H})", url, bitmap.PixelSize.Width, bitmap.PixelSize.Height);
         }
