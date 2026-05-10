@@ -130,7 +130,23 @@ public partial class CreatorsViewModel : PageViewModelBase
         _imageCache = imageCache;
     }
 
-    public override Task OnEnterAsync() => LoadAsync();
+    /// <summary>跨页跳转 pending：configureBeforeEnter 阶段写入；OnEnterAsync 检测到则进入详情。
+    /// 与直接 await OpenDetailByIdAsync 的差异：NavigationService 的 configureBeforeEnter 是同步 Action，
+    /// 不能调 async；走"标记 + OnEnter 消费"模式避免 fire-and-forget 与 OnEnterAsync 的 race。</summary>
+    private int? _pendingDetailId;
+
+    public void RequestOpenDetail(int id) => _pendingDetailId = id;
+
+    public override async Task OnEnterAsync()
+    {
+        // 先加载列表（让 GoBack 时已有数据）
+        await LoadAsync();
+        if (_pendingDetailId is { } pid)
+        {
+            _pendingDetailId = null;
+            await OpenDetailByIdAsync(pid);
+        }
+    }
 
     [RelayCommand]
     private async Task LoadAsync()
@@ -210,6 +226,9 @@ public partial class CreatorsViewModel : PageViewModelBase
         if (item is null) return;
         await LoadDetailByIdAsync(item.Id);
     }
+
+    /// <summary>外部入口（如 MediaDetailWindow chip 跳转）：直接进入指定 Creator 详情。</summary>
+    public Task OpenDetailByIdAsync(int id) => LoadDetailByIdAsync(id);
 
     private async Task LoadDetailByIdAsync(int id)
     {

@@ -8,10 +8,16 @@ using CommunityToolkit.Mvvm.Input;
 using NineKgTools.Core.Models.Categories;
 using NineKgTools.Core.Models.Favorites;
 using NineKgTools.Core.Models.Media;
+using NineKgTools.Core.Models.Media.Audio;
+using NineKgTools.Core.Models.Media.Game;
+using NineKgTools.Core.Models.Media.Picture;
+using NineKgTools.Core.Models.Media.Text;
+using NineKgTools.Core.Models.Media.Video;
 using NineKgTools.Core.Models.Tags;
 using NineKgTools.Core.Services.AI;
 using NineKgTools.Core.Services.Favorites;
 using NineKgTools.Core.Services.Files;
+using NineKgTools.Core.Services.Images;
 using NineKgTools.Core.Services.Media;
 using NineKgTools.Core.Services.Tags;
 using NineKgTools.Desktop.Services;
@@ -29,18 +35,27 @@ public partial class MediaDetailViewModel : ObservableObject
 {
     private readonly MediaService _mediaService;
     private readonly ImageCacheService _imageCache;
+    private readonly ImageService _imageService;
     private readonly FilesService _filesService;
     private readonly TagService _tagService;
     private readonly NineKgTools.Core.Services.Media.CreatorService _creatorService;
     private readonly FavoriteService _favoriteService;
     private readonly OpenaiService _openaiService;
+    private readonly NavigationService _navigationService;
     private MediaBase? _media;
 
     // ===== 编辑模式临时状态（draft）—— 进入编辑时初始化、Save/Cancel 时清空 =====
     private List<Tag> _editingTags = new();
-    private List<NineKgTools.Core.Models.Media.Creator> _editingCreators = new();
     private List<Favorite> _editingFavorites = new();
     private Category? _editingCategory;
+
+    /// <summary>
+    /// 图片 draft 列表——增删图片只动这个，Save 时 diff 旧 _media.Pictures 算出
+    /// 增量（新增→AddOrFindImagesAsync 入库；移除→RemoveImageAsync 删 db + 文件）。
+    /// 元素来自两类来源：1) EnterEdit 时从 _media.Pictures 拷贝（已入库实体）
+    /// 2) AddPicture 命令新建（id=0、带 Content byte[]）。
+    /// </summary>
+    private List<Core.Models.Media.Image> _editingPictures = new();
 
     /// <summary>别名 draft——直接绑给 EditableAliasList.Aliases，用户增删立即反映</summary>
     [ObservableProperty]
@@ -75,10 +90,20 @@ public partial class MediaDetailViewModel : ObservableObject
     [ObservableProperty]
     private string? _loadError;
 
-    /// <summary>编辑模式：true=各字段为可编辑控件 + 显示 Save/Cancel/Delete；false=显示 Edit/Reidentify/...</summary>
+    /// <summary>编辑模式：true=各字段为可编辑控件 + 显示 Save/Cancel/Delete；false=显示 Edit/Reidentify/...
+    /// 注意：收藏夹不受此 mode 控制——任何时候都能点 "编辑" 改收藏夹（非编辑态立即 commit；编辑态走 draft）。</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowFavoritesSection))]
     [NotifyPropertyChangedFor(nameof(ShowAliasSection))]
+    [NotifyPropertyChangedFor(nameof(ShowPicturesSection))]
+    [NotifyPropertyChangedFor(nameof(ShowEmptyPicturesHint))]
+    [NotifyPropertyChangedFor(nameof(ShowDirectorsSection))]
+    [NotifyPropertyChangedFor(nameof(ShowVoiceActorsSection))]
+    [NotifyPropertyChangedFor(nameof(ShowScreenWritersSection))]
+    [NotifyPropertyChangedFor(nameof(ShowIllustratorsSection))]
+    [NotifyPropertyChangedFor(nameof(ShowActorsSection))]
+    [NotifyPropertyChangedFor(nameof(ShowMusiciansSection))]
+    [NotifyPropertyChangedFor(nameof(ShowAuthorsSection))]
+    [NotifyPropertyChangedFor(nameof(ShowAnyCreatorsSection))]
     private bool _isEditMode;
 
     [ObservableProperty]
@@ -92,12 +117,131 @@ public partial class MediaDetailViewModel : ObservableObject
     private string _title = "";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCircle))]
     private string? _circleName;
 
-    [ObservableProperty]
-    private string _creatorsText = "";
+    public bool HasCircle => !string.IsNullOrEmpty(CircleName);
+
+    // ===== 创作者按职责分组（替代原 CreatorsText 单字符串扁平化设计）==========================
+    // ApplyToProperties 按 _media is VideoMedia/AudioMedia/... 分发数据到对应字段；
+    // 各 TopCategory 用到的字段子集（与 Web 端 EditableCreatorList 一致）：
+    //   Video    : Directors / ScreenWriters / Illustrators / Actors / Musicians / Makers (List<Circle>)
+    //   Audio    : VoiceActors / ScreenWriters / Illustrators / Musicians / Authors
+    //   Game     : ScreenWriters / Illustrators / VoiceActors / Musicians / Authors
+    //   Picture  : Illustrators / Actors / Authors
+    //   Text     : Illustrators / Author (单个 → Authors 列表里至多 1 项)
+    // 每个 ObservableCollection<string> 对应一个右侧栏 section 的 chip 列表数据源；
+    // Has* 派生 bool 控制对应 section 的可见性，HasAnyCreators 控制整个"创作者"分组 header。
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDirectors))]
+    [NotifyPropertyChangedFor(nameof(HasAnyCreators))]
+    [NotifyPropertyChangedFor(nameof(ShowDirectorsSection))]
+    [NotifyPropertyChangedFor(nameof(ShowAnyCreatorsSection))]
+    private ObservableCollection<string> _directors = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasVoiceActors))]
+    [NotifyPropertyChangedFor(nameof(HasAnyCreators))]
+    [NotifyPropertyChangedFor(nameof(ShowVoiceActorsSection))]
+    [NotifyPropertyChangedFor(nameof(ShowAnyCreatorsSection))]
+    private ObservableCollection<string> _voiceActors = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasScreenWriters))]
+    [NotifyPropertyChangedFor(nameof(HasAnyCreators))]
+    [NotifyPropertyChangedFor(nameof(ShowScreenWritersSection))]
+    [NotifyPropertyChangedFor(nameof(ShowAnyCreatorsSection))]
+    private ObservableCollection<string> _screenWriters = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasIllustrators))]
+    [NotifyPropertyChangedFor(nameof(HasAnyCreators))]
+    [NotifyPropertyChangedFor(nameof(ShowIllustratorsSection))]
+    [NotifyPropertyChangedFor(nameof(ShowAnyCreatorsSection))]
+    private ObservableCollection<string> _illustrators = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasActors))]
+    [NotifyPropertyChangedFor(nameof(HasAnyCreators))]
+    [NotifyPropertyChangedFor(nameof(ShowActorsSection))]
+    [NotifyPropertyChangedFor(nameof(ShowAnyCreatorsSection))]
+    private ObservableCollection<string> _actors = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMusicians))]
+    [NotifyPropertyChangedFor(nameof(HasAnyCreators))]
+    [NotifyPropertyChangedFor(nameof(ShowMusiciansSection))]
+    [NotifyPropertyChangedFor(nameof(ShowAnyCreatorsSection))]
+    private ObservableCollection<string> _musicians = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAuthors))]
+    [NotifyPropertyChangedFor(nameof(HasAnyCreators))]
+    [NotifyPropertyChangedFor(nameof(ShowAuthorsSection))]
+    [NotifyPropertyChangedFor(nameof(ShowAnyCreatorsSection))]
+    private ObservableCollection<string> _authors = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMakers))]
+    [NotifyPropertyChangedFor(nameof(HasAnyCreators))]
+    [NotifyPropertyChangedFor(nameof(ShowMakersSection))]
+    [NotifyPropertyChangedFor(nameof(ShowAnyCreatorsSection))]
+    private ObservableCollection<string> _makers = new();
+
+    public bool HasDirectors => Directors.Count > 0;
+    public bool HasVoiceActors => VoiceActors.Count > 0;
+    public bool HasScreenWriters => ScreenWriters.Count > 0;
+    public bool HasIllustrators => Illustrators.Count > 0;
+    public bool HasActors => Actors.Count > 0;
+    public bool HasMusicians => Musicians.Count > 0;
+    public bool HasAuthors => Authors.Count > 0;
+    public bool HasMakers => Makers.Count > 0;
+    public bool HasAnyCreators =>
+        HasDirectors || HasVoiceActors || HasScreenWriters || HasIllustrators ||
+        HasActors || HasMusicians || HasAuthors || HasMakers;
+
+    // === TopCategory 的职责支持矩阵（与 Web EditableCreatorList 行为一致）===
+    // Supports{X} 用 TopCategory 决定该类型支不支持某职责。
+    // Show{X}Section 进一步用 IsEditMode 控制：编辑模式即使空也显示让用户能添加；只读时仅有数据才显示。
+    public bool SupportsDirectors => TopCategory == TopCategory.Video;
+    public bool SupportsVoiceActors => TopCategory is TopCategory.Audio or TopCategory.Game;
+    public bool SupportsScreenWriters => TopCategory is TopCategory.Video or TopCategory.Audio or TopCategory.Game;
+    public bool SupportsIllustrators => TopCategory is TopCategory.Video or TopCategory.Audio or TopCategory.Game or TopCategory.Picture or TopCategory.Text;
+    public bool SupportsActors => TopCategory is TopCategory.Video or TopCategory.Picture;
+    public bool SupportsMusicians => TopCategory is TopCategory.Video or TopCategory.Audio or TopCategory.Game;
+    public bool SupportsAuthors => TopCategory is TopCategory.Audio or TopCategory.Game or TopCategory.Picture or TopCategory.Text;
+    public bool SupportsMakers => TopCategory == TopCategory.Video;
+
+    public bool ShowDirectorsSection => SupportsDirectors && (HasDirectors || IsEditMode);
+    public bool ShowVoiceActorsSection => SupportsVoiceActors && (HasVoiceActors || IsEditMode);
+    public bool ShowScreenWritersSection => SupportsScreenWriters && (HasScreenWriters || IsEditMode);
+    public bool ShowIllustratorsSection => SupportsIllustrators && (HasIllustrators || IsEditMode);
+    public bool ShowActorsSection => SupportsActors && (HasActors || IsEditMode);
+    public bool ShowMusiciansSection => SupportsMusicians && (HasMusicians || IsEditMode);
+    public bool ShowAuthorsSection => SupportsAuthors && (HasAuthors || IsEditMode);
+    public bool ShowMakersSection => SupportsMakers && HasMakers; // Makers 暂只读——编辑模式不开放
+    public bool ShowAnyCreatorsSection =>
+        ShowDirectorsSection || ShowVoiceActorsSection || ShowScreenWritersSection ||
+        ShowIllustratorsSection || ShowActorsSection || ShowMusiciansSection ||
+        ShowAuthorsSection || ShowMakersSection;
+
+    // 各职责的 draft（编辑时改它，Save 时按 _media 实际类型写回）
+    private List<NineKgTools.Core.Models.Media.Creator> _editingDirectors = new();
+    private List<NineKgTools.Core.Models.Media.Creator> _editingVoiceActors = new();
+    private List<NineKgTools.Core.Models.Media.Creator> _editingScreenWriters = new();
+    private List<NineKgTools.Core.Models.Media.Creator> _editingIllustrators = new();
+    private List<NineKgTools.Core.Models.Media.Creator> _editingActors = new();
+    private List<NineKgTools.Core.Models.Media.Creator> _editingMusicians = new();
+    private List<NineKgTools.Core.Models.Media.Creator> _editingAuthors = new();
+    private List<NineKgTools.Core.Models.Media.Creator> _editingMakers = new(); // Makers 实际是 List<Circle>，但用 Creator 对话框也能复用——见 SaveAsync
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RatingStar1))]
+    [NotifyPropertyChangedFor(nameof(RatingStar2))]
+    [NotifyPropertyChangedFor(nameof(RatingStar3))]
+    [NotifyPropertyChangedFor(nameof(RatingStar4))]
+    [NotifyPropertyChangedFor(nameof(RatingStar5))]
     private float _rating;
 
     [ObservableProperty]
@@ -105,6 +249,26 @@ public partial class MediaDetailViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _hasRating;
+
+    /// <summary>5 颗星的 Geometry 派生：每颗按 Rating >= idx 决定 filled / outline。
+    /// 由 Rating 字段 NotifyPropertyChangedFor 链触发——切 Rating 时自动重新解析图标。</summary>
+    public Geometry? RatingStar1 => StarGeometryFor(1);
+    public Geometry? RatingStar2 => StarGeometryFor(2);
+    public Geometry? RatingStar3 => StarGeometryFor(3);
+    public Geometry? RatingStar4 => StarGeometryFor(4);
+    public Geometry? RatingStar5 => StarGeometryFor(5);
+
+    private Geometry? StarGeometryFor(int idx)
+    {
+        var key = (int)Math.Round(Rating) >= idx ? "IconStarFilled" : "IconStarOutline";
+        if (Avalonia.Application.Current?.Resources.TryGetResource(
+                key, Avalonia.Application.Current.ActualThemeVariant, out var obj) == true
+            && obj is Geometry g)
+        {
+            return g;
+        }
+        return null;
+    }
 
     [ObservableProperty]
     private string _summary = "";
@@ -121,6 +285,8 @@ public partial class MediaDetailViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasMultiplePictures))]
     [NotifyPropertyChangedFor(nameof(CanGoPrevPicture))]
     [NotifyPropertyChangedFor(nameof(CanGoNextPicture))]
+    [NotifyPropertyChangedFor(nameof(ShowPicturesSection))]
+    [NotifyPropertyChangedFor(nameof(ShowEmptyPicturesHint))]
     private ObservableCollection<MediaPictureItemViewModel> _pictures = new();
 
     [ObservableProperty]
@@ -142,6 +308,12 @@ public partial class MediaDetailViewModel : ObservableObject
     public bool HasMultiplePictures => Pictures.Count > 1;
     public bool CanGoPrevPicture => SelectedPictureIndex > 0;
     public bool CanGoNextPicture => SelectedPictureIndex < Pictures.Count - 1;
+
+    /// <summary>编辑模式下永远显示 Pictures section（让 Add 按钮可见）；只读模式仅当有图时显示。</summary>
+    public bool ShowPicturesSection => IsEditMode || HasPictures;
+
+    /// <summary>编辑模式 + 当前没图 → 显示空状态卡（提示用户去点"添加图片"）。</summary>
+    public bool ShowEmptyPicturesHint => IsEditMode && !HasPictures;
 
     [ObservableProperty]
     private string _aliasText = "";
@@ -166,6 +338,26 @@ public partial class MediaDetailViewModel : ObservableObject
     private string _storeDateText = "";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CategoryBrush))]
+    [NotifyPropertyChangedFor(nameof(CategoryFillBrush))]
+    [NotifyPropertyChangedFor(nameof(CategoryIcon))]
+    [NotifyPropertyChangedFor(nameof(SupportsDirectors))]
+    [NotifyPropertyChangedFor(nameof(SupportsVoiceActors))]
+    [NotifyPropertyChangedFor(nameof(SupportsScreenWriters))]
+    [NotifyPropertyChangedFor(nameof(SupportsIllustrators))]
+    [NotifyPropertyChangedFor(nameof(SupportsActors))]
+    [NotifyPropertyChangedFor(nameof(SupportsMusicians))]
+    [NotifyPropertyChangedFor(nameof(SupportsAuthors))]
+    [NotifyPropertyChangedFor(nameof(SupportsMakers))]
+    [NotifyPropertyChangedFor(nameof(ShowDirectorsSection))]
+    [NotifyPropertyChangedFor(nameof(ShowVoiceActorsSection))]
+    [NotifyPropertyChangedFor(nameof(ShowScreenWritersSection))]
+    [NotifyPropertyChangedFor(nameof(ShowIllustratorsSection))]
+    [NotifyPropertyChangedFor(nameof(ShowActorsSection))]
+    [NotifyPropertyChangedFor(nameof(ShowMusiciansSection))]
+    [NotifyPropertyChangedFor(nameof(ShowAuthorsSection))]
+    [NotifyPropertyChangedFor(nameof(ShowMakersSection))]
+    [NotifyPropertyChangedFor(nameof(ShowAnyCreatorsSection))]
     private TopCategory _topCategory;
 
     [ObservableProperty]
@@ -180,35 +372,38 @@ public partial class MediaDetailViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<string> _tags = new();
 
+    /// <summary>收藏夹 pill 列表——每条 = name + hash 派生的渐变 brush（FavoriteGradientHelper 缓存）。
+    /// Hero 区评分下方的彩色 pill 行就绑这个；HasFavorites 控制空状态卡（虚线 + CTA）显隐。</summary>
     [ObservableProperty]
-    private ObservableCollection<string> _favorites = new();
+    [NotifyPropertyChangedFor(nameof(HasFavorites))]
+    private ObservableCollection<FavoritePillViewModel> _favoritePills = new();
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowFavoritesSection))]
-    private bool _hasFavorites;
-
-    /// <summary>编辑模式下总显示（让"编辑"按钮可见）；只读模式下仅当有收藏夹时才显示</summary>
-    public bool ShowFavoritesSection => IsEditMode || HasFavorites;
+    public bool HasFavorites => FavoritePills.Count > 0;
 
     public IBrush? CategoryBrush => TopCategoryStyles.ResolveAccentBrush(TopCategory);
+    public IBrush? CategoryFillBrush => TopCategoryStyles.ResolveFillBrush(TopCategory);
     public Geometry? CategoryIcon => TopCategoryStyles.ResolveIconGeometry(TopCategory);
 
     public MediaDetailViewModel(
         MediaService mediaService,
         ImageCacheService imageCache,
+        ImageService imageService,
         FilesService filesService,
         TagService tagService,
         NineKgTools.Core.Services.Media.CreatorService creatorService,
         FavoriteService favoriteService,
-        OpenaiService openaiService)
+        OpenaiService openaiService,
+        NavigationService navigationService)
     {
         _mediaService = mediaService;
         _imageCache = imageCache;
+        _imageService = imageService;
         _filesService = filesService;
         _tagService = tagService;
         _creatorService = creatorService;
         _favoriteService = favoriteService;
         _openaiService = openaiService;
+        _navigationService = navigationService;
     }
 
     public async Task LoadAsync(int mediaId)
@@ -267,9 +462,8 @@ public partial class MediaDetailViewModel : ObservableObject
         CategoryDisplayName = TopCategoryStyles.DisplayName(TopCategory);
         CategorySubName = media.Category?.Name ?? "";
 
-        // 创作者列表（去重已通过 SyncCreators 维护）
-        var creatorNames = media.Creators?.Select(c => c.Name).Distinct().ToList() ?? new List<string>();
-        CreatorsText = string.Join(" · ", creatorNames);
+        // 按 _media 实际类型分发创作者到职责字段——与 Web 端 EditableCreatorList 完全一致
+        ApplyCreatorsByType(media);
 
         Rating = media.Rating;
         HasRating = Rating > 0;
@@ -303,9 +497,63 @@ public partial class MediaDetailViewModel : ObservableObject
         Tags = new ObservableCollection<string>(
             media.Tags?.Select(t => t.Name) ?? Enumerable.Empty<string>());
 
-        Favorites = new ObservableCollection<string>(
-            media.Favorites?.Select(f => f.Name) ?? Enumerable.Empty<string>());
-        HasFavorites = Favorites.Count > 0;
+        FavoritePills = new ObservableCollection<FavoritePillViewModel>(
+            media.Favorites?.Select(f => new FavoritePillViewModel(f.Name)) ?? Enumerable.Empty<FavoritePillViewModel>());
+    }
+
+    /// <summary>按 _media 的具体子类填充对应职责字段。所有 ObservableCollection 整体替换以触发
+    /// HasXxx / HasAnyCreators 派生派发；空集合也要 set（清掉前一次的值）。</summary>
+    private void ApplyCreatorsByType(MediaBase media)
+    {
+        // 先清空所有职责字段，再按类型填——避免上次的 stale 残留
+        Directors = new();
+        VoiceActors = new();
+        ScreenWriters = new();
+        Illustrators = new();
+        Actors = new();
+        Musicians = new();
+        Authors = new();
+        Makers = new();
+
+        switch (media)
+        {
+            case VideoMedia v:
+                Directors = NamesOf(v.Directors);
+                ScreenWriters = NamesOf(v.ScreenWriters);
+                Illustrators = NamesOf(v.Illustrators);
+                Actors = NamesOf(v.Actors);
+                Musicians = NamesOf(v.Musicians);
+                Makers = new ObservableCollection<string>(
+                    v.Makers?.Where(m => m is not null).Select(m => m.Name).Distinct() ?? Enumerable.Empty<string>());
+                break;
+            case AudioMedia a:
+                VoiceActors = NamesOf(a.VoiceActors);
+                ScreenWriters = NamesOf(a.ScreenWriters);
+                Illustrators = NamesOf(a.Illustrators);
+                Musicians = NamesOf(a.Musicians);
+                Authors = NamesOf(a.Authors);
+                break;
+            case GameMedia g:
+                ScreenWriters = NamesOf(g.ScreenWriters);
+                Illustrators = NamesOf(g.Illustrators);
+                VoiceActors = NamesOf(g.VoiceActors);
+                Musicians = NamesOf(g.Musicians);
+                Authors = NamesOf(g.Authors);
+                break;
+            case PictureMedia p:
+                Illustrators = NamesOf(p.Illustrators);
+                Actors = NamesOf(p.Actors);
+                Authors = NamesOf(p.Authors);
+                break;
+            case TextMedia t:
+                Illustrators = NamesOf(t.Illustrators);
+                if (t.Author is not null)
+                    Authors = new ObservableCollection<string> { t.Author.Name };
+                break;
+        }
+
+        static ObservableCollection<string> NamesOf(IEnumerable<NineKgTools.Core.Models.Media.Creator>? src)
+            => new(src?.Where(c => c is not null).Select(c => c.Name).Distinct() ?? Enumerable.Empty<string>());
     }
 
     [RelayCommand]
@@ -347,9 +595,13 @@ public partial class MediaDetailViewModel : ObservableObject
 
         // draft：从 _media 拷一份引用列表（编辑过程中改 draft，不动 _media，方便 Cancel）
         _editingTags = _media.Tags?.ToList() ?? new List<Tag>();
-        _editingCreators = _media.Creators?.ToList() ?? new List<NineKgTools.Core.Models.Media.Creator>();
         _editingFavorites = _media.Favorites?.ToList() ?? new List<Favorite>();
         _editingCategory = _media.Category;
+        // 创作者 per-role draft：按 _media 实际类型拷贝
+        InitCreatorDraftsByType(_media);
+        // Pictures draft：拷贝 db 实体引用，AddPicture 时往这个 list append 新建 Image，
+        // RemoveSelectedPicture 时从这里删；Save 时 diff 出删/增量调 ImageService 处理。
+        _editingPictures = _media.Pictures?.ToList() ?? new List<Core.Models.Media.Image>();
         EditingAliases = new ObservableCollection<string>(_media.AliasTitles ?? new List<string>());
         EditingSummaryTranslated = _media.SummaryTranslated ?? "";
         EditingReleaseDate = _media.ReleaseDate.HasValue
@@ -365,17 +617,298 @@ public partial class MediaDetailViewModel : ObservableObject
     {
         if (!IsEditMode) return;
         _editingTags = new();
-        _editingCreators = new();
         _editingFavorites = new();
         _editingCategory = null;
+        _editingPictures = new();
+        // 重置 per-role creator drafts
+        _editingDirectors = new();
+        _editingVoiceActors = new();
+        _editingScreenWriters = new();
+        _editingIllustrators = new();
+        _editingActors = new();
+        _editingMusicians = new();
+        _editingAuthors = new();
         EditingAliases = new ObservableCollection<string>();
         EditingSummaryTranslated = "";
         EditingReleaseDate = null;
         SaveError = null;
 
-        // 字段从 _media 还原
+        // 字段从 _media 还原（包括 Pictures、Creators 各职责——ApplyToProperties 内部分发）
         if (_media is not null) ApplyToProperties(_media);
         IsEditMode = false;
+    }
+
+    /// <summary>编辑模式下点击社团 chip 旁的"修改"按钮：弹 InputDialog 输入新名字 → 走 CreatorService.AddOrUpdateCircle
+    /// 入库并拿到 db Circle 实体（已存在同名则取已有，否则新建）→ set _media.Circle + UI CircleName 立即刷新。
+    /// 简化方案：不做完整 CircleSelectorDialog（带搜索/列表），用户场景以"为这个媒体改个社团名"为主，
+    /// 复用 InputDialog 即可。后续如果要用户场景变了（频繁选已有 Circle），再升级。</summary>
+    [RelayCommand]
+    private async Task EditCircleAsync()
+    {
+        if (!IsEditMode || _media is null) return;
+        try
+        {
+            var newName = await InputDialog.ShowAsync(
+                title: string.IsNullOrEmpty(CircleName) ? "添加社团" : "修改社团",
+                message: "输入社团 / 工作室名（已存在同名将复用已有 Circle）",
+                initialValue: CircleName,
+                placeholder: "例如：Studio Trigger",
+                confirmText: "确定",
+                maxLength: 100);
+            if (string.IsNullOrWhiteSpace(newName)) return;
+
+            // AddOrUpdateCircle 内部按 Name 找已有，找到返回 db 实体；找不到新建——避免出现重名 db 记录
+            var dbCircle = await _creatorService.AddOrUpdateCircle(
+                new NineKgTools.Core.Models.Media.Circle { Name = newName.Trim() });
+
+            _media.Circle = dbCircle;
+            CircleName = dbCircle?.Name;
+            Log.Information("Circle 修改：mediaId={Id}, circle={Name}", _media.Id, dbCircle?.Name);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "EditCircleAsync 失败");
+            SaveError = "保存失败，请稍后重试。";
+        }
+    }
+
+    /// <summary>清除社团（编辑模式）。直接 set _media.Circle = null + UI 刷新；Save 时随其他字段一起持久化。</summary>
+    [RelayCommand]
+    private void ClearCircle()
+    {
+        if (!IsEditMode || _media is null) return;
+        _media.Circle = null;
+        CircleName = null;
+    }
+
+    /// <summary>评分 5 星：CommandParameter "1"-"5"；点击当前已选中星 → 清零（取消评分）。
+    /// 与 Web MudRating SelectedValue 逻辑一致：再点一下 = 取消。</summary>
+    [RelayCommand]
+    private void SetRating(string? scoreStr)
+    {
+        if (!IsEditMode) return;
+        if (!int.TryParse(scoreStr, out var score)) return;
+        if (score < 0 || score > 5) return;
+        // 点同一星 → 清零（toggle off）
+        var current = (int)Math.Round(Rating);
+        Rating = current == score ? 0 : score;
+        HasRating = Rating > 0;
+        RatingText = HasRating ? $"★ {Rating:F1}" : "";
+    }
+
+    // ===== 编辑模式下 chip × 删除：标签 / 7 个 Creator 职责 =====
+    // chip 内联编辑模式与图片画廊一致：每 chip 右上角 × 弹 NineKgConfirmDialog 确认 → 从 draft 删除。
+    // CommandParameter 是 chip 显示的 Name 字符串（同一 section 内 Name 假设唯一——按 FindIndex 删第一项）。
+
+    /// <summary>编辑模式从标签 chip 上点 × 删除——弹 confirm + 删 _editingTags 第一个 Name 匹配项。</summary>
+    [RelayCommand]
+    private async Task RemoveTagAsync(string? tagName)
+    {
+        if (!IsEditMode || string.IsNullOrEmpty(tagName)) return;
+        var idx = _editingTags.FindIndex(t => t.Name == tagName);
+        if (idx < 0) return;
+
+        var confirmed = await NineKgConfirmDialog.ShowAsync(
+            ownerVisual: null,
+            title: "移除标签",
+            message: "只是从此媒体取消关联，标签本身不会被删除。",
+            intent: DialogIntent.Destructive,
+            targetName: tagName,
+            confirmText: "移除");
+        if (!confirmed) return;
+
+        _editingTags.RemoveAt(idx);
+        // 同步 UI Tags 集合（按相同 Name 找第一个 string 匹配项删）
+        var uiIdx = Tags.IndexOf(tagName);
+        if (uiIdx >= 0) Tags.RemoveAt(uiIdx);
+    }
+
+    [RelayCommand] private Task RemoveDirectorAsync(string? n) => RemoveCreatorByRoleAsync(CreatorType.Director, n);
+    [RelayCommand] private Task RemoveVoiceActorAsync(string? n) => RemoveCreatorByRoleAsync(CreatorType.VoiceActor, n);
+    [RelayCommand] private Task RemoveScreenWriterAsync(string? n) => RemoveCreatorByRoleAsync(CreatorType.ScreenWriter, n);
+    [RelayCommand] private Task RemoveIllustratorAsync(string? n) => RemoveCreatorByRoleAsync(CreatorType.Illustrator, n);
+    [RelayCommand] private Task RemoveActorAsync(string? n) => RemoveCreatorByRoleAsync(CreatorType.Actor, n);
+    [RelayCommand] private Task RemoveMusicianAsync(string? n) => RemoveCreatorByRoleAsync(CreatorType.Musician, n);
+    [RelayCommand] private Task RemoveAuthorAsync(string? n) => RemoveCreatorByRoleAsync(CreatorType.Author, n);
+
+    /// <summary>共享删除逻辑：按 type 找对应 draft + UI 集合，弹 confirm 后删第一个 Name 匹配项。</summary>
+    private async Task RemoveCreatorByRoleAsync(CreatorType type, string? creatorName)
+    {
+        if (!IsEditMode || string.IsNullOrEmpty(creatorName)) return;
+        var (current, uiSet, draftSet) = ResolveDraftByType(type);
+        var idx = current.FindIndex(c => c.Name == creatorName);
+        if (idx < 0) return;
+
+        var confirmed = await NineKgConfirmDialog.ShowAsync(
+            ownerVisual: null,
+            title: "移除创作者",
+            message: "只是从此媒体取消该职责关联，创作者本身不会被删除。",
+            intent: DialogIntent.Destructive,
+            targetName: creatorName,
+            confirmText: "移除");
+        if (!confirmed) return;
+
+        var newList = current.ToList();
+        newList.RemoveAt(idx);
+        draftSet(newList);
+        uiSet(new ObservableCollection<string>(newList.Select(c => c.Name).Distinct()));
+    }
+
+    // ===== chip 跳转：点击 tag/creator/circle chip 跳到 MediaOverview 并按该实体筛选 =====
+    // - Tag 走 Name（MediaQueryParameters.TagNames 接 string）
+    // - Creator/Circle 走 Id（精确过滤——同名不同人不会混淆）；从 _media 实体上读取 Id
+    // - 编辑模式下 chip 上的 × 优先触发删除，整 chip 的 OpenXxx 命令仅浏览态实际能 fire（编辑态 IsHitTestVisible=false）
+
+    /// <summary>点击标签 chip → 跳 TagsPage 直达该标签详情。
+    /// 通过 _media.Tags 找 db Tag 实体的 Id（_media.Tags 由 MediaService.GetMediaAsync 时 Include 过）。
+    /// 跨页跳转走 ViewModel.RequestOpenDetail(id) 标记 + OnEnterAsync 消费——避免 configureBeforeEnter
+    /// 同步 Action 与 OnEnterAsync 异步加载的 race。</summary>
+    [RelayCommand]
+    private async Task OpenTagAsync(string? tagName)
+    {
+        if (string.IsNullOrEmpty(tagName) || _media is null) return;
+        var match = _media.Tags?.FirstOrDefault(t => t.Name == tagName);
+        if (match is null)
+        {
+            Log.Debug("OpenTagAsync: 未在 _media.Tags 找到 {Name}（可能是 draft 未保存项），跳过", tagName);
+            return;
+        }
+        try
+        {
+            await _navigationService.NavigateToAsync<TagsViewModel>(
+                vm => vm.RequestOpenDetail(match.Id));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "OpenTagAsync 失败：{Tag}", tagName);
+        }
+    }
+
+    /// <summary>点击创作者 chip → 跳 CreatorsPage 直达该创作者详情。</summary>
+    [RelayCommand]
+    private async Task OpenCreatorAsync(string? creatorName)
+    {
+        if (string.IsNullOrEmpty(creatorName) || _media is null) return;
+        var match = _media.Creators?.FirstOrDefault(c => c.Name == creatorName);
+        if (match is null)
+        {
+            Log.Debug("OpenCreatorAsync: 未在 _media.Creators 找到 {Name}（可能是 draft 未保存项），跳过", creatorName);
+            return;
+        }
+        try
+        {
+            await _navigationService.NavigateToAsync<CreatorsViewModel>(
+                vm => vm.RequestOpenDetail(match.Id));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "OpenCreatorAsync 失败：{Creator}", creatorName);
+        }
+    }
+
+    /// <summary>点击社团 chip → 跳 CirclesPage 直达该社团详情。</summary>
+    [RelayCommand]
+    private async Task OpenCircleAsync()
+    {
+        if (_media?.Circle is null) return;
+        var c = _media.Circle;
+        try
+        {
+            await _navigationService.NavigateToAsync<CirclesViewModel>(
+                vm => vm.RequestOpenDetail(c.Id));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "OpenCircleAsync 失败：{Circle}", c.Name);
+        }
+    }
+
+    /// <summary>SaveAsync 调用——按 media 类型把 per-role draft 写回 _media 各 sub-class 字段，
+    /// 然后调 SyncCreators() 把分散字段聚合到 _media.Creators（搜索/向量等其他逻辑用）。</summary>
+    private void ApplyCreatorDraftsToMedia(MediaBase media)
+    {
+        switch (media)
+        {
+            case VideoMedia v:
+                v.Directors = _editingDirectors.ToList();
+                v.ScreenWriters = _editingScreenWriters.ToList();
+                v.Illustrators = _editingIllustrators.ToList();
+                v.Actors = _editingActors.ToList();
+                v.Musicians = _editingMusicians.ToList();
+                break;
+            case AudioMedia a:
+                a.VoiceActors = _editingVoiceActors.ToList();
+                a.ScreenWriters = _editingScreenWriters.ToList();
+                a.Illustrators = _editingIllustrators.ToList();
+                a.Musicians = _editingMusicians.ToList();
+                a.Authors = _editingAuthors.ToList();
+                break;
+            case GameMedia g:
+                g.ScreenWriters = _editingScreenWriters.ToList();
+                g.Illustrators = _editingIllustrators.ToList();
+                g.VoiceActors = _editingVoiceActors.ToList();
+                g.Musicians = _editingMusicians.ToList();
+                g.Authors = _editingAuthors.ToList();
+                break;
+            case PictureMedia p:
+                p.Illustrators = _editingIllustrators.ToList();
+                p.Actors = _editingActors.ToList();
+                p.Authors = _editingAuthors.ToList();
+                break;
+            case TextMedia t:
+                t.Illustrators = _editingIllustrators.ToList();
+                t.Author = _editingAuthors.FirstOrDefault();
+                break;
+        }
+        // 把分散字段聚合到 MediaBase.Creators（保持 Web 端一致；搜索/向量等下游逻辑读这个）
+        media.SyncCreators();
+    }
+
+    /// <summary>EnterEdit 调用——按 media 类型把对应职责的 Creator 列表 copy 到对应 draft。
+    /// Save 时根据同一 type 写回（CancelEdit 不动 draft 之外的 _media 字段，draft 干净抛弃即可）。</summary>
+    private void InitCreatorDraftsByType(MediaBase media)
+    {
+        _editingDirectors = new();
+        _editingVoiceActors = new();
+        _editingScreenWriters = new();
+        _editingIllustrators = new();
+        _editingActors = new();
+        _editingMusicians = new();
+        _editingAuthors = new();
+
+        switch (media)
+        {
+            case VideoMedia v:
+                _editingDirectors = v.Directors?.ToList() ?? new();
+                _editingScreenWriters = v.ScreenWriters?.ToList() ?? new();
+                _editingIllustrators = v.Illustrators?.ToList() ?? new();
+                _editingActors = v.Actors?.ToList() ?? new();
+                _editingMusicians = v.Musicians?.ToList() ?? new();
+                break;
+            case AudioMedia a:
+                _editingVoiceActors = a.VoiceActors?.ToList() ?? new();
+                _editingScreenWriters = a.ScreenWriters?.ToList() ?? new();
+                _editingIllustrators = a.Illustrators?.ToList() ?? new();
+                _editingMusicians = a.Musicians?.ToList() ?? new();
+                _editingAuthors = a.Authors?.ToList() ?? new();
+                break;
+            case GameMedia g:
+                _editingScreenWriters = g.ScreenWriters?.ToList() ?? new();
+                _editingIllustrators = g.Illustrators?.ToList() ?? new();
+                _editingVoiceActors = g.VoiceActors?.ToList() ?? new();
+                _editingMusicians = g.Musicians?.ToList() ?? new();
+                _editingAuthors = g.Authors?.ToList() ?? new();
+                break;
+            case PictureMedia p:
+                _editingIllustrators = p.Illustrators?.ToList() ?? new();
+                _editingActors = p.Actors?.ToList() ?? new();
+                _editingAuthors = p.Authors?.ToList() ?? new();
+                break;
+            case TextMedia t:
+                _editingIllustrators = t.Illustrators?.ToList() ?? new();
+                _editingAuthors = t.Author is not null ? new() { t.Author } : new();
+                break;
+        }
     }
 
     [RelayCommand]
@@ -399,8 +932,8 @@ public partial class MediaDetailViewModel : ObservableObject
             _media.Tags.Clear();
             foreach (var t in _editingTags) _media.Tags.Add(t);
 
-            _media.Creators.Clear();
-            foreach (var c in _editingCreators) _media.Creators.Add(c);
+            // 创作者按职责写回（per-role draft → _media 各 sub-class 字段）
+            ApplyCreatorDraftsToMedia(_media);
 
             _media.Favorites.Clear();
             foreach (var f in _editingFavorites) _media.Favorites.Add(f);
@@ -415,6 +948,11 @@ public partial class MediaDetailViewModel : ObservableObject
 
             // 发售日期：DatePicker 返回 DateTimeOffset?，转 DateTime?
             _media.ReleaseDate = EditingReleaseDate?.DateTime;
+
+            // 图片增删：按 Id 比 _media.Pictures（旧）和 _editingPictures（draft）的差集
+            // - 删除：旧里有、新 list 里没的入库实体 → ImageService.RemoveImageAsync 清 db + 文件
+            // - 新增：_editingPictures 里 Id==0 且带 Content 的 → ImageService.AddOrFindImagesAsync 入库 + 算 hash + 落 cache
+            await ApplyPictureDiffAsync(_media);
 
             await _mediaService.UpdateMediaAsync(_media);
             Log.Information("MediaDetail 保存成功：mediaId={Id}, title={Title}", _media.Id, _media.Title);
@@ -480,46 +1018,88 @@ public partial class MediaDetailViewModel : ObservableObject
         }
     }
 
+    /// <summary>编辑某一职责的创作者——string CommandParameter 由 axaml 传（避免 Avalonia 12 enum 直传渲染坑）。
+    /// 内部 Enum.TryParse → 路由到对应 draft + UI ObservableCollection；CreatorSelectorDialog 走 initialFilterType
+    /// 让 dialog 默认筛选到该 type，与 Web 端 EditableCreatorList 行为对齐。</summary>
     [RelayCommand]
-    private async Task EditCreatorsAsync()
+    private async Task EditCreatorsByRoleAsync(string? roleName)
     {
-        if (!IsEditMode) return;
+        if (!IsEditMode || _media is null) return;
+        if (!Enum.TryParse<CreatorType>(roleName, ignoreCase: true, out var type)) return;
         try
         {
+            var (currentDraft, uiCollection, setDraft) = ResolveDraftByType(type);
             var result = await CreatorSelectorDialog.ShowAsync(
-                _editingCreators,
+                currentDraft,
                 allowMultiSelect: true,
-                initialFilterType: null,
+                initialFilterType: type,
                 _creatorService);
             if (result is null) return;
-            _editingCreators = result;
-            CreatorsText = string.Join(" · ", _editingCreators.Select(c => c.Name).Distinct());
+            setDraft(result);
+            // 同步 UI chip 列表（重建以触发 NotifyPropertyChangedFor）
+            uiCollection(new ObservableCollection<string>(result.Select(c => c.Name).Distinct()));
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "EditCreatorsAsync 失败");
+            Log.Error(ex, "EditCreatorsByRoleAsync 失败 role={Role}", roleName);
         }
     }
 
+    /// <summary>把 CreatorType 路由到对应 draft list + UI ObservableCollection setter。
+    /// Tuple 返回 (当前 draft list, UI collection setter, draft setter)——避免 8 个 if-else 重复。</summary>
+    private (List<NineKgTools.Core.Models.Media.Creator> current, Action<ObservableCollection<string>> uiSet, Action<List<NineKgTools.Core.Models.Media.Creator>> draftSet) ResolveDraftByType(CreatorType type) =>
+        type switch
+        {
+            CreatorType.Director => (_editingDirectors, c => Directors = c, l => _editingDirectors = l),
+            CreatorType.VoiceActor => (_editingVoiceActors, c => VoiceActors = c, l => _editingVoiceActors = l),
+            CreatorType.ScreenWriter => (_editingScreenWriters, c => ScreenWriters = c, l => _editingScreenWriters = l),
+            CreatorType.Illustrator => (_editingIllustrators, c => Illustrators = c, l => _editingIllustrators = l),
+            CreatorType.Actor => (_editingActors, c => Actors = c, l => _editingActors = l),
+            CreatorType.Musician => (_editingMusicians, c => Musicians = c, l => _editingMusicians = l),
+            CreatorType.Author => (_editingAuthors, c => Authors = c, l => _editingAuthors = l),
+            _ => (new(), _ => { }, _ => { }),
+        };
+
+    /// <summary>编辑收藏夹——双模式：编辑模式只改 draft（与其他字段一起 Save），非编辑模式立即 commit
+    /// 到 db。收藏夹独立于"全局编辑模式"是产品决定：用户经常只改收藏夹（加入"待看"等），
+    /// 走完整编辑流（点编辑 → 改 → 保存 → 退编辑）太重。</summary>
     [RelayCommand]
     private async Task EditFavoritesAsync()
     {
-        if (!IsEditMode) return;
+        if (_media is null) return;
         try
         {
+            var current = IsEditMode
+                ? _editingFavorites
+                : (_media.Favorites?.ToList() ?? new List<Favorite>());
             var result = await FavoriteSelectorDialog.ShowAsync(
-                _editingFavorites,
+                current,
                 allowMultiSelect: true,
                 _favoriteService);
             if (result is null) return;
-            _editingFavorites = result;
-            // 同步 UI 显示
-            Favorites = new ObservableCollection<string>(_editingFavorites.Select(f => f.Name));
-            HasFavorites = Favorites.Count > 0;
+
+            if (IsEditMode)
+            {
+                // 编辑模式：只改 draft，等 SaveAsync 一起 commit
+                _editingFavorites = result;
+                FavoritePills = new ObservableCollection<FavoritePillViewModel>(
+                    result.Select(f => new FavoritePillViewModel(f.Name)));
+            }
+            else
+            {
+                // 非编辑模式：立即写回 _media + UpdateMediaAsync 持久化
+                _media.Favorites.Clear();
+                foreach (var f in result) _media.Favorites.Add(f);
+                await _mediaService.UpdateMediaAsync(_media);
+                FavoritePills = new ObservableCollection<FavoritePillViewModel>(
+                    result.Select(f => new FavoritePillViewModel(f.Name)));
+                Log.Information("收藏夹更新（非编辑模式）：mediaId={Id}, count={N}", _media.Id, result.Count);
+            }
         }
         catch (Exception ex)
         {
             Log.Error(ex, "EditFavoritesAsync 失败");
+            SaveError = "保存失败，请稍后重试。";
         }
     }
 
@@ -580,6 +1160,207 @@ public partial class MediaDetailViewModel : ObservableObject
     {
         for (int i = 0; i < Pictures.Count; i++)
             Pictures[i].IsSelected = (i == value);
+    }
+
+    // ===== 图片增删（编辑模式） =====
+
+    /// <summary>添加图片：弹文件选择 → 读 byte[] → 新建 Image 实例（带 Content + GUID 临时 Name）→
+    /// 同步加进 _editingPictures（draft）和 Pictures（VM 列表，立即在 UI 显示）。
+    /// 实际入库 + cache 文件落地由 SaveAsync 里 ApplyPictureDiffAsync 调 ImageService 处理。</summary>
+    [RelayCommand]
+    private async Task AddPictureAsync()
+    {
+        if (!IsEditMode || _media is null) return;
+
+        var topLevel = GetTopLevel();
+        if (topLevel?.StorageProvider is null)
+        {
+            Log.Warning("AddPictureAsync: 无法获取 StorageProvider");
+            return;
+        }
+
+        try
+        {
+            var picked = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "选择图片（可多选）",
+                AllowMultiple = true,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType("图片")
+                    {
+                        Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.webp", "*.bmp", "*.gif" },
+                    },
+                },
+            });
+            if (picked.Count == 0) return;
+
+            int addedCount = 0;
+            foreach (var file in picked)
+            {
+                var path = file?.TryGetLocalPath();
+                if (string.IsNullOrEmpty(path)) continue;
+                try
+                {
+                    var bytes = await File.ReadAllBytesAsync(path);
+                    var ext = Path.GetExtension(path);
+                    if (string.IsNullOrEmpty(ext)) ext = ".jpg";
+                    // Image(byte[], string) ctor 自动算 hash——AddOrFindImageAsync 里靠这个去重
+                    var image = new Core.Models.Media.Image(bytes, $"picture_{Guid.NewGuid():N}{ext}");
+
+                    _editingPictures.Add(image);
+                    Pictures.Add(new MediaPictureItemViewModel(image, bytes));
+                    addedCount++;
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "AddPictureAsync 单文件读取失败：{Path}", path);
+                }
+            }
+            if (addedCount > 0)
+            {
+                // 跳到新加的最后一张让用户立刻看到
+                SelectedPictureIndex = Pictures.Count - 1;
+                // 集合操作不会触发 Pictures setter 的 PropertyChanged——手动通知派生属性重算
+                NotifyPicturesDerivedChanged();
+                Log.Information("AddPictureAsync: 加入 {N} 张图片到 draft（mediaId={Id}）", addedCount, _media.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "AddPictureAsync 失败");
+            SaveError = "添加图片失败，请稍后重试。";
+        }
+    }
+
+    /// <summary>删除指定图片（缩略图 / 主图右上 × 按钮触发）。弹 NineKgConfirmDialog 确认后从
+    /// _editingPictures + Pictures 同步移除；真正从 db 移除 + 删 cache 文件由 SaveAsync 里
+    /// ApplyPictureDiffAsync 处理（给 Cancel 留撤销机会）。CommandParameter 为目标 VM——null 时
+    /// 兜底取 SelectedPicture（主图区 × 按钮可省略 CommandParameter）。</summary>
+    [RelayCommand]
+    private async Task RemovePictureAsync(MediaPictureItemViewModel? item)
+    {
+        if (!IsEditMode || _media is null) return;
+        var target = item ?? SelectedPicture;
+        if (target is null) return;
+
+        var confirmed = await NineKgConfirmDialog.ShowAsync(
+            ownerVisual: null,
+            title: "删除图片",
+            message: "从画廊移除该图片，保存后将从数据库与缓存中清除（其他媒体引用同一张图不受影响）。",
+            intent: DialogIntent.Destructive,
+            confirmText: "删除");
+        if (!confirmed) return;
+
+        var idx = Pictures.IndexOf(target);
+        if (idx < 0) return;
+
+        // 从 draft 移除（按引用 — VM 持有的 UnderlyingImage 与 _editingPictures 元素同一实例）
+        _editingPictures.Remove(target.UnderlyingImage);
+        Pictures.RemoveAt(idx);
+
+        // 调整选中索引：删完 N 张后 currentIdx 可能越界，clamp 到合法范围
+        if (Pictures.Count == 0)
+        {
+            SelectedPictureIndex = 0;
+        }
+        else if (SelectedPictureIndex >= Pictures.Count)
+        {
+            SelectedPictureIndex = Pictures.Count - 1;
+        }
+        else if (idx <= SelectedPictureIndex && SelectedPictureIndex > 0)
+        {
+            // 删的图在选中之前 → 选中索引前移一位（保证选中的图不变）
+            SelectedPictureIndex--;
+        }
+        else
+        {
+            // 索引值未变但 SelectedPicture 指向的对象变了——强制 notify 让主图区刷新
+            OnPropertyChanged(nameof(SelectedPicture));
+            // 同步 IsSelected 标记（OnSelectedPictureIndexChanged partial 不会被 set 同值触发）
+            for (int i = 0; i < Pictures.Count; i++)
+                Pictures[i].IsSelected = (i == SelectedPictureIndex);
+        }
+        NotifyPicturesDerivedChanged();
+        Log.Information("RemovePicture: 移除 1 张图片到 draft（mediaId={Id}, remaining={N}）",
+            _media.Id, Pictures.Count);
+    }
+
+    /// <summary>Pictures.Add/Remove 是集合内部变更（不会触发 setter 的 PropertyChanged），
+    /// 派生属性（HasPictures / counter / ShowEmpty 等）需要手动 notify。</summary>
+    private void NotifyPicturesDerivedChanged()
+    {
+        OnPropertyChanged(nameof(HasPictures));
+        OnPropertyChanged(nameof(HasMultiplePictures));
+        OnPropertyChanged(nameof(CanGoPrevPicture));
+        OnPropertyChanged(nameof(CanGoNextPicture));
+        OnPropertyChanged(nameof(PictureCounterText));
+        OnPropertyChanged(nameof(SelectedPicture));
+        OnPropertyChanged(nameof(ShowPicturesSection));
+        OnPropertyChanged(nameof(ShowEmptyPicturesHint));
+    }
+
+    /// <summary>SaveAsync 调用：根据 _editingPictures（draft）和 _media.Pictures（旧）计算增删。
+    /// - 删除：旧里有的入库实体（Id>0），不在 draft 里 → 调 ImageService.RemoveImageAsync 清 db + 文件
+    /// - 新增：draft 里 Id==0（带 Content）→ 调 ImageService.AddOrFindImagesAsync 入库 + 算 hash + 落 cache，拿回 db 实体
+    /// - 保留：draft 里 Id>0 的——直接复用引用
+    /// 最后把汇总的 list set 回 _media.Pictures（让 UpdateMediaAsync 持久化关联）。</summary>
+    private async Task ApplyPictureDiffAsync(MediaBase media)
+    {
+        var oldPictures = media.Pictures ?? new List<Core.Models.Media.Image>();
+        var draftIds = new HashSet<int>(_editingPictures.Where(p => p.Id > 0).Select(p => p.Id));
+
+        // 1. 删除：旧里有 db record、不在 draft 里
+        var toRemove = oldPictures.Where(p => p.Id > 0 && !draftIds.Contains(p.Id)).ToList();
+        foreach (var pic in toRemove)
+        {
+            try
+            {
+                await _imageService.RemoveImageAsync(pic);
+                Log.Information("ApplyPictureDiffAsync: 删除图片 id={Id} name={Name}", pic.Id, pic.Name);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "ApplyPictureDiffAsync: 删除图片失败 id={Id}", pic.Id);
+            }
+        }
+
+        // 2. 新增：draft 里 Id==0 + 带 Content 的——走 ImageService 入库 + 落 cache
+        var toAdd = _editingPictures.Where(p => p.Id == 0 && p.Content is { Length: > 0 }).ToList();
+        var keepExisting = _editingPictures.Where(p => p.Id > 0).ToList();
+        var addedDbEntities = new List<Core.Models.Media.Image>();
+        if (toAdd.Count > 0)
+        {
+            try
+            {
+                addedDbEntities = await _imageService.AddOrFindImagesAsync(toAdd, media.Title);
+                Log.Information("ApplyPictureDiffAsync: 新增 {N} 张图片入库（mediaId={Id}）", addedDbEntities.Count, media.Id);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "ApplyPictureDiffAsync: 新图入库失败 mediaId={Id}", media.Id);
+            }
+        }
+
+        // 3. 汇总：保留旧 + 新增 db 实体——按 draft 里的顺序映射，保证 UI 顺序与编辑顺序一致
+        var finalList = new List<Core.Models.Media.Image>();
+        foreach (var draftPic in _editingPictures)
+        {
+            if (draftPic.Id > 0)
+            {
+                finalList.Add(draftPic);
+            }
+            else
+            {
+                // 用 hash 找回对应 db entity（AddOrFindImagesAsync 已按 hash 去重）
+                var dbEntity = addedDbEntities.FirstOrDefault(e => e.Hash == draftPic.Hash);
+                if (dbEntity is not null) finalList.Add(dbEntity);
+            }
+        }
+        // 注意：用 Clear + Add 维护 EF tracker——直接 set 引用替换在 EF 上 track 行为不稳定
+        media.Pictures ??= new List<Core.Models.Media.Image>();
+        media.Pictures.Clear();
+        foreach (var p in finalList) media.Pictures.Add(p);
     }
 
     [RelayCommand]
@@ -687,13 +1468,11 @@ public partial class MediaDetailViewModel : ObservableObject
             if (picked is null) return;
 
             _editingCategory = picked;
-            // 同步 UI 显示（顶级 brush + 子分类名）
+            // 同步 UI 显示（顶级 brush + 子分类名）；TopCategory 字段上有 NotifyPropertyChangedFor
+            // 链 → CategoryBrush / CategoryFillBrush / CategoryIcon 自动 re-evaluate，无需手动 notify
             TopCategory = picked.TopCategory;
             CategoryDisplayName = TopCategoryStyles.DisplayName(picked.TopCategory);
             CategorySubName = picked.Name;
-            // CategoryBrush / CategoryIcon 是 computed 属性——TopCategory 改了它们也跟着变（ObservableObject 自动通知）
-            OnPropertyChanged(nameof(CategoryBrush));
-            OnPropertyChanged(nameof(CategoryIcon));
         }
         catch (Exception ex)
         {

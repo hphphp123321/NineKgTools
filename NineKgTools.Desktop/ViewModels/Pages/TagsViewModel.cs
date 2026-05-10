@@ -104,7 +104,22 @@ public partial class TagsViewModel : PageViewModelBase
     [RelayCommand]
     private Task OpenTagMappings() => _navigation.NavigateToAsync<TagsMappingsViewModel>();
 
-    public override Task OnEnterAsync() => LoadTopTagsAsync();
+    /// <summary>跨页跳转 pending——MediaDetailWindow 标签 chip 跳转用。
+    /// 走 OpenDetailByIdAsync 内部已包含顶级加载 + TopTag 选中 + Tag 详情，无需先 LoadTopTagsAsync。</summary>
+    private int? _pendingDetailId;
+
+    public void RequestOpenDetail(int id) => _pendingDetailId = id;
+
+    public override async Task OnEnterAsync()
+    {
+        if (_pendingDetailId is { } pid)
+        {
+            _pendingDetailId = null;
+            await OpenDetailByIdAsync(pid);
+            return;
+        }
+        await LoadTopTagsAsync();
+    }
 
     [RelayCommand]
     private async Task LoadTopTagsAsync()
@@ -183,10 +198,43 @@ public partial class TagsViewModel : PageViewModelBase
     // ==================== 标签详情态（第三层） ====================
 
     [RelayCommand]
-    private async Task OpenTagDetailAsync(TagItemViewModel? item)
-    {
-        if (item is null) return;
+    private Task OpenTagDetailAsync(TagItemViewModel? item) =>
+        item is null ? Task.CompletedTask : LoadTagDetailAsync(item);
 
+    /// <summary>外部入口（如 MediaDetailWindow 标签 chip 跳转）：按 Id 直达指定 Tag 详情。
+    /// 若 Tag 有 TopTag → 先 SelectTopTagAsync 让顶层导航栈正确，GoBack 能回到对应 TopTag list。
+    /// 找不到 Tag 时 no-op + log。</summary>
+    public async Task OpenDetailByIdAsync(int tagId)
+    {
+        try
+        {
+            var allTags = await _tagService.GetAllTagsAsync();
+            var tag = allTags.FirstOrDefault(t => t.Id == tagId);
+            if (tag is null)
+            {
+                Log.Warning("OpenDetailByIdAsync: 未找到 Tag id={Id}", tagId);
+                return;
+            }
+
+            // 第二层：如果有 TopTag → 设 SelectedTopTag（也加载子标签到 _allTagsForSelectedTop）
+            if (tag.TopTag is not null)
+            {
+                if (TopTags.Count == 0) await LoadTopTagsAsync();
+                var topItem = TopTags.FirstOrDefault(t => t.Id == tag.TopTag.Id);
+                if (topItem is not null) await SelectTopTagAsync(topItem);
+            }
+
+            // 第三层：进入 Tag 详情（直接构造 TagItemViewModel——不必依赖 _allTagsForSelectedTop）
+            await LoadTagDetailAsync(new TagItemViewModel(tag));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "OpenDetailByIdAsync 失败 tagId={Id}", tagId);
+        }
+    }
+
+    private async Task LoadTagDetailAsync(TagItemViewModel item)
+    {
         SelectedTagDetail = item;
         DetailLoading = true;
         TagMedias = new ObservableCollection<MediaCardViewModel>();

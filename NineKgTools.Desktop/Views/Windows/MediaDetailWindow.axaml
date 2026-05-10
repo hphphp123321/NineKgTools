@@ -76,6 +76,22 @@
                         MinHeight="280">
                     <Grid ColumnDefinitions="Auto,32,*">
 
+                        <!-- 置顶图钉：浮在 Hero 右上角（系统标题栏底部下方紧贴位置），
+                             FluentAvalonia drawn caption buttons 在系统标题栏内，本图钉在 Hero 内
+                             两者 z-order / 区域分开互不冲突 -->
+                        <ToggleButton Grid.Column="0" Grid.ColumnSpan="3"
+                                      IsChecked="{Binding $parent[Window].Topmost, Mode=TwoWay}"
+                                      HorizontalAlignment="Right"
+                                      VerticalAlignment="Top"
+                                      Margin="0,-8,-12,0"
+                                      Width="36" Height="32"
+                                      Padding="0"
+                                      Background="Transparent"
+                                      BorderThickness="0"
+                                      ToolTip.Tip="窗口置顶（Ctrl+T） · 比较多个媒体时方便">
+                            <PathIcon Data="{StaticResource IconPin}" Width="14" Height="14" />
+                        </ToggleButton>
+
                         <!-- 封面 200x280 + 编辑模式下方"更换封面"按钮 -->
                         <StackPanel Grid.Column="0" Spacing="8" VerticalAlignment="Center">
                             <Border Width="200" Height="280"
@@ -110,21 +126,35 @@
 
                             <!-- 类别 + 标题 -->
                             <StackPanel Spacing="6">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <PathIcon Data="{Binding CategoryIcon}" Width="14" Height="14"
-                                              Foreground="{Binding CategoryBrush}" />
-                                    <TextBlock Text="{Binding CategoryDisplayName}"
-                                               FontSize="12"
-                                               Foreground="{Binding CategoryBrush}"
-                                               FontWeight="SemiBold" />
+                                <!-- 类别 chip：每个 TopCategory 一种颜色（fill + accent border + accent fg），
+                                     与 BrandResources.axaml 里 BrandCategoryXxxBrush / BrandCategoryXxxFillBrush 对齐，
+                                     Web 端 / MediaCard / 分类切换栏复用同一套类别色 token 保证全局一致。 -->
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <Border CornerRadius="999"
+                                            Padding="10,4"
+                                            Background="{Binding CategoryFillBrush}"
+                                            BorderBrush="{Binding CategoryBrush}"
+                                            BorderThickness="1"
+                                            VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                            <PathIcon Data="{Binding CategoryIcon}" Width="13" Height="13"
+                                                      Foreground="{Binding CategoryBrush}" />
+                                            <TextBlock Text="{Binding CategoryDisplayName}"
+                                                       FontSize="12"
+                                                       Foreground="{Binding CategoryBrush}"
+                                                       FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </Border>
                                     <TextBlock Text="{Binding CategorySubName, StringFormat='/ {0}'}"
                                                FontSize="12"
                                                Opacity="0.7"
+                                               VerticalAlignment="Center"
                                                IsVisible="{Binding CategorySubName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                     <Button Command="{Binding EditCategoryCommand}"
                                             IsVisible="{Binding IsEditMode}"
                                             Padding="8,2"
-                                            Content="修改分类" />
+                                            Content="修改分类"
+                                            VerticalAlignment="Center" />
                                 </StackPanel>
 
                                 <!-- Title：只读 vs 编辑 -->
@@ -138,41 +168,155 @@
                                          FontWeight="SemiBold"
                                          IsVisible="{Binding IsEditMode}"
                                          MaxLength="200" />
+
+                                <!-- 别名（标题正下方小字行）：浏览态 secondary 单行 ellipsis；编辑态切 EditableAliasList。
+                                     HasAlias 为 false 时只读模式整行隐藏；编辑模式仍显示组件让用户能加首个别名。 -->
+                                <TextBlock IsVisible="{Binding HasAlias}"
+                                           FontSize="12" Opacity="0.65"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxLines="1">
+                                    <Run Text="又名: " />
+                                    <Run Text="{Binding AliasText}" />
+                                </TextBlock>
+                                <comp:EditableAliasList Aliases="{Binding EditingAliases}"
+                                                        IsEditable="True"
+                                                        IsVisible="{Binding IsEditMode}" />
                             </StackPanel>
 
-                            <!-- 副标题：创作者 · 社团 -->
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <TextBlock Text="{Binding CircleName}"
-                                           FontSize="14"
-                                           Opacity="0.85"
-                                           IsVisible="{Binding CircleName, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                <TextBlock Text="·" Opacity="0.4"
-                                           IsVisible="{Binding CircleName, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                <TextBlock Text="{Binding CreatorsText}"
-                                           FontSize="14"
-                                           Opacity="0.85" />
-                                <Button Command="{Binding EditCreatorsCommand}"
-                                        IsVisible="{Binding IsEditMode}"
+                            <!-- 副标题：仅"社团"小 chip（创作者已下放右侧栏按职责分组）+ 编辑模式修改/清除按钮 -->
+                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <Button IsVisible="{Binding HasCircle}"
+                                        CornerRadius="999"
+                                        Padding="10,4"
+                                        Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                        BorderThickness="1"
+                                        VerticalAlignment="Center"
+                                        Cursor="Hand"
+                                        Command="{Binding OpenCircleCommand}"
+                                        ToolTip.Tip="查看该社团关联媒体">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <PathIcon Data="{StaticResource IconBusiness}" Width="13" Height="13"
+                                                  Opacity="0.7" />
+                                        <TextBlock Text="{Binding CircleName}"
+                                                   FontSize="13"
+                                                   Opacity="0.85" />
+                                    </StackPanel>
+                                </Button>
+                                <!-- 编辑模式：修改社团（弹 InputDialog） + 清除按钮 -->
+                                <Button IsVisible="{Binding IsEditMode}"
+                                        Command="{Binding EditCircleCommand}"
                                         Padding="8,2"
-                                        Content="编辑创作者" />
+                                        Content="修改社团"
+                                        ToolTip.Tip="设置 / 修改社团（已存在同名将复用 db Circle）"
+                                        VerticalAlignment="Center" />
+                                <Button IsVisible="{Binding IsEditMode}"
+                                        IsEnabled="{Binding HasCircle}"
+                                        Command="{Binding ClearCircleCommand}"
+                                        Padding="6,2"
+                                        ToolTip.Tip="清除社团"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="✕" FontSize="11" Opacity="0.7" />
+                                </Button>
                             </StackPanel>
 
-                            <!-- 评分：只读 vs 编辑（NumericUpDown 0-5 整数 stop） -->
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <TextBlock Text="{Binding RatingText}"
-                                           FontSize="20"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource SystemFillColorAttentionBrush}"
-                                           IsVisible="{Binding HasRating}" />
-                                <StackPanel Orientation="Horizontal" Spacing="6"
-                                            IsVisible="{Binding IsEditMode}">
-                                    <TextBlock Text="评分" Opacity="0.7" VerticalAlignment="Center" FontSize="12" />
-                                    <NumericUpDown Value="{Binding Rating, Mode=TwoWay}"
-                                                   Minimum="0" Maximum="5"
-                                                   Increment="0.5"
-                                                   FormatString="0.0"
-                                                   Width="120" />
-                                </StackPanel>
+                            <!-- 评分（5 颗整星，与 Web MudRating 一致）：
+                                 - 5 个 Button 横排，PathIcon.Data 绑 RatingStarN 派生 Geometry（Rating>=N fill 否则 outline）
+                                 - 编辑态：点击 SetRatingCommand("1".."5")；点同星 → toggle 清零
+                                 - 浏览态：IsEnabled=False 不可点击 -->
+                            <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                                <Button Command="{Binding SetRatingCommand}" CommandParameter="1"
+                                        Background="Transparent" BorderThickness="0" Padding="3"
+                                        IsEnabled="{Binding IsEditMode}" Cursor="Hand">
+                                    <PathIcon Data="{Binding RatingStar1}" Width="22" Height="22"
+                                              Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                                </Button>
+                                <Button Command="{Binding SetRatingCommand}" CommandParameter="2"
+                                        Background="Transparent" BorderThickness="0" Padding="3"
+                                        IsEnabled="{Binding IsEditMode}" Cursor="Hand">
+                                    <PathIcon Data="{Binding RatingStar2}" Width="22" Height="22"
+                                              Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                                </Button>
+                                <Button Command="{Binding SetRatingCommand}" CommandParameter="3"
+                                        Background="Transparent" BorderThickness="0" Padding="3"
+                                        IsEnabled="{Binding IsEditMode}" Cursor="Hand">
+                                    <PathIcon Data="{Binding RatingStar3}" Width="22" Height="22"
+                                              Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                                </Button>
+                                <Button Command="{Binding SetRatingCommand}" CommandParameter="4"
+                                        Background="Transparent" BorderThickness="0" Padding="3"
+                                        IsEnabled="{Binding IsEditMode}" Cursor="Hand">
+                                    <PathIcon Data="{Binding RatingStar4}" Width="22" Height="22"
+                                              Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                                </Button>
+                                <Button Command="{Binding SetRatingCommand}" CommandParameter="5"
+                                        Background="Transparent" BorderThickness="0" Padding="3"
+                                        IsEnabled="{Binding IsEditMode}" Cursor="Hand">
+                                    <PathIcon Data="{Binding RatingStar5}" Width="22" Height="22"
+                                              Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                                </Button>
+                                <TextBlock Text="{Binding Rating, StringFormat='{}{0:0}'}"
+                                           FontSize="14" Opacity="0.6"
+                                           VerticalAlignment="Center"
+                                           IsVisible="{Binding HasRating}"
+                                           Margin="8,0,0,0" />
+                            </StackPanel>
+
+                            <!-- 收藏夹 pill 列：评分下方紧贴；hash(name) → 渐变色（FavoriteGradientHelper），
+                                 浏览态点 pill 直接弹 FavoriteSelectorDialog 不进编辑模式（独立编辑流） -->
+                            <StackPanel Spacing="6">
+                                <ItemsControl ItemsSource="{Binding FavoritePills}"
+                                              IsVisible="{Binding HasFavorites}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:FavoritePillViewModel">
+                                            <!-- 与"分类 chip"一致的三色风格：浅 fill + 实色 1px border + accent 文字色，无渐变无阴影。
+                                                 整个 pill 即按钮——点击打开收藏夹选择 dialog -->
+                                            <Button Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).EditFavoritesCommand}"
+                                                    Margin="0,0,6,6"
+                                                    Padding="0"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    ToolTip.Tip="管理收藏夹">
+                                                <Border CornerRadius="999"
+                                                        Padding="10,4"
+                                                        Background="{Binding Background}"
+                                                        BorderBrush="{Binding BorderBrush}"
+                                                        BorderThickness="1">
+                                                    <StackPanel Orientation="Horizontal" Spacing="5"
+                                                                VerticalAlignment="Center">
+                                                        <PathIcon Data="{StaticResource IconStar}"
+                                                                  Width="11" Height="11"
+                                                                  Foreground="{Binding Foreground}" />
+                                                        <TextBlock Text="{Binding Name}"
+                                                                   FontSize="12"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{Binding Foreground}" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <!-- 空状态：虚线 ➕ "加入收藏" CTA -->
+                                <Button Command="{Binding EditFavoritesCommand}"
+                                        IsVisible="{Binding !HasFavorites}"
+                                        HorizontalAlignment="Left"
+                                        Padding="12,6"
+                                        Background="Transparent"
+                                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="999"
+                                        ToolTip.Tip="加入收藏夹">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <TextBlock Text="＋" FontSize="13" Opacity="0.7" />
+                                        <TextBlock Text="加入收藏夹" FontSize="12" Opacity="0.7" />
+                                    </StackPanel>
+                                </Button>
                             </StackPanel>
 
                             <!-- 保存错误提示（仅 IsEditMode + 有错误） -->
@@ -186,34 +330,16 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- 主操作按钮组：只读模式 -->
+                            <!-- 主操作按钮组：只读模式只剩"编辑"——
+                                 文件管理器打开 / 重新识别 已下沉到右栏元数据 section 底部 -->
                             <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0"
                                         IsVisible="{Binding !IsEditMode}">
-                                <Button Command="{Binding EnterEditCommand}">
+                                <Button Command="{Binding EnterEditCommand}" Classes="accent">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <TextBlock Text="✏️" FontSize="13" />
                                         <TextBlock Text="编辑" />
                                     </StackPanel>
                                 </Button>
-                                <Button Command="{Binding OpenInExplorerCommand}">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <PathIcon Data="{StaticResource IconFolderOpen}" Width="14" Height="14" />
-                                        <TextBlock Text="文件管理器打开" />
-                                    </StackPanel>
-                                </Button>
-                                <Button Command="{Binding ReidentifyCommand}">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
-                                        <TextBlock Text="重新识别" />
-                                    </StackPanel>
-                                </Button>
-                                <ToggleButton IsChecked="{Binding $parent[Window].Topmost, Mode=TwoWay}"
-                                              ToolTip.Tip="窗口置顶（Ctrl+T） · 比较多个媒体时方便">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <TextBlock Text="📌" FontSize="13" />
-                                        <TextBlock Text="置顶" />
-                                    </StackPanel>
-                                </ToggleButton>
                             </StackPanel>
 
                             <!-- 主操作按钮组：编辑模式 -->
@@ -305,18 +431,53 @@
                             </Border>
                         </StackPanel>
 
-                        <!-- 图片画廊（取代原 详细描述）：主图 + 缩略图条 + 翻页按钮 + 计数器 -->
-                        <StackPanel Spacing="10" IsVisible="{Binding HasPictures}">
+                        <!-- 图片画廊（取代原 详细描述）：主图 + 缩略图条 + 翻页按钮 + 计数器；
+                             编辑模式下可增删（顶部 [+ 添加]/[− 删除当前]）。
+                             ShowPicturesSection = HasPictures || IsEditMode——编辑时即使没图也显示空状态卡。 -->
+                        <StackPanel Spacing="10" IsVisible="{Binding ShowPicturesSection}">
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Grid.Column="0" Text="图片" FontSize="16" FontWeight="SemiBold" />
-                                <TextBlock Grid.Column="1"
-                                           Text="{Binding PictureCounterText}"
-                                           FontSize="12" Opacity="0.6"
-                                           VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                                            VerticalAlignment="Center">
+                                    <!-- 编辑模式 → 仅添加按钮；删除走每张缩略图右上角的 × -->
+                                    <Button Command="{Binding AddPictureCommand}"
+                                            IsVisible="{Binding IsEditMode}"
+                                            Padding="10,4"
+                                            ToolTip.Tip="选择本地图片加入画廊（Save 后入库）">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="+" FontSize="14" FontWeight="Bold" />
+                                            <TextBlock Text="添加图片" FontSize="11" />
+                                        </StackPanel>
+                                    </Button>
+                                    <TextBlock Text="{Binding PictureCounterText}"
+                                               FontSize="12" Opacity="0.6"
+                                               VerticalAlignment="Center"
+                                               IsVisible="{Binding HasPictures}" />
+                                </StackPanel>
                             </Grid>
 
+                            <!-- 编辑模式 + 无图：占位空状态卡，引导点击右上"添加" -->
+                            <Border IsVisible="{Binding ShowEmptyPicturesHint}"
+                                    Padding="40,30"
+                                    CornerRadius="8"
+                                    Background="{DynamicResource LayerFillColorAltBrush}"
+                                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                    BorderThickness="1">
+                                <StackPanel Spacing="6" HorizontalAlignment="Center">
+                                    <TextBlock Text="🖼" FontSize="32" Opacity="0.4"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock Text="还没有图片"
+                                               FontSize="13" Opacity="0.65"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock Text="点击右上角「添加图片」上传"
+                                               FontSize="11" Opacity="0.45"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+
                             <!-- 主图区：深色 box + 8px 圆角，自适应高度（min 320 / max 480） -->
-                            <Border Background="#0F000000"
+                            <Border IsVisible="{Binding HasPictures}"
+                                    Background="#0F000000"
                                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                                     BorderThickness="1"
                                     CornerRadius="8"
@@ -369,6 +530,23 @@
                                         <TextBlock Text="›" FontSize="22" FontWeight="Bold"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Button>
+
+                                    <!-- 编辑模式：主图右上角 × 删除按钮（不带 CommandParameter→ 删 SelectedPicture） -->
+                                    <Button Command="{Binding RemovePictureCommand}"
+                                            IsVisible="{Binding IsEditMode}"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Top"
+                                            Margin="0,12,12,0"
+                                            Width="32" Height="32"
+                                            CornerRadius="16"
+                                            Background="#B0000000"
+                                            Foreground="White"
+                                            BorderThickness="0"
+                                            Padding="0"
+                                            ToolTip.Tip="删除当前图片">
+                                        <TextBlock Text="✕" FontSize="13" FontWeight="Bold"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Button>
                                 </Grid>
                             </Border>
 
@@ -384,60 +562,50 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="vm:MediaPictureItemViewModel">
-                                            <Button Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).SelectPictureCommand}"
-                                                    CommandParameter="{Binding}"
-                                                    Padding="0"
-                                                    Background="Transparent"
-                                                    BorderThickness="0">
-                                                <Border Width="64" Height="64"
-                                                        Classes="thumb"
-                                                        Classes.selected="{Binding IsSelected}"
-                                                        Background="#0F000000"
-                                                        CornerRadius="6"
-                                                        ClipToBounds="True"
+                                            <!-- Grid 让 × 删除浮在缩略图右上；外层 Button 含整个 thumb 用于 Select。
+                                                 删除按钮放在 Button 之外（同 Grid 兄弟），命中测试优先于父 Button 的内容区。 -->
+                                            <Grid Width="64" Height="64">
+                                                <Button Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).SelectPictureCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Padding="0"
+                                                        Background="Transparent"
                                                         BorderThickness="0">
-                                                    <Image Source="{Binding Bitmap}"
-                                                           Stretch="UniformToFill" />
-                                                </Border>
-                                            </Button>
+                                                    <Border Classes="thumb"
+                                                            Classes.selected="{Binding IsSelected}"
+                                                            Background="#0F000000"
+                                                            CornerRadius="6"
+                                                            ClipToBounds="True"
+                                                            BorderThickness="0">
+                                                        <Image Source="{Binding Bitmap}"
+                                                               Stretch="UniformToFill" />
+                                                    </Border>
+                                                </Button>
+                                                <!-- 编辑模式右上角 × 删除按钮（弹 NineKgConfirmDialog 确认） -->
+                                                <Button Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).RemovePictureCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        IsVisible="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).IsEditMode}"
+                                                        HorizontalAlignment="Right"
+                                                        VerticalAlignment="Top"
+                                                        Margin="0,3,3,0"
+                                                        Width="18" Height="18"
+                                                        CornerRadius="9"
+                                                        Padding="0"
+                                                        Background="#B0000000"
+                                                        Foreground="White"
+                                                        BorderThickness="0"
+                                                        ToolTip.Tip="删除这张图片">
+                                                    <TextBlock Text="✕" FontSize="10" FontWeight="Bold"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Button>
+                                            </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </ScrollViewer>
                         </StackPanel>
 
-                        <!-- 别名（编辑模式下用 EditableAliasList chip 编辑） -->
-                        <StackPanel Spacing="8" IsVisible="{Binding ShowAliasSection}">
-                            <TextBlock Text="别名" FontSize="16" FontWeight="SemiBold" />
-                            <!-- 只读 -->
-                            <TextBlock Text="{Binding AliasText}"
-                                       FontSize="13"
-                                       Opacity="0.75"
-                                       TextWrapping="Wrap"
-                                       IsVisible="{Binding !IsEditMode}" />
-                            <!-- 编辑（EditableAliasList 双向绑定 EditingAliases） -->
-                            <comp:EditableAliasList Aliases="{Binding EditingAliases}"
-                                                    IsEditable="True"
-                                                    IsVisible="{Binding IsEditMode}" />
-                        </StackPanel>
-
-                        <!-- 文件 -->
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="文件" FontSize="16" FontWeight="SemiBold" />
-                            <Border Padding="12,10"
-                                    Background="{DynamicResource LayerFillColorAltBrush}"
-                                    CornerRadius="6">
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="{Binding FilePath}"
-                                               FontSize="12"
-                                               TextWrapping="Wrap"
-                                               FontFamily="Consolas, Courier New, monospace" />
-                                    <TextBlock Text="{Binding FileSize, StringFormat='大小: {0}'}"
-                                               FontSize="11"
-                                               Opacity="0.65" />
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
+                        <!-- 别名 section 已移到 Hero 区标题下方（标题 → 又名:... → 社团 → 评分） -->
+                        <!-- 文件 section 已合并到右栏"元数据"底部（路径 + [打开] [重新识别] 操作组） -->
 
                     </StackPanel>
 
@@ -452,8 +620,8 @@
                                 <Button Grid.Column="1"
                                         Command="{Binding EditTagsCommand}"
                                         IsVisible="{Binding IsEditMode}"
-                                        Padding="8,2"
-                                        Content="编辑" />
+                                        Padding="8,1" FontSize="14" FontWeight="Bold" Content="+"
+                                        ToolTip.Tip="添加标签" />
                             </Grid>
                             <ItemsControl ItemsSource="{Binding Tags}">
                                 <ItemsControl.ItemsPanel>
@@ -463,67 +631,417 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Padding="10,4" Margin="0,0,6,6"
+                                        <!-- chip 整体 = Button 触发 OpenTagCommand 跳 MediaOverview 筛选；
+                                             编辑模式右侧 × 删除按钮内嵌（Avalonia 12 嵌套 Button click 不冒泡） -->
+                                        <Button Padding="10,4" Margin="0,0,6,6"
                                                 Background="{DynamicResource SubtleFillColorTertiaryBrush}"
                                                 BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                                                 BorderThickness="1"
-                                                CornerRadius="12">
-                                            <TextBlock Text="{Binding}" FontSize="12" />
-                                        </Border>
+                                                CornerRadius="12"
+                                                Cursor="Hand"
+                                                Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).OpenTagCommand}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip.Tip="查看该标签下所有媒体">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Grid.Column="0" Text="{Binding}" FontSize="12" VerticalAlignment="Center" />
+                                                <Button Grid.Column="1"
+                                                        Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).RemoveTagCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        IsVisible="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).IsEditMode}"
+                                                        Margin="6,0,-3,0"
+                                                        Width="14" Height="14" CornerRadius="7" Padding="0"
+                                                        Background="Transparent" BorderThickness="0"
+                                                        Cursor="Hand" ToolTip.Tip="移除标签">
+                                                    <TextBlock Text="✕" FontSize="9" FontWeight="Bold" Opacity="0.55" />
+                                                </Button>
+                                            </Grid>
+                                        </Button>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </StackPanel>
 
-                        <!-- 收藏夹（编辑模式下加 编辑 按钮 → FavoriteSelectorDialog） -->
-                        <StackPanel Spacing="10" IsVisible="{Binding ShowFavoritesSection}">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Text="收藏夹"
-                                           FontSize="14" FontWeight="SemiBold" Opacity="0.8" />
-                                <Button Grid.Column="1"
-                                        Command="{Binding EditFavoritesCommand}"
-                                        IsVisible="{Binding IsEditMode}"
-                                        Padding="8,2"
-                                        Content="编辑" />
-                            </Grid>
-                            <Border IsVisible="{Binding HasFavorites, Converter={x:Static BoolConverters.Not}}"
-                                    Padding="10,6"
-                                    CornerRadius="{DynamicResource ControlCornerRadius}"
-                                    Background="{DynamicResource LayerFillColorAltBrush}">
-                                <TextBlock Text="（未加入任何收藏夹）"
-                                           FontSize="11" Opacity="0.55" />
-                            </Border>
-                            <ItemsControl ItemsSource="{Binding Favorites}"
-                                          IsVisible="{Binding HasFavorites}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,2">
-                                            <PathIcon Data="{StaticResource IconStar}" Width="12" Height="12"
-                                                      Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
-                                            <TextBlock Text="{Binding}" FontSize="13" />
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                        <!-- ========== 创作者（按职责分组，参考 Web EditableCreatorList） ==========
+                             - HasAnyCreators 控制整组是否显示
+                             - 每职责一段：icon + 中文 label + 编辑按钮（IsEditMode 才显示）+ chip WrapPanel
+                             - 编辑按钮 CommandParameter 是 CreatorType enum 字符串名（"Director"/"VoiceActor"/...），
+                               走 EditCreatorsByRoleCommand → Enum.TryParse → ResolveDraftByType 路由到对应 draft -->
+                        <StackPanel Spacing="14" IsVisible="{Binding ShowAnyCreatorsSection}">
+                            <TextBlock Text="创作者" FontSize="14" FontWeight="SemiBold" Opacity="0.8" />
+
+                            <!-- 导演（Video） -->
+                            <StackPanel Spacing="6" IsVisible="{Binding ShowDirectorsSection}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <PathIcon Data="{StaticResource IconDirector}" Width="13" Height="13" Opacity="0.65" />
+                                        <TextBlock Text="导演" FontSize="13" Opacity="0.85" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Command="{Binding EditCreatorsByRoleCommand}" CommandParameter="Director"
+                                            IsVisible="{Binding IsEditMode}" Padding="8,1" FontSize="14" FontWeight="Bold" Content="+"
+                                            ToolTip.Tip="添加创作者" />
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding Directors}">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Padding="9,3" Margin="0,0,5,5"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                    BorderThickness="1" CornerRadius="999"
+                                                    Cursor="Hand"
+                                                    Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).OpenCreatorCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip.Tip="查看该创作者关联媒体">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Grid.Column="0" Text="{Binding}" FontSize="12" VerticalAlignment="Center" />
+                                                    <Button Grid.Column="1"
+                                                            Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).RemoveDirectorCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            IsVisible="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).IsEditMode}"
+                                                            Margin="6,0,-3,0" Width="14" Height="14" CornerRadius="7" Padding="0"
+                                                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                                            ToolTip.Tip="移除导演">
+                                                        <TextBlock Text="✕" FontSize="9" FontWeight="Bold" Opacity="0.55" />
+                                                    </Button>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- 声优（Audio / Game） -->
+                            <StackPanel Spacing="6" IsVisible="{Binding ShowVoiceActorsSection}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <PathIcon Data="{StaticResource IconVoiceActor}" Width="13" Height="13" Opacity="0.65" />
+                                        <TextBlock Text="声优" FontSize="13" Opacity="0.85" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Command="{Binding EditCreatorsByRoleCommand}" CommandParameter="VoiceActor"
+                                            IsVisible="{Binding IsEditMode}" Padding="8,1" FontSize="14" FontWeight="Bold" Content="+"
+                                            ToolTip.Tip="添加创作者" />
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding VoiceActors}">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Padding="9,3" Margin="0,0,5,5"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                    BorderThickness="1" CornerRadius="999"
+                                                    Cursor="Hand"
+                                                    Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).OpenCreatorCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip.Tip="查看该创作者关联媒体">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Grid.Column="0" Text="{Binding}" FontSize="12" VerticalAlignment="Center" />
+                                                    <Button Grid.Column="1"
+                                                            Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).RemoveVoiceActorCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            IsVisible="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).IsEditMode}"
+                                                            Margin="6,0,-3,0" Width="14" Height="14" CornerRadius="7" Padding="0"
+                                                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                                            ToolTip.Tip="移除声优">
+                                                        <TextBlock Text="✕" FontSize="9" FontWeight="Bold" Opacity="0.55" />
+                                                    </Button>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- 编剧/脚本 -->
+                            <StackPanel Spacing="6" IsVisible="{Binding ShowScreenWritersSection}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <PathIcon Data="{StaticResource IconScreenWriter}" Width="13" Height="13" Opacity="0.65" />
+                                        <TextBlock Text="编剧/脚本" FontSize="13" Opacity="0.85" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Command="{Binding EditCreatorsByRoleCommand}" CommandParameter="ScreenWriter"
+                                            IsVisible="{Binding IsEditMode}" Padding="8,1" FontSize="14" FontWeight="Bold" Content="+"
+                                            ToolTip.Tip="添加创作者" />
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding ScreenWriters}">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Padding="9,3" Margin="0,0,5,5"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                    BorderThickness="1" CornerRadius="999"
+                                                    Cursor="Hand"
+                                                    Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).OpenCreatorCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip.Tip="查看该创作者关联媒体">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Grid.Column="0" Text="{Binding}" FontSize="12" VerticalAlignment="Center" />
+                                                    <Button Grid.Column="1"
+                                                            Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).RemoveScreenWriterCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            IsVisible="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).IsEditMode}"
+                                                            Margin="6,0,-3,0" Width="14" Height="14" CornerRadius="7" Padding="0"
+                                                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                                            ToolTip.Tip="移除编剧">
+                                                        <TextBlock Text="✕" FontSize="9" FontWeight="Bold" Opacity="0.55" />
+                                                    </Button>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- 原画/插画 -->
+                            <StackPanel Spacing="6" IsVisible="{Binding ShowIllustratorsSection}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <PathIcon Data="{StaticResource IconIllustrator}" Width="13" Height="13" Opacity="0.65" />
+                                        <TextBlock Text="原画/插画" FontSize="13" Opacity="0.85" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Command="{Binding EditCreatorsByRoleCommand}" CommandParameter="Illustrator"
+                                            IsVisible="{Binding IsEditMode}" Padding="8,1" FontSize="14" FontWeight="Bold" Content="+"
+                                            ToolTip.Tip="添加创作者" />
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding Illustrators}">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Padding="9,3" Margin="0,0,5,5"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                    BorderThickness="1" CornerRadius="999"
+                                                    Cursor="Hand"
+                                                    Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).OpenCreatorCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip.Tip="查看该创作者关联媒体">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Grid.Column="0" Text="{Binding}" FontSize="12" VerticalAlignment="Center" />
+                                                    <Button Grid.Column="1"
+                                                            Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).RemoveIllustratorCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            IsVisible="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).IsEditMode}"
+                                                            Margin="6,0,-3,0" Width="14" Height="14" CornerRadius="7" Padding="0"
+                                                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                                            ToolTip.Tip="移除原画">
+                                                        <TextBlock Text="✕" FontSize="9" FontWeight="Bold" Opacity="0.55" />
+                                                    </Button>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- 演员/模特（Video / Picture） -->
+                            <StackPanel Spacing="6" IsVisible="{Binding ShowActorsSection}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <PathIcon Data="{StaticResource IconActor}" Width="13" Height="13" Opacity="0.65" />
+                                        <TextBlock Text="演员/模特" FontSize="13" Opacity="0.85" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Command="{Binding EditCreatorsByRoleCommand}" CommandParameter="Actor"
+                                            IsVisible="{Binding IsEditMode}" Padding="8,1" FontSize="14" FontWeight="Bold" Content="+"
+                                            ToolTip.Tip="添加创作者" />
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding Actors}">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Padding="9,3" Margin="0,0,5,5"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                    BorderThickness="1" CornerRadius="999"
+                                                    Cursor="Hand"
+                                                    Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).OpenCreatorCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip.Tip="查看该创作者关联媒体">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Grid.Column="0" Text="{Binding}" FontSize="12" VerticalAlignment="Center" />
+                                                    <Button Grid.Column="1"
+                                                            Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).RemoveActorCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            IsVisible="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).IsEditMode}"
+                                                            Margin="6,0,-3,0" Width="14" Height="14" CornerRadius="7" Padding="0"
+                                                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                                            ToolTip.Tip="移除演员">
+                                                        <TextBlock Text="✕" FontSize="9" FontWeight="Bold" Opacity="0.55" />
+                                                    </Button>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- 音乐 -->
+                            <StackPanel Spacing="6" IsVisible="{Binding ShowMusiciansSection}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <PathIcon Data="{StaticResource IconMusician}" Width="13" Height="13" Opacity="0.65" />
+                                        <TextBlock Text="音乐" FontSize="13" Opacity="0.85" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Command="{Binding EditCreatorsByRoleCommand}" CommandParameter="Musician"
+                                            IsVisible="{Binding IsEditMode}" Padding="8,1" FontSize="14" FontWeight="Bold" Content="+"
+                                            ToolTip.Tip="添加创作者" />
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding Musicians}">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Padding="9,3" Margin="0,0,5,5"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                    BorderThickness="1" CornerRadius="999"
+                                                    Cursor="Hand"
+                                                    Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).OpenCreatorCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip.Tip="查看该创作者关联媒体">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Grid.Column="0" Text="{Binding}" FontSize="12" VerticalAlignment="Center" />
+                                                    <Button Grid.Column="1"
+                                                            Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).RemoveMusicianCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            IsVisible="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).IsEditMode}"
+                                                            Margin="6,0,-3,0" Width="14" Height="14" CornerRadius="7" Padding="0"
+                                                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                                            ToolTip.Tip="移除音乐">
+                                                        <TextBlock Text="✕" FontSize="9" FontWeight="Bold" Opacity="0.55" />
+                                                    </Button>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- 作者 -->
+                            <StackPanel Spacing="6" IsVisible="{Binding ShowAuthorsSection}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <PathIcon Data="{StaticResource IconAuthor}" Width="13" Height="13" Opacity="0.65" />
+                                        <TextBlock Text="作者" FontSize="13" Opacity="0.85" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Command="{Binding EditCreatorsByRoleCommand}" CommandParameter="Author"
+                                            IsVisible="{Binding IsEditMode}" Padding="8,1" FontSize="14" FontWeight="Bold" Content="+"
+                                            ToolTip.Tip="添加创作者" />
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding Authors}">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Padding="9,3" Margin="0,0,5,5"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                    BorderThickness="1" CornerRadius="999"
+                                                    Cursor="Hand"
+                                                    Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).OpenCreatorCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip.Tip="查看该创作者关联媒体">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Grid.Column="0" Text="{Binding}" FontSize="12" VerticalAlignment="Center" />
+                                                    <Button Grid.Column="1"
+                                                            Command="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).RemoveAuthorCommand}"
+                                                            CommandParameter="{Binding}"
+                                                            IsVisible="{Binding $parent[ItemsControl].((vm:MediaDetailViewModel)DataContext).IsEditMode}"
+                                                            Margin="6,0,-3,0" Width="14" Height="14" CornerRadius="7" Padding="0"
+                                                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                                            ToolTip.Tip="移除作者">
+                                                        <TextBlock Text="✕" FontSize="9" FontWeight="Bold" Opacity="0.55" />
+                                                    </Button>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- 制作公司（Video Makers，只读——Phase 2 引入 CircleSelectorDialog 后再开放编辑） -->
+                            <StackPanel Spacing="6" IsVisible="{Binding ShowMakersSection}">
+                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <PathIcon Data="{StaticResource IconBusiness}" Width="13" Height="13" Opacity="0.65" />
+                                    <TextBlock Text="制作公司" FontSize="13" Opacity="0.85" FontWeight="SemiBold" />
+                                </StackPanel>
+                                <ItemsControl ItemsSource="{Binding Makers}">
+                                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Padding="9,3" Margin="0,0,5,5"
+                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                    BorderThickness="1" CornerRadius="999">
+                                                <TextBlock Text="{Binding}" FontSize="12" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- 元数据 -->
                         <StackPanel Spacing="10">
                             <TextBlock Text="元数据" FontSize="14" FontWeight="SemiBold" Opacity="0.8" />
-                            <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,4,Auto,4,Auto">
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="发布日期" FontSize="12" Opacity="0.6" />
-                                <TextBlock Grid.Row="0" Grid.Column="2"
+
+                            <!-- 发布日期：只读 = label 与值同行；编辑 = label 上 + DatePicker 占满下行
+                                 （DatePicker 在 320px 右栏里同行展示会与 label 重叠，单独 row 解决） -->
+                            <Grid ColumnDefinitions="Auto,12,*"
+                                  IsVisible="{Binding !IsEditMode}">
+                                <TextBlock Grid.Column="0" Text="发布日期" FontSize="12" Opacity="0.6" />
+                                <TextBlock Grid.Column="2"
                                            Text="{Binding ReleaseDateText}"
-                                           FontSize="12"
-                                           IsVisible="{Binding !IsEditMode}" />
-                                <DatePicker Grid.Row="0" Grid.Column="2"
-                                            SelectedDate="{Binding EditingReleaseDate, Mode=TwoWay}"
-                                            HorizontalAlignment="Stretch"
-                                            IsVisible="{Binding IsEditMode}" />
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="入库时间" FontSize="12" Opacity="0.6" />
-                                <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding StoreDateText}" FontSize="12" />
-                                <TextBlock Grid.Row="4" Grid.Column="0" Text="文件大小" FontSize="12" Opacity="0.6" />
-                                <TextBlock Grid.Row="4" Grid.Column="2" Text="{Binding FileSize}" FontSize="12" />
+                                           FontSize="12" />
+                            </Grid>
+                            <StackPanel Spacing="4" IsVisible="{Binding IsEditMode}">
+                                <TextBlock Text="发布日期" FontSize="12" Opacity="0.6" />
+                                <DatePicker SelectedDate="{Binding EditingReleaseDate, Mode=TwoWay}"
+                                            HorizontalAlignment="Stretch" />
+                            </StackPanel>
+
+                            <!-- 入库时间 + 文件大小：始终单行 label + 值 -->
+                            <Grid ColumnDefinitions="Auto,12,*" RowDefinitions="Auto,4,Auto">
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="入库时间" FontSize="12" Opacity="0.6" />
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding StoreDateText}" FontSize="12" />
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="文件大小" FontSize="12" Opacity="0.6" />
+                                <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding FileSize}" FontSize="12" />
+                            </Grid>
+
+                            <!-- 路径 + 文件操作（合并自原左栏"文件" section 与 Hero 操作组的 [打开]/[重识别] 按钮）-->
+                            <Border BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                    BorderThickness="0,0,0,1" Margin="0,2,0,2" />
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="路径" FontSize="12" Opacity="0.6" />
+                                <TextBlock Text="{Binding FilePath}"
+                                           FontSize="11"
+                                           FontFamily="Consolas, Courier New, monospace"
+                                           TextWrapping="Wrap"
+                                           Opacity="0.85" />
+                            </StackPanel>
+
+                            <!-- 文件操作：等宽两个按钮，浏览/编辑态都可点（不修改 _media，无需进编辑模式）-->
+                            <Grid ColumnDefinitions="*,6,*">
+                                <Button Grid.Column="0"
+                                        Command="{Binding OpenInExplorerCommand}"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center"
+                                        Padding="8,4"
+                                        ToolTip.Tip="在文件管理器中打开">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <PathIcon Data="{StaticResource IconFolderOpen}" Width="13" Height="13" />
+                                        <TextBlock Text="打开" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="2"
+                                        Command="{Binding ReidentifyCommand}"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center"
+                                        Padding="8,4"
+                                        ToolTip.Tip="重新识别（提交后台任务）">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <PathIcon Data="{StaticResource IconRefresh}" Width="13" Height="13" />
+                                        <TextBlock Text="重新识别" FontSize="11" />
+                                    </StackPanel>
+                                </Button>
                             </Grid>
                         </StackPanel>
 

@@ -121,7 +121,20 @@ public partial class CirclesViewModel : PageViewModelBase
         _imageCache = imageCache;
     }
 
-    public override Task OnEnterAsync() => LoadAsync();
+    /// <summary>跨页跳转 pending（同 CreatorsViewModel）——MediaDetailWindow 社团 chip 跳转用。</summary>
+    private int? _pendingDetailId;
+
+    public void RequestOpenDetail(int id) => _pendingDetailId = id;
+
+    public override async Task OnEnterAsync()
+    {
+        await LoadAsync();
+        if (_pendingDetailId is { } pid)
+        {
+            _pendingDetailId = null;
+            await OpenDetailByIdAsync(pid);
+        }
+    }
 
     [RelayCommand]
     private async Task LoadAsync()
@@ -206,16 +219,21 @@ public partial class CirclesViewModel : PageViewModelBase
     // ==================== 详情态命令 ====================
 
     [RelayCommand]
-    private async Task OpenCircleDetailAsync(CircleItemViewModel? item)
+    private Task OpenCircleDetailAsync(CircleItemViewModel? item) =>
+        item is null ? Task.CompletedTask : LoadDetailByIdAsync(item.Id);
+
+    /// <summary>外部入口（如 MediaDetailWindow chip 跳转）：直接进入指定 Circle 详情。</summary>
+    public Task OpenDetailByIdAsync(int id) => LoadDetailByIdAsync(id);
+
+    private async Task LoadDetailByIdAsync(int id)
     {
-        if (item is null) return;
         DetailLoading = true;
         try
         {
-            var circle = await _creatorService.GetCircleAsync(item.Id);
+            var circle = await _creatorService.GetCircleAsync(id);
             if (circle is null)
             {
-                Log.Warning("找不到 Circle: {Id}", item.Id);
+                Log.Warning("找不到 Circle: {Id}", id);
                 return;
             }
             SelectedCircle = circle;
@@ -225,17 +243,17 @@ public partial class CirclesViewModel : PageViewModelBase
             if (!string.IsNullOrWhiteSpace(avatarName))
             {
                 try { DetailAvatar = await _imageCache.GetOrLoadAsync(avatarName); }
-                catch (Exception ex) { Log.Warning(ex, "加载社团头像失败: {Id}", item.Id); }
+                catch (Exception ex) { Log.Warning(ex, "加载社团头像失败: {Id}", id); }
             }
 
-            var medias = await _creatorService.GetCircleMediasAsync(item.Id);
+            var medias = await _creatorService.GetCircleMediasAsync(id);
             CircleMedias = new ObservableCollection<MediaCardViewModel>(
                 medias.Select(m => new MediaCardViewModel(m, _imageCache)));
             DetailHasMedias = CircleMedias.Count > 0;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "加载社团详情失败: {Id}", item.Id);
+            Log.Error(ex, "加载社团详情失败: {Id}", id);
         }
         finally
         {

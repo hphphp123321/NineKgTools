@@ -597,20 +597,139 @@ Row 2 (*):    任务列表 / 空状态
 
 ```
 ┌──────────────────────────────────────────────────┐
-│ NineKgTools · 标题…                       _□✕  │  ← 系统标题栏
+│ NineKgTools · 标题…                  📌 _ □ ✕   │  ← OS 系统标题栏 + Hero 浮动图钉
 ├──────────────────────────────────────────────────┤
-│  Hero 区（280px）                                │
-│   [200x280 大封面]  类别 chip / 标题 (28px)     │
-│                     创作者 · 社团                │
-│                     ★ 评分                      │
-│                     [文件管理器] [重新识别]      │
+│  Hero 区                                          │
+│   [200x280 封面]   [🎬 视频] / 子分类  ✏修改      │  ← 类别色 chip（pill）
+│                    标题 (28px)                    │
+│                    🏢 社团（小 chip，单独一行）     │  ← 仅社团；其他创作者下放右栏
+│                    ★ 4.5                         │
+│                    ⭐渐变 pill: [待看] [喜爱] ...  │  ← hash(name) 派生彩色
+│                    [编辑] [文件管理器] [重新识别]  │
 ├──────────────────────────────────────────────┬───┤
-│  左侧：简介 / 描述 / 别名 / 文件路径          │右│
-│                                              │侧│ 标签 chips
-│                                              │栏│ 收藏夹
+│  左侧：简介 / 图片画廊 / 别名 / 文件路径      │右│ 标签
+│                                              │侧│ ─── 创作者 ───
+│                                              │栏│ 🎬 导演 / 🎤 声优
+│                                              │  │ ✏️ 编剧 / 🎨 原画
+│                                              │  │ 🎵 音乐 / 👥 演员
+│                                              │  │ 📖 作者 / 🏢 制作公司
 │                                              │  │ 元数据
 └──────────────────────────────────────────────┴───┘
 ```
+
+**自定义标题栏（ExtendClientArea）**：
+- `Window` 加 `ExtendClientAreaToDecorationsHint="True"` + `ExtendClientAreaTitleBarHeightHint="40"`（**Avalonia 12 已移除 `ExtendClientAreaChromeHints` 属性**——只设这两个就够，系统按钮自动渲染）
+- 主 Grid 改 `RowDefinitions="40,*"`，Row 0 是自定义 title bar（左侧 logo icon + 标题，右侧图钉按钮，最右 150px 给系统按钮预留）
+- 图钉走 `ToggleButton.IsChecked={Binding $parent[Window].Topmost, Mode=TwoWay}` 与 Window 顶置双向同步——比 Hero 区独立按钮更省空间，也接近 Win11 用户预期
+- 透明 Background 让 Mica 透过来；空白区域默认可拖动窗口（OS handle，不需 PointerPressed）
+
+**类别 chip**（顶部分类徽章）：
+- `Border CornerRadius="999"` pill 形 + 1px accent 描边 + 类别 fill 背景（带 alpha）+ 类别 accent 前景文字/icon
+- 5 种 TopCategory 各占一种颜色，与 `BrandResources.axaml` 里 `BrandCategory{Type}Brush` / `BrandCategory{Type}FillBrush` 资源一一对应——MediaCard / 分类切换栏 / 标签管理 也复用同一套 token，全局一致
+- ViewModel 暴露 `CategoryBrush` (accent) + `CategoryFillBrush` (fill) + `CategoryIcon` (geometry) 三个 computed 属性；`TopCategory` 字段加 `[NotifyPropertyChangedFor]` 链，编辑时切分类自动重算 chip 颜色
+
+**图片画廊（Pictures slider，取代原 Description）**：
+- 主图区（深色 box + 8px 圆角，min 320 / max 480 高度）+ 缩略图条（64x64 + 6px spacing + 选中态 2px accent 描边）+ 翻页 ←/→ 按钮（38px 半透黑底圆形）
+- `Pictures: ObservableCollection<MediaPictureItemViewModel>` + `SelectedPictureIndex: int` 双向同步
+- `MediaPictureItemViewModel` 两种 ctor：已入库走 `ImageCacheService.GetOrLoadAsync(name)`；新加图走 `(image, byte[] inMemoryBytes)` 立即解码 in-memory Bitmap，`IsPendingNew=true`
+- 编辑模式增删图片：
+  - **添加**：图片 section 右上 [+ 添加图片] 按钮 + 无图时空状态卡引导
+  - **删除**：每张缩略图右上角 18x18 半透黑底圆形 × 浮在右上 + 主图区右上 32x32 大 × 浮按钮——点击均触发 `RemovePictureCommand` 弹 `NineKgConfirmDialog Destructive` 确认
+- `_editingPictures: List<Image>` draft：EnterEdit 拷贝 _media.Pictures 引用；AddPicture 命令读 byte[] + 新建 `Image(bytes, "picture_{Guid:N}{ext}")`（ctor 自动算 hash）+ append；RemovePictureAsync(item) 按引用从 draft 和 Pictures 同步移除（缩略图传当前 VM；主图区不传 → 兜底取 SelectedPicture）
+- Save 时 `ApplyPictureDiffAsync` 计算增删：旧里有 / draft 里没 → `ImageService.RemoveImageAsync` 清 db + cache 文件；draft 里 Id==0 + 带 Content → `ImageService.AddOrFindImagesAsync(toAdd, mediaTitle)` 入库 + 落 cache；汇总后 `_media.Pictures.Clear()` + `Add(...)` 维护 EF tracker；最后 `MediaService.UpdateMediaAsync` 持久化关联
+
+**收藏夹（独立编辑流 + 与分类 chip 同款三色 pill 视觉）**：
+- 位置：Hero 区评分下方（不再是右栏次要信息）；情感优先级与"评分"同级
+- 视觉：`FavoritePillViewModel` 暴露 3 个 `IBrush`（Background / BorderBrush / Foreground），由 `FavoriteGradientHelper.Get(name)` 按 hash(name) FNV-1a → hue 派生：
+  - **浅色主题**：浅 fill `HSL(h, 50%, 92%)` + 实色 border `HSL(h, 55%, 55%)` + 深字 `HSL(h, 65%, 32%)`
+  - **暗色主题**：深 fill（带 alpha）`HSL(h, 40%, 30%, 0.35)` + 中亮度 border `HSL(h, 55%, 55%)` + 浅字 `HSL(h, 55%, 78%)`
+  - 同 (name, theme) 缓存——主题切换时一次性重派生
+- pill 渲染：`Border CornerRadius=999 Padding=10,4 BorderThickness=1` + ⭐ icon 用 Foreground brush（不再白色），无渐变 / 无阴影 —— 与"分类 chip"完全统一视觉系
+- 整 pill 即按钮——点击直接 `EditFavoritesCommand`（任何模式）；空状态 = 单个虚线 ➕ "加入收藏夹"
+- 双模式分支：`IsEditMode==true` 时只改 `_editingFavorites` draft；`IsEditMode==false` 时弹 dialog → 直接 commit + `MediaService.UpdateMediaAsync`
+
+**评分（5 颗整星，与 Web MudRating 同语义）**：
+- 5 个 `Button > PathIcon` 横排，PathIcon.Data 绑 `RatingStar1..RatingStar5` computed Geometry（`(int)Math.Round(Rating) >= idx ? IconStarFilled : IconStarOutline`，从 BrandResources 取）
+- `[NotifyPropertyChangedFor]` 链：`_rating` → 5 个 `RatingStarN`，rating 改时全部 5 颗自动重算
+- `SetRatingCommand(string?)` Avalonia 12 enum CommandParameter 坑规避法——CommandParameter 用 "1".."5"，命令内 `int.TryParse`；点同一星 → toggle 清零（与 Web 一致）
+- 编辑态 `IsEnabled={Binding IsEditMode}` 才可点击；浏览态 fill 仅显示
+- 取代原 NumericUpDown 0.5 步进——精度损失（float → int round）但 UX 一致性远更值
+
+**别名（Hero 标题正下方，不再在左栏底部）**：
+- 浏览态：单行 `<Run Text="又名: " /><Run Text="{Binding AliasText}" />` 12px Opacity 0.65 + `TextTrimming=CharacterEllipsis MaxLines=1`，`HasAlias=false` 时整行隐藏
+- 编辑态：复用现成 `<comp:EditableAliasList Aliases="{Binding EditingAliases}" IsEditable="True" />` chip 编辑器
+- 标题→别名→社团→评分→收藏夹 五行垂直递减信息密度（标识 / 标识 / 元数据 / 元数据 / 用户归属）
+
+**社团编辑（InputDialog 复用，不做完整 CircleSelectorDialog）**：
+- 编辑模式社团 chip 旁出现 `[修改社团]` + `[✕]` 两个按钮
+- 修改社团：`InputDialog.ShowAsync` 弹简单文本框（initial = current CircleName）→ `CreatorService.AddOrUpdateCircle({Name})` 入库（已存在同名复用 db 实体）→ `_media.Circle = result`
+- 清除社团：直接 `_media.Circle = null`（同步 UI CircleName=null）
+- Save 时 _media.Circle 随其他字段一起持久化
+- 简化决策：用户场景以"为这媒体改个社团名"为主而非"选已有 N 个 Circle 之一"——InputDialog 比完整 selector 工作量小 10 倍且够用
+
+**chip 跨页跳转（点 chip → 对应实体的详情页，与 Web 端 /tag/{id} /creator/{id} /circle/{id} 路由语义一致）**：
+- 标签 / 创作者 / 社团 chip 整体即 `<Button>`（不是 Border），点击 → `NavigationService.NavigateToAsync<TagsViewModel/CreatorsViewModel/CirclesViewModel>` 切主窗到对应列表页并直达详情态
+- 详情页复用各列表 VM 已有的 master-detail 结构（TagsViewModel 三层 / Creators 与 Circles 两层 ShowList vs ShowDetail）
+- 三个列表 VM 都加 `_pendingDetailId: int?` 字段 + `RequestOpenDetail(int)` setter + `OnEnterAsync` 拦截逻辑：
+  - configureBeforeEnter 阶段（同步 Action）调 `vm.RequestOpenDetail(id)` 仅写字段
+  - OnEnterAsync 阶段（异步）读字段：有值 → `await OpenDetailByIdAsync(id)` 走详情加载；无值 → 走默认 list 加载
+  - 这样避免 configureBeforeEnter Action 直接 `_ = OpenDetailByIdAsync(...)` fire-and-forget 与 OnEnterAsync 自动 LoadAsync 的 race condition
+- 各 VM 的 `OpenDetailByIdAsync(int)` 公开入口：
+  - **CreatorsViewModel**：直接调原私有 `LoadDetailByIdAsync` —— 内部 GetCreatorAsync + 头像 + GetCreatorMediasAsync
+  - **CirclesViewModel**：抽出 `LoadDetailByIdAsync` 私有 helper（原 OpenCircleDetailAsync 内部逻辑提炼）+ 公开 wrap
+  - **TagsViewModel**：fetch 全 Tag 找匹配 → 若有 TopTag 先 `SelectTopTagAsync`（让 GoBack 有正确层级栈）→ `LoadTagDetailAsync(new TagItemViewModel(tag))`
+- ViewModel 加 3 跳转命令：`OpenTagAsync` / `OpenCreatorAsync` / `OpenCircleAsync` —— 通过 `_media.Tags / _media.Creators / _media.Circle` 拿 db 实体的 **Id**（同名实体精确区分），调 `NavigationService.NavigateToAsync<XxxViewModel>(vm => vm.RequestOpenDetail(id))`
+- `MediaOverviewViewModel.ApplyXxxFilter` helper 仍保留（潜在的"按属性筛选媒体"入口）但 chip 跳转不再走它
+- 嵌套 Button (chip + 内 × 删除) 在 Avalonia 12 不冒泡——`ButtonBase.OnPointerReleased` 在触发 OnClick 后 `e.Handled=true`；× 删除 / chip 整体跳转互不干扰
+- 编辑模式下 × 仍优先（命中区域 14x14 在 chip 右侧）；浏览态点 chip 中央触发跳转
+
+**chip 内联编辑（与图片画廊 ×/+ 同款交互）**：
+- 每个 Tag / Creator chip 编辑模式右侧出 14x14 圆形 × 按钮（chip 内部 Grid 右列，不浮在外）
+- × 点击 → `NineKgConfirmDialog Destructive(targetName=chipName)` → 用户确认后从 draft 删除（按 Name FindIndex 删第一项）
+- section header 原"编辑"按钮改 `Padding=8,1 FontSize=14 FontWeight=Bold Content="+"` 显示"+"——纯添加语义；点击仍走原 `EditTagsCommand` / `EditCreatorsByRoleCommand` selector dialog
+- ViewModel 加 1 + 7 个 Remove 命令：`RemoveTagAsync(string?)` + 7 个 `RemoveDirectorAsync` / `RemoveVoiceActorAsync` / `RemoveScreenWriterAsync` / `RemoveIllustratorAsync` / `RemoveActorAsync` / `RemoveMusicianAsync` / `RemoveAuthorAsync`，共享 `RemoveCreatorByRoleAsync(CreatorType, string)` helper
+- 不支持取消（Cancel 编辑会通过 ApplyToProperties 从 _media 还原 → 撤销所有 chip × 删除）
+
+**右栏元数据扩展为"文件信息 + 文件操作中心"**：
+- 元数据 section 在原"发布日期 / 入库时间 / 文件大小"下方加 1px divider + "路径"行（small monospace + Wrap）+ 操作按钮组 `[📁 打开] [🔄 重新识别]`
+- 操作按钮浏览态 + 编辑态都可点（不修改 _media，无需进编辑模式）
+- Hero 主操作组砍掉 [文件管理器]/[重新识别]，浏览态只剩 `[✏ 编辑]`（视觉聚焦"修改"动作）
+- 左栏底原"文件" section 删除（FilePath / FileSize 已合并到右栏元数据）
+
+**编辑模式所有支持的职责 section 都显示（不只是有数据的）**：
+- ViewModel 加 8 个 `Supports{Role}` 派生属性（基于 TopCategory 决定该类型支持哪些职责）
+  - `SupportsDirectors = TopCategory == Video`
+  - `SupportsVoiceActors = TopCategory in (Audio, Game)`
+  - `SupportsScreenWriters = (Video, Audio, Game)` / `SupportsMusicians = 同上`
+  - `SupportsIllustrators = (全部 5 类)` / `SupportsAuthors = (Audio, Game, Picture, Text)`
+  - `SupportsActors = (Video, Picture)` / `SupportsMakers = Video`
+- 8 个 `Show{Role}Section = Supports{Role} && (Has{Role} || IsEditMode)`（Makers 例外 —— 暂只读，仅 `&& Has{Role}`）
+- AXAML 各 section IsVisible 从 `Has{Role}` → `Show{Role}Section`
+- `TopCategory` 字段 `[NotifyPropertyChangedFor]` 8 个 Supports + 8 个 Show；`IsEditMode` 同样链；7 个 ObservableCollection 字段也加对应 Show notify —— 切分类 / 切编辑模式 / 集合替换都自动重算可见性
+
+**创作者按职责分组（取代旧 `CreatorsText` 单字符串扁平化）**：
+- 数据：8 个 `ObservableCollection<string>` per role（Directors / VoiceActors / ScreenWriters / Illustrators / Actors / Musicians / Authors / Makers）+ 8 个 `Has*` 派生 visibility flag + 1 个 `HasAnyCreators` 控制整组 header
+- `ApplyCreatorsByType(MediaBase)` 按 `_media is VideoMedia / AudioMedia / GameMedia / PictureMedia / TextMedia` 分发数据到对应字段（其他职责清空避免 stale 残留）
+- TopCategory 职责映射（与 Web `EditableCreatorList` 一致）：
+  - Video: Directors / ScreenWriters / Illustrators / Actors / Musicians / **Makers (List<Circle>)**
+  - Audio: VoiceActors / ScreenWriters / Illustrators / Musicians / Authors
+  - Game: ScreenWriters / Illustrators / VoiceActors / Musicians / Authors
+  - Picture: Illustrators / Actors / Authors
+  - Text: Illustrators / Author（单 → Authors 列表至多 1 项）
+- 每个职责一个右栏 section：13px Material icon + 13px label SemiBold + "编辑"按钮（IsEditMode 才显示）+ chip WrapPanel（复用现有 Tags chip 浅灰 pill 样式，让 icon/header 主导分组语义）
+- 编辑命令统一走 `EditCreatorsByRoleAsync(string?)`：CommandParameter 用 enum **字符串名**（"Director"/"VoiceActor"/...）避免 Avalonia 12 enum CommandParameter 的渲染坑；内部 `Enum.TryParse<CreatorType>` → `ResolveDraftByType` 路由 8 个 draft + UI ObservableCollection setter。`CreatorSelectorDialog.ShowAsync(initialFilterType: type)` 让 dialog 默认筛选到该 type
+- `_editingDirectors / _editingVoiceActors / ... / _editingAuthors` 8 个 per-role draft List；`InitCreatorDraftsByType` (EnterEdit) + `ApplyCreatorDraftsToMedia` (Save) 两个 helper 各做一遍 type switch；Save 后调 `media.SyncCreators()` 把分散字段聚合到 `MediaBase.Creators`（搜索/向量等下游用）
+- **Makers（Video 类的 List<Circle>）暂只读**——Phase 2 加 `CircleSelectorDialog` 后再开放编辑
+
+**Hero 区社团 chip（取代原 `CircleName · CreatorsText` 扁平字符串行）**：
+- 位置：标题正下方，单独小 chip（左对齐）
+- 视觉：`Border CornerRadius=999 Padding=10,4` + `SubtleFillColorTertiaryBrush` 背景 + 1px 描边 + `IconBusiness` 图标 + 名字
+- `HasCircle` 派生（`!string.IsNullOrEmpty(CircleName)`）控制整 chip 显隐——无社团时不占空间
+
+**元数据区（右侧栏）**：
+- 只读模式：`label + value` 同行（`Grid ColumnDefinitions="Auto,12,*"`），三行分别为发布日期 / 入库时间 / 文件大小
+- 编辑模式：发布日期单独拆成「label 一行 + DatePicker 占满下行」上下两行布局（`StackPanel Spacing="4"`），避免 DatePicker 在 320px 右栏里与 4 字 label 同行展示导致的 UI 重叠；入库时间 / 文件大小不可编辑保持原样
+- `EditingReleaseDate: DateTimeOffset?` ↔ DatePicker.SelectedDate 双向；Save 时 `EditingReleaseDate?.DateTime` 转回 DateTime?
 
 **多窗口管理**：`Services/WindowManager.cs` 维护 `Dictionary<string, Window>`，key 为 `media:{id}`。同一 media 重复点击 → `Activate()` 现有窗口，不重复开。主窗 `Closing` 触发 `WindowManager.CloseAll()`。
 

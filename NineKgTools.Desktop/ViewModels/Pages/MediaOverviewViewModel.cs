@@ -103,10 +103,43 @@ public partial class MediaOverviewViewModel : PageViewModelBase
 
     private string? _filterTagName;
     private string? _filterFavoriteName;
+    private int? _filterCircleId;       // 来自 MediaDetailWindow 社团 chip 跳转
+    private string? _filterCircleName;  // 仅用于 chip 摘要文案
+    private int? _filterCreatorId;      // 来自 MediaDetailWindow 创作者 chip 跳转
+    private string? _filterCreatorName;
     private float? _filterMinRating;
     private DateFilterType? _filterDateType;
     private DateTime? _filterStartDate;
     private DateTime? _filterEndDate;
+
+    // ===== 跨页跳转入口（MediaDetailWindow 点 chip 直接进入"该 tag/creator/circle 关联媒体" overview） =====
+
+    /// <summary>由 NavigationService.configureBeforeEnter 调用——OnEnterAsync 之前注入 tag 筛选。</summary>
+    public void ApplyTagFilter(string tagName)
+    {
+        _filterTagName = tagName;
+        _hasActiveFilter = true;
+        HasActiveFilter = true;
+        FilterSummary = $"标签: {tagName}";
+    }
+
+    public void ApplyCreatorFilter(int creatorId, string creatorName)
+    {
+        _filterCreatorId = creatorId;
+        _filterCreatorName = creatorName;
+        _hasActiveFilter = true;
+        HasActiveFilter = true;
+        FilterSummary = $"创作者: {creatorName}";
+    }
+
+    public void ApplyCircleFilter(int circleId, string circleName)
+    {
+        _filterCircleId = circleId;
+        _filterCircleName = circleName;
+        _hasActiveFilter = true;
+        HasActiveFilter = true;
+        FilterSummary = $"社团: {circleName}";
+    }
 
     /// <summary>是否设置了至少一项高级筛选——AXAML 用此控制"已筛选"chip + "清除筛选"按钮可见</summary>
     [ObservableProperty]
@@ -171,6 +204,8 @@ public partial class MediaOverviewViewModel : PageViewModelBase
                 Name = string.IsNullOrWhiteSpace(SearchText) ? null : SearchText.Trim(),
                 TagNames = string.IsNullOrEmpty(_filterTagName) ? null : new List<string> { _filterTagName },
                 FavoriteNames = string.IsNullOrEmpty(_filterFavoriteName) ? null : new List<string> { _filterFavoriteName },
+                CircleId = _filterCircleId,
+                CreatorId = _filterCreatorId,
                 MinRating = _filterMinRating,
                 DateType = _filterDateType,
                 StartDate = _filterStartDate,
@@ -301,6 +336,10 @@ public partial class MediaOverviewViewModel : PageViewModelBase
         _filterCategories.Clear();
         _filterTagName = null;
         _filterFavoriteName = null;
+        _filterCircleId = null;
+        _filterCircleName = null;
+        _filterCreatorId = null;
+        _filterCreatorName = null;
         _filterMinRating = null;
         _filterDateType = null;
         _filterStartDate = null;
