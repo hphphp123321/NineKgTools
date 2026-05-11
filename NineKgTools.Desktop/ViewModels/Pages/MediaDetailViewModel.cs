@@ -22,6 +22,8 @@ using NineKgTools.Core.Services.Media;
 using NineKgTools.Core.Services.Tags;
 using NineKgTools.Desktop.Services;
 using NineKgTools.Desktop.Views.Dialogs;
+using Microsoft.EntityFrameworkCore;
+using NineKgTools.Core.DbContexts;
 using Serilog;
 
 namespace NineKgTools.Desktop.ViewModels.Pages;
@@ -43,6 +45,8 @@ public partial class MediaDetailViewModel : ObservableObject
     private readonly OpenaiService _openaiService;
     private readonly NavigationService _navigationService;
     private readonly IdentificationFlowService _identificationFlow;
+    private readonly IDbContextFactory<MediaDbContext> _dbFactory;
+    private readonly WindowManager _windowManager;
     private MediaBase? _media;
 
     // ===== 编辑模式临时状态（draft）—— 进入编辑时初始化、Save/Cancel 时清空 =====
@@ -105,6 +109,7 @@ public partial class MediaDetailViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowMusiciansSection))]
     [NotifyPropertyChangedFor(nameof(ShowAuthorsSection))]
     [NotifyPropertyChangedFor(nameof(ShowAnyCreatorsSection))]
+    [NotifyPropertyChangedFor(nameof(ShowRelatedMediasSection))]
     private bool _isEditMode;
 
     [ObservableProperty]
@@ -332,6 +337,20 @@ public partial class MediaDetailViewModel : ObservableObject
     [ObservableProperty]
     private string _fileSize = "";
 
+    /// <summary>当前入口文件绝对路径（来自 MediaSource.EntryFilePath）。null/空串表示未设置。
+    /// 未设置 → Hero 主操作组显示 [🎯 设置入口] 单按钮；已设置 → 显示 [▶ 打开] + [⚙] 两按钮
+    /// （齿轮继续走 SetEntryFileCommand 改入口）。所有类型的媒体都参与——单文件媒体 MediaSource
+    /// 构造时已自动 EntryFilePath=FullPath，所以一进来就是"已设置"状态，UI 直接显示打开+齿轮。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasEntryFile))]
+    [NotifyPropertyChangedFor(nameof(EntryFileName))]
+    private string? _entryFilePath;
+
+    public bool HasEntryFile => !string.IsNullOrEmpty(EntryFilePath);
+    public string EntryFileName => string.IsNullOrEmpty(EntryFilePath)
+        ? string.Empty
+        : System.IO.Path.GetFileName(EntryFilePath);
+
     [ObservableProperty]
     private string _releaseDateText = "";
 
@@ -381,6 +400,20 @@ public partial class MediaDetailViewModel : ObservableObject
 
     public bool HasFavorites => FavoritePills.Count > 0;
 
+    /// <summary>"相关媒体"section 卡片集合——一对一映射 _media.RelatedMedias。
+    /// 与 Web 端 RelatedMedias List 等价。即时持久化模式（与 Web 一致）：
+    /// 不进 EnterEdit/Cancel draft 流程，添加 / 删除均直接调 MediaService 写库，
+    /// 因为双向关联涉及对方媒体的数据，纯前端 draft 无法表达完整语义。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasRelatedMedias))]
+    [NotifyPropertyChangedFor(nameof(ShowRelatedMediasSection))]
+    private ObservableCollection<RelatedMediaItemViewModel> _relatedMedias = new();
+
+    public bool HasRelatedMedias => RelatedMedias.Count > 0;
+
+    /// <summary>section 是否显示：有数据 OR 编辑模式（让用户能添加首条）</summary>
+    public bool ShowRelatedMediasSection => HasRelatedMedias || IsEditMode;
+
     public IBrush? CategoryBrush => TopCategoryStyles.ResolveAccentBrush(TopCategory);
     public IBrush? CategoryFillBrush => TopCategoryStyles.ResolveFillBrush(TopCategory);
     public Geometry? CategoryIcon => TopCategoryStyles.ResolveIconGeometry(TopCategory);
@@ -395,7 +428,9 @@ public partial class MediaDetailViewModel : ObservableObject
         FavoriteService favoriteService,
         OpenaiService openaiService,
         NavigationService navigationService,
-        IdentificationFlowService identificationFlow)
+        IdentificationFlowService identificationFlow,
+        IDbContextFactory<MediaDbContext> dbFactory,
+        WindowManager windowManager)
     {
         _mediaService = mediaService;
         _imageCache = imageCache;
@@ -407,6 +442,8 @@ public partial class MediaDetailViewModel : ObservableObject
         _openaiService = openaiService;
         _navigationService = navigationService;
         _identificationFlow = identificationFlow;
+        _dbFactory = dbFactory;
+        _windowManager = windowManager;
     }
 
     public async Task LoadAsync(int mediaId)
@@ -493,6 +530,7 @@ public partial class MediaDetailViewModel : ObservableObject
 
         FilePath = media.Source?.FullPath ?? "";
         FileSize = FormatBytes(media.Size);
+        EntryFilePath = media.Source?.EntryFilePath;
 
         ReleaseDateText = media.ReleaseDate?.ToString("yyyy-MM-dd") ?? "—";
         StoreDateText = media.StoreDate?.ToString("yyyy-MM-dd HH:mm") ?? "—";
@@ -502,6 +540,10 @@ public partial class MediaDetailViewModel : ObservableObject
 
         FavoritePills = new ObservableCollection<FavoritePillViewModel>(
             media.Favorites?.Select(f => new FavoritePillViewModel(f.Name)) ?? Enumerable.Empty<FavoritePillViewModel>());
+
+        RelatedMedias = new ObservableCollection<RelatedMediaItemViewModel>(
+            media.RelatedMedias?.Select(r => RelatedMediaItemViewModel.From(r, _imageCache))
+            ?? Enumerable.Empty<RelatedMediaItemViewModel>());
     }
 
     /// <summary>按 _media 的具体子类填充对应职责字段。所有 ObservableCollection 整体替换以触发
@@ -574,6 +616,113 @@ public partial class MediaDetailViewModel : ObservableObject
         }
     }
 
+    /// <summary>设置 / 更改可执行入口文件。所有类型媒体都可用——单文件媒体的 EntryFilePath
+    /// 默认 = FullPath，用户也可改成同目录下其他文件（如 .mkv 配 .ass 字幕想点字幕走播放器）；
+    /// 文件夹媒体需要明确指定可执行 exe / 主文件。流程：弹 OS 文件选择器
+    /// （起始路径 = source 文件夹或 source 所在目录）→ 选定后写回 MediaSource.EntryFilePath
+    /// + DbContext 保存。与 Web SourceDetailPage 的 HandleSelectEntryFileAsync 等价，
+    /// 只是 UI 入口换成"按钮 + 文件选择器"而非"下拉 + 列表"。</summary>
+    [RelayCommand]
+    private async Task SetEntryFileAsync()
+    {
+        if (_media?.Source is null) return;
+
+        var topLevel = GetTopLevel();
+        if (topLevel?.StorageProvider is null)
+        {
+            Log.Warning("SetEntryFileAsync: 无法获取 StorageProvider");
+            return;
+        }
+
+        try
+        {
+            // 起始目录：文件夹媒体 → 直接用 source 路径；单文件媒体 → 用文件所在目录
+            // 这样用户一进来就看到该媒体相关文件，省得自己导航
+            Avalonia.Platform.Storage.IStorageFolder? startLocation = null;
+            try
+            {
+                string? startDir = null;
+                if (!string.IsNullOrEmpty(FilePath))
+                {
+                    if (System.IO.Directory.Exists(FilePath))
+                        startDir = FilePath;
+                    else if (System.IO.File.Exists(FilePath))
+                        startDir = System.IO.Path.GetDirectoryName(FilePath);
+                }
+                if (!string.IsNullOrEmpty(startDir))
+                    startLocation = await topLevel.StorageProvider.TryGetFolderFromPathAsync(startDir);
+            }
+            catch (Exception ex)
+            {
+                // 起始路径解析失败不阻断流程，退回到 picker 默认目录
+                Log.Debug(ex, "SetEntryFileAsync: 解析起始目录失败，退回默认");
+            }
+
+            var picked = await topLevel.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+            {
+                Title = HasEntryFile ? "更改入口文件" : "选择入口文件（游戏 exe / 入口文件）",
+                AllowMultiple = false,
+                SuggestedStartLocation = startLocation,
+            });
+            var file = picked.FirstOrDefault();
+            var path = file?.TryGetLocalPath();
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            // 持久化到 DB —— Web 那边是直接改 _source.EntryFilePath + DbContext.SaveChangesAsync，
+            // 桌面端注入了 IDbContextFactory（Scoped DbContext 用完即释放），同样模式
+            var sourceId = _media.Source.Id;
+            await using (var db = await _dbFactory.CreateDbContextAsync())
+            {
+                var tracked = await db.MediaSources.FirstOrDefaultAsync(s => s.Id == sourceId);
+                if (tracked is null)
+                {
+                    Log.Warning("SetEntryFileAsync: MediaSource not found Id={Id}", sourceId);
+                    return;
+                }
+                tracked.EntryFilePath = path;
+                await db.SaveChangesAsync();
+            }
+
+            // 同步内存模型 + UI
+            _media.Source.EntryFilePath = path;
+            EntryFilePath = path;
+            Log.Information("入口文件已设置：MediaId={MediaId}, Path={Path}", _media.Id, path);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "SetEntryFileAsync 失败 MediaId={MediaId}", _media?.Id);
+        }
+    }
+
+    /// <summary>执行入口文件——用 OS shell 默认行为打开：游戏 exe 直接运行，视频 / 音频 / 图片
+    /// 走默认播放器或查看器。与 Web SourceDetailPage.HandleOpenEntryFileAsync 等价
+    /// （Web 走 IFileExplorerService.RunExecutableAsync / OpenFileWithDefaultAppAsync 区分
+    /// 游戏类，桌面端直接 UseShellExecute=true 让 OS 自己判断——更简洁，行为一致）。</summary>
+    [RelayCommand]
+    private void OpenEntryFile()
+    {
+        if (string.IsNullOrEmpty(EntryFilePath)) return;
+        if (!System.IO.File.Exists(EntryFilePath))
+        {
+            Log.Warning("入口文件不存在，无法打开：{Path}", EntryFilePath);
+            return;
+        }
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = EntryFilePath,
+                UseShellExecute = true,
+                WorkingDirectory = System.IO.Path.GetDirectoryName(EntryFilePath),
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "打开入口文件失败：{Path}", EntryFilePath);
+        }
+    }
+
     [RelayCommand]
     private async Task ReidentifyAsync()
     {
@@ -588,6 +737,98 @@ public partial class MediaDetailViewModel : ObservableObject
         if (result == IdentificationFlowResult.Imported && _media != null)
         {
             await LoadAsync(_media.Id);
+        }
+    }
+
+    // ========== 相关媒体（与 Web MediaPage 即时持久化语义一致） ==========
+
+    /// <summary>编辑模式下点 [+ 添加关联] 触发：弹 MediaSelectorDialog 让用户多选，
+    /// diff 出 toAdd/toRemove 分别调 MediaService.AddRelatedMediaAsync / RemoveRelatedMediaAsync
+    /// （双向关联），完成后 reload 当前媒体让 UI 拿到新 RelatedMedias。
+    /// 与 Web ProcessRelatedMediasSelection 同款，**不走 draft**：双向关联涉及对方媒体的数据，
+    /// 纯前端 draft 无法表达完整语义。用户感知 = "改完关闭就生效"。</summary>
+    [RelayCommand]
+    private async Task AddRelatedMediaAsync()
+    {
+        if (_media is null) return;
+        try
+        {
+            var current = _media.RelatedMedias ?? new System.Collections.Generic.List<MediaBase>();
+            var selectedIds = await MediaSelectorDialog.ShowAsync(
+                _mediaService,
+                _imageCache,
+                excludeMediaId: _media.Id,
+                initialSelected: current);
+
+            if (selectedIds is null) return; // 用户取消
+
+            var currentIds = current.Select(m => m.Id).ToHashSet();
+            var selectedSet = selectedIds.ToHashSet();
+
+            var toAdd = selectedSet.Except(currentIds).ToList();
+            var toRemove = currentIds.Except(selectedSet).ToList();
+
+            foreach (var id in toAdd)
+                await _mediaService.AddRelatedMediaAsync(_media.Id, id);
+            foreach (var id in toRemove)
+                await _mediaService.RemoveRelatedMediaAsync(_media.Id, id);
+
+            if (_media.Id > 0)
+                await LoadAsync(_media.Id);
+
+            Log.Information("关联媒体已更新 MediaId={Id} 新增={Add} 移除={Remove}",
+                _media.Id, toAdd.Count, toRemove.Count);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "更新关联媒体失败 MediaId={Id}", _media?.Id);
+        }
+    }
+
+    /// <summary>编辑模式下卡片右上 × 触发：弹 NineKgConfirmDialog Destructive 确认后
+    /// 双向解除关联，从 UI collection 立刻移除。</summary>
+    [RelayCommand]
+    private async Task RemoveRelatedMediaAsync(RelatedMediaItemViewModel? item)
+    {
+        if (item is null || _media is null) return;
+
+        var ok = await NineKgConfirmDialog.ShowAsync(
+            null,
+            title: "移除相关媒体",
+            message: "两个媒体之间的关联将被解除（双向），媒体本身不会被删除。",
+            intent: DialogIntent.Destructive,
+            confirmText: "移除",
+            targetName: item.Title);
+        if (!ok) return;
+
+        try
+        {
+            await _mediaService.RemoveRelatedMediaAsync(_media.Id, item.Id);
+            RelatedMedias.Remove(item);
+            _media.RelatedMedias?.RemoveAll(m => m.Id == item.Id);
+            OnPropertyChanged(nameof(HasRelatedMedias));
+            OnPropertyChanged(nameof(ShowRelatedMediasSection));
+            Log.Information("已移除关联媒体 MediaId={Id} RelatedId={Rid}", _media.Id, item.Id);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "移除关联媒体失败 MediaId={Id} RelatedId={Rid}", _media.Id, item.Id);
+        }
+    }
+
+    /// <summary>点关联媒体卡片整体触发：在 WindowManager 里打开（或激活）该媒体的详情窗。
+    /// 同一 mediaId 重复点会 Activate 现有窗口（WindowManager 内置去重）。</summary>
+    [RelayCommand]
+    private void OpenRelatedMedia(RelatedMediaItemViewModel? item)
+    {
+        if (item is null || item.Id <= 0) return;
+        try
+        {
+            _windowManager.OpenMediaDetail(item.Id);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "打开关联媒体失败 Id={Id}", item.Id);
         }
     }
 
@@ -1485,13 +1726,20 @@ public partial class MediaDetailViewModel : ObservableObject
         }
     }
 
-    /// <summary>取主窗 TopLevel——给 OS 原生 picker 用。与 MediaOverviewViewModel.GetTopLevel 复制；放共享 service 里更干净。</summary>
+    /// <summary>取当前活动 Window 的 TopLevel——给 OS 原生 picker 用。
+    /// **多窗口场景必须用 Active 窗口而非 MainWindow**：MediaDetailWindow 是独立窗口，
+    /// 若 picker owner 设为 MainWindow，detail 窗在 picker 弹出时失焦 → Windows 当作
+    /// "无 modal 父窗"错误最小化（用户感觉是"点设置入口/选图就把详情页缩了"）。
+    /// 优先 IsActive 窗口；退化才用 MainWindow（fail-safe）。</summary>
     private static Avalonia.Controls.TopLevel? GetTopLevel()
     {
-        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime
-            && lifetime.MainWindow is not null)
+        if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
         {
-            return Avalonia.Controls.TopLevel.GetTopLevel(lifetime.MainWindow);
+            var active = lifetime.Windows.FirstOrDefault(w => w.IsActive);
+            if (active is not null)
+                return Avalonia.Controls.TopLevel.GetTopLevel(active);
+            if (lifetime.MainWindow is not null)
+                return Avalonia.Controls.TopLevel.GetTopLevel(lifetime.MainWindow);
         }
         return null;
     }

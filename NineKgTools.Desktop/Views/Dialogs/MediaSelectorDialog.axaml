@@ -1,0 +1,161 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Dialogs"
+             x:Class="NineKgTools.Desktop.Views.Dialogs.MediaSelectorDialog"
+             x:DataType="vm:MediaSelectorDialogContext"
+             x:Name="RootView"
+             MinWidth="640" MaxWidth="820">
+
+    <StackPanel Spacing="14">
+
+        <!-- 搜索框 + 已选计数 -->
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <TextBox Grid.Column="0"
+                     Text="{Binding SearchText, Mode=TwoWay}"
+                     PlaceholderText="按标题搜索媒体（输入后自动查询）" />
+            <Border Grid.Column="1"
+                    Padding="10,5"
+                    CornerRadius="8"
+                    VerticalAlignment="Center"
+                    Background="{DynamicResource SubtleFillColorSecondaryBrush}"
+                    IsVisible="{Binding HasSelection}">
+                <TextBlock Text="{Binding SelectedCount, StringFormat='已选 {0}'}"
+                           FontSize="12"
+                           VerticalAlignment="Center" />
+            </Border>
+        </Grid>
+
+        <!-- 加载中 -->
+        <ProgressBar IsVisible="{Binding IsLoading}" IsIndeterminate="True" Height="4" />
+
+        <!-- 提示态：未搜索 -->
+        <Border IsVisible="{Binding ShowHint}"
+                Padding="14,16"
+                CornerRadius="{DynamicResource ControlCornerRadius}"
+                Background="{DynamicResource LayerFillColorDefaultBrush}">
+            <StackPanel Spacing="4" HorizontalAlignment="Center">
+                <TextBlock Text="🔍" FontSize="22" HorizontalAlignment="Center" Opacity="0.5" />
+                <TextBlock Text="输入关键词搜索媒体"
+                           FontSize="13"
+                           HorizontalAlignment="Center"
+                           Opacity="0.65" />
+            </StackPanel>
+        </Border>
+
+        <!-- 空态：搜索后无结果 -->
+        <Border IsVisible="{Binding ShowEmpty}"
+                Padding="14,16"
+                CornerRadius="{DynamicResource ControlCornerRadius}"
+                Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}">
+            <TextBlock Text="未找到匹配的媒体"
+                       FontSize="12"
+                       HorizontalAlignment="Center" />
+        </Border>
+
+        <!-- 结果卡片网格 -->
+        <ScrollViewer MaxHeight="440" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Results}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:MediaSelectorItemVm">
+                        <!-- 卡片整体 = Button 触发 ToggleSelectCommand —— 多选切换 -->
+                        <Button Padding="0" Margin="0,0,8,8"
+                                Width="124"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Cursor="Hand"
+                                Command="{Binding #RootView.((vm:MediaSelectorDialogContext)DataContext).ToggleSelectCommand}"
+                                CommandParameter="{Binding}">
+                            <Grid>
+                                <!-- 卡片容器：默认浅底 + 选中态 accent 描边 -->
+                                <Border CornerRadius="10"
+                                        Padding="6"
+                                        Background="{DynamicResource SubtleFillColorSecondaryBrush}"
+                                        BorderThickness="2"
+                                        BorderBrush="Transparent">
+                                    <Border.Styles>
+                                        <Style Selector="Border">
+                                            <Setter Property="BorderBrush" Value="Transparent" />
+                                        </Style>
+                                    </Border.Styles>
+
+                                    <StackPanel Spacing="6">
+                                        <!-- 封面区 112x160 -->
+                                        <Border Height="160"
+                                                CornerRadius="6"
+                                                ClipToBounds="True"
+                                                Background="{DynamicResource ControlFillColorDefaultBrush}">
+                                            <Grid>
+                                                <!-- 占位（无封面或加载中） -->
+                                                <TextBlock Text="🎞"
+                                                           FontSize="32"
+                                                           Opacity="0.25"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           IsVisible="{Binding !HasPoster}" />
+                                                <!-- 封面 -->
+                                                <Image Source="{Binding Poster}"
+                                                       Stretch="UniformToFill"
+                                                       IsVisible="{Binding HasPoster}" />
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- 标题（2 行截断） -->
+                                        <TextBlock Text="{Binding Title}"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   LineHeight="16"
+                                                   TextWrapping="Wrap"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxLines="2"
+                                                   Height="32" />
+
+                                        <!-- 分类 chip -->
+                                        <Border Padding="6,2"
+                                                CornerRadius="6"
+                                                HorizontalAlignment="Left"
+                                                Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                IsVisible="{Binding HasCategory}">
+                                            <TextBlock Text="{Binding CategoryName}"
+                                                       FontSize="10"
+                                                       Opacity="0.7" />
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- 选中态：右上角 accent ✓ 徽章 -->
+                                <Border Width="22" Height="22"
+                                        CornerRadius="11"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Top"
+                                        Margin="0,2,2,0"
+                                        Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                        IsVisible="{Binding IsSelected}">
+                                    <TextBlock Text="✓"
+                                               FontSize="13"
+                                               FontWeight="Bold"
+                                               Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center" />
+                                </Border>
+
+                                <!-- 选中态描边——独立 Border 比 Trigger 简单可靠 -->
+                                <Border CornerRadius="10"
+                                        BorderThickness="2"
+                                        BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                        IsHitTestVisible="False"
+                                        IsVisible="{Binding IsSelected}" />
+                            </Grid>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+    </StackPanel>
+
+</UserControl>
