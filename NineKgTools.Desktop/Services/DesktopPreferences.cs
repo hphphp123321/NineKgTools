@@ -49,6 +49,25 @@ public class DesktopPreferences
     public Dictionary<string, WindowState> WindowStates { get; set; } = new();
 
     /// <summary>
+    /// 媒体详情页是否使用"封面玻璃材质"沉浸式背景（默认 false，保守不变现有 Mica 体验）。
+    /// 开启后 MediaDetailContent 在最外层套 5 层 Z-stack：原 Mica → 模糊封面 → 暗化层 → vignette → 内容层。
+    /// </summary>
+    public bool UseGlassBackground { get; set; } = false;
+
+    /// <summary>UseGlassBackground 变化广播——MediaDetailViewModel 订阅实时切换 UI。
+    /// event 默认不被 System.Text.Json 序列化，无需 JsonIgnore（特性不适用于 event 声明）</summary>
+    public event EventHandler? UseGlassBackgroundChanged;
+
+    /// <summary>由 SettingsViewModel 在用户 toggle 时调用：写入 + 持久化 + 通知订阅者</summary>
+    public void SetUseGlassBackground(bool value)
+    {
+        if (UseGlassBackground == value) return;
+        UseGlassBackground = value;
+        RequestSave();
+        UseGlassBackgroundChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
     /// 无参构造——给 System.Text.Json 反序列化用（构造参数必须能映射到 public property，
     /// 我们的 _filePath 是 JsonIgnore 的字段，所以反序列化时必须走无参构造）。
     /// </summary>

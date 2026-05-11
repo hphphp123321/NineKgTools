@@ -49,6 +49,23 @@ public class ImageService(MediaDbContext dbContext, Config config, HttpService h
     }
 
     /// <summary>
+    /// 取图片的"重模糊 + 降采样"版本——供桌面端 MediaDetailContent "封面玻璃背景"使用。
+    /// 一次性算 + 缓存（由调用方 LRU），避免实时 BlurEffect 每帧 GPU 重算。
+    /// 实际处理委托给 <see cref="ImageBlurHelper"/>——本文件已 alias 化 ImageSharp.Image
+    /// 避免与 Models.Media.Image 冲突，引入完整 SixLabors namespace 会破坏 alias 隔离。
+    /// </summary>
+    public async Task<byte[]?> GetBlurredImageBytesAsync(
+        string imageName,
+        float blurRadius = 60f,
+        int maxWidth = 400,
+        int maxHeight = 600)
+    {
+        await using var stream = await GetImageByNameAsync(imageName);
+        if (stream is null) return null;
+        return await ImageBlurHelper.BlurAndDownscaleAsync(stream, blurRadius, maxWidth, maxHeight);
+    }
+
+    /// <summary>
     /// 寻找或者插入一个图片，在插入时会根据是否缓存图片来保存图片
     /// </summary>
     /// <param name="image">要插入的图片</param>

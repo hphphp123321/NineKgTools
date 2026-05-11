@@ -87,6 +87,24 @@ public partial class MainWindow : Window
 
     private void OnGlobalKeyDown(object? sender, KeyEventArgs e)
     {
+        // Backspace 后退（与浏览器一致）：仅在非输入控件聚焦时触发；
+        // TextBox 内删字按 Backspace 是合法操作，不抢占。
+        if (e.KeyModifiers == KeyModifiers.None && e.Key == Key.Back)
+        {
+            if (e.Source is TextBox) return;
+            try
+            {
+                var nav = Program.Services?.GetService<NavigationService>();
+                if (nav?.CanGoBack == true)
+                {
+                    _ = nav.NavigateBackAsync();
+                    e.Handled = true;
+                }
+            }
+            catch (Exception ex) { Log.Warning(ex, "Backspace 后退失败"); }
+            return;
+        }
+
         if (e.KeyModifiers != KeyModifiers.Control) return;
 
         // Ctrl+K → 聚焦全局搜索框（§12 决策入口②）

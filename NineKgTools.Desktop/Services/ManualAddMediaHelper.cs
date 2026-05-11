@@ -42,7 +42,7 @@ public static class ManualAddMediaHelper
         var sourceService = services.GetRequiredService<SourceService>();
         var mediaService = services.GetRequiredService<MediaService>();
         var filesService = services.GetRequiredService<FilesService>();
-        var windowManager = services.GetRequiredService<WindowManager>();
+        var navigationService = services.GetRequiredService<NavigationService>();
 
         MediaSource sourceForDialog;
         try
@@ -61,8 +61,14 @@ public static class ManualAddMediaHelper
                 {
                     Log.Information("ManualAddMediaHelper: 路径已入库，跳转到现有媒体 Id={Id}, Path={Path}",
                         existingId.Value, dbSource.FullPath);
-                    windowManager.OpenMediaDetail(existingId.Value);
-                    return existingId.Value;
+                    // 默认走主窗内嵌（与 Web NavigationManager.NavigateTo($"/media/{id}") 一致）
+                    var idToOpen = existingId.Value;
+                    await navigationService.NavigateToAsync<NineKgTools.Desktop.ViewModels.Pages.MediaDetailViewModel>(vm =>
+                    {
+                        vm.Mode = NineKgTools.Desktop.ViewModels.Pages.MediaDetailMode.EmbeddedPage;
+                        vm.RequestOpenDetail(idToOpen);
+                    });
+                    return idToOpen;
                 }
 
                 // 边缘：InDatabase=true 但找不到 Media（数据损坏）—— 降级当未入库处理
@@ -87,10 +93,14 @@ public static class ManualAddMediaHelper
             return null;
         }
 
-        // 成功：打开新建媒体的详情窗
-        // §1.3 编辑模式落地后这里可改为 OpenMediaDetail(id, editMode: !FullyFilled)
-        // 当前 MediaDetailWindow 仅只读，FullyFilled=false 时 UX 上会差一点（用户没填完的字段无法直接补）
-        windowManager.OpenMediaDetail(result.MediaId);
+        // 成功：默认走主窗内嵌（与 Web NavigationManager.NavigateTo($"/media/{id}") 一致）。
+        // 用户在详情页可点 [↗] 升级到独立窗
+        var newId = result.MediaId;
+        await navigationService.NavigateToAsync<NineKgTools.Desktop.ViewModels.Pages.MediaDetailViewModel>(vm =>
+        {
+            vm.Mode = NineKgTools.Desktop.ViewModels.Pages.MediaDetailMode.EmbeddedPage;
+            vm.RequestOpenDetail(newId);
+        });
 
         Log.Information("ManualAddMediaHelper: 已创建并打开媒体 Id={Id}, FullyFilled={Full}",
             result.MediaId, result.FullyFilled);

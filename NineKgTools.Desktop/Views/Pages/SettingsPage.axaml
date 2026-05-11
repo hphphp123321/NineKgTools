@@ -226,6 +226,16 @@
                     </StackPanel>
                 </StackPanel>
 
+                <!-- 媒体详情页玻璃背景：开关；写回 DesktopPreferences 立即广播让正在打开的详情页实时切换 -->
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="详情页封面背景" />
+                    <TextBlock Classes="help" Text="开启后媒体详情页将以该作品封面作为模糊背景，自动暗化保证文字可读。无封面的媒体回退到默认 Mica。设置即时生效。" />
+                    <ToggleSwitch IsChecked="{Binding UseGlassBackground, Mode=TwoWay}"
+                                  Margin="0,8,0,0"
+                                  OnContent="启用"
+                                  OffContent="关闭" />
+                </StackPanel>
+
                 <ui:FAInfoBar Severity="Informational" IsOpen="True" IsClosable="False"
                             Title="持久化已启用"
                             Message="主题与关窗行为通过 desktop-preferences.json 落盘到数据目录，重启后保留。" />

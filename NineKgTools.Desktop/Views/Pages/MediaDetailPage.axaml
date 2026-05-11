@@ -1,0 +1,68 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Pages"
+             xmlns:comp="using:NineKgTools.Desktop.Views.Components"
+             mc:Ignorable="d" d:DesignWidth="1024" d:DesignHeight="720"
+             x:Class="NineKgTools.Desktop.Views.Pages.MediaDetailPage"
+             x:DataType="vm:MediaDetailViewModel">
+
+    <!-- 主窗内嵌版媒体详情：顶部 nav bar（[← 返回] [标题] [↗ 在新窗口]）+ 主体 MediaDetailContent。
+         独立窗版用 Views/Windows/MediaDetailWindow 包同一份 MediaDetailContent + OS chrome -->
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- ========== Nav bar ========== -->
+        <Border Grid.Row="0"
+                Height="40"
+                Padding="12,0"
+                Background="{DynamicResource LayerFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,8,*,8,Auto" VerticalAlignment="Center">
+                <!-- ← 返回（历史栈空时禁用） -->
+                <Button Grid.Column="0"
+                        Command="{Binding NavigateBackCommand}"
+                        IsEnabled="{Binding CanGoBack}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="10,4"
+                        ToolTip.Tip="返回（Backspace）">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="←" FontSize="14" />
+                        <TextBlock Text="返回" FontSize="12" />
+                    </StackPanel>
+                </Button>
+
+                <!-- 标题（媒体 Title 截断） -->
+                <TextBlock Grid.Column="2"
+                           Text="{Binding MediaTitle}"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"
+                           MaxLines="1"
+                           Opacity="0.85" />
+
+                <!-- ↗ 在新窗口打开 -->
+                <Button Grid.Column="4"
+                        Command="{Binding PopOutCommand}"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="10,4"
+                        ToolTip.Tip="在独立窗口打开（保留当前浏览状态）">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="↗" FontSize="14" />
+                        <TextBlock Text="在新窗口" FontSize="12" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- ========== 主体 ========== -->
+        <comp:MediaDetailContent Grid.Row="1" />
+
+    </Grid>
+
+</UserControl>

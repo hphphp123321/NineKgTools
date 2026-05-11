@@ -69,11 +69,24 @@ public partial class MediaCardViewModel : ObservableObject
         }
     }
 
-    /// <summary>点击卡片时由 ItemsControl 触发，通过 WindowManager 打开媒体详情独立窗口</summary>
+    /// <summary>点击卡片时由 ItemsControl 触发。默认走主窗内嵌（NavigationService），
+    /// 用户在详情页可点 [↗] 升级到独立窗。与 Web /media/{id} 体验对齐。</summary>
     [RelayCommand]
-    private void OpenDetail()
+    private async Task OpenDetailAsync()
     {
-        var wm = Program.Services?.GetService<WindowManager>();
-        wm?.OpenMediaDetail(Id);
+        try
+        {
+            var nav = Program.Services?.GetService<NavigationService>();
+            if (nav is null) return;
+            await nav.NavigateToAsync<MediaDetailViewModel>(vm =>
+            {
+                vm.Mode = MediaDetailMode.EmbeddedPage;
+                vm.RequestOpenDetail(Id);
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "打开媒体详情失败 Id={Id}", Id);
+        }
     }
 }

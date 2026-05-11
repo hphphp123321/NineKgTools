@@ -25,8 +25,10 @@ public partial class MainWindowViewModel : ObservableObject
     /// <summary>窗口加载后调用，导航到首页。</summary>
     public Task InitializeAsync() => _nav.NavigateToAsync<HomeViewModel>();
 
-    /// <summary>由 MainWindow 的 NavigationView SelectionChanged 调用。</summary>
-    public Task NavigateAsync(Type viewModelType) => _nav.NavigateToAsync(viewModelType);
+    /// <summary>由 MainWindow 的 NavigationView SelectionChanged 调用。
+    /// 走 NavigateAsRootAsync —— 主菜单是"横向跳"语义，不该进历史栈
+    /// （用户在新页点 ← 不该退回主菜单跳转前的页）。</summary>
+    public Task NavigateAsync(Type viewModelType) => _nav.NavigateAsRootAsync(viewModelType);
 
     /// <summary>
     /// 全局搜索：导航到 SearchResultPage，预填 Query 触发 4 类型搜索（媒体 / 标签 / 创作者 / 社团）。

@@ -29,11 +29,17 @@ using Serilog;
 namespace NineKgTools.Desktop.ViewModels.Pages;
 
 /// <summary>
-/// 媒体详情独立窗口的 VM。Phase 1.3 起从只读升级为可编辑——IsEditMode 切换主操作按钮组与
+/// 媒体详情 VM。Phase 1.3 起从只读升级为可编辑——IsEditMode 切换主操作按钮组与
 /// 各字段控件（TextBlock vs TextBox / chip vs 选择器入口）。Save 走 MediaService.UpdateMediaAsync，
 /// Delete 走 RemoveMediaAsync(id)，编辑过程中字段值是 ViewModel 的 draft；Cancel 时从 _media 恢复。
+///
+/// **双模式 host**（v2 升级）：
+/// - <see cref="MediaDetailMode.EmbeddedPage"/>：主窗内嵌页（默认，与 Web /media/{id} 体验一致）
+/// - <see cref="MediaDetailMode.IndependentWindow"/>：独立窗口（power user 选项，点 [↗] 弹出）
+/// 同一份 UI（<c>Views/Components/MediaDetailContent.axaml</c>）+ 不同 host（<c>Views/Pages/MediaDetailPage</c> / <c>Views/Windows/MediaDetailWindow</c>）；
+/// 按 Mode 切换图钉 vs nav bar 可见性、OpenRelatedMedia 切换分支等。
 /// </summary>
-public partial class MediaDetailViewModel : ObservableObject
+public partial class MediaDetailViewModel : NineKgTools.Desktop.ViewModels.PageViewModelBase
 {
     private readonly MediaService _mediaService;
     private readonly ImageCacheService _imageCache;
@@ -47,6 +53,7 @@ public partial class MediaDetailViewModel : ObservableObject
     private readonly IdentificationFlowService _identificationFlow;
     private readonly IDbContextFactory<MediaDbContext> _dbFactory;
     private readonly WindowManager _windowManager;
+    private readonly DesktopPreferences _preferences;
     private MediaBase? _media;
 
     // ===== 编辑模式临时状态（draft）—— 进入编辑时初始化、Save/Cancel 时清空 =====
@@ -89,6 +96,36 @@ public partial class MediaDetailViewModel : ObservableObject
     [ObservableProperty]
     private string _windowTitle = "媒体详情";
 
+    /// <summary>当前 VM 跑在哪种 host 里——决定图钉 / nav bar 可见性 / 关联媒体跳转行为</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsEmbeddedPage))]
+    [NotifyPropertyChangedFor(nameof(IsIndependentWindow))]
+    private MediaDetailMode _mode = MediaDetailMode.EmbeddedPage;
+
+    public bool IsEmbeddedPage => Mode == MediaDetailMode.EmbeddedPage;
+    public bool IsIndependentWindow => Mode == MediaDetailMode.IndependentWindow;
+
+    /// <summary>独立窗 Topmost 双向同步——MediaDetailWindow code-behind 监听该属性 ↔ Window.Topmost。
+    /// in-page 模式图钉 IsVisible=false，此属性不会被改</summary>
+    [ObservableProperty]
+    private bool _isTopmost;
+
+    /// <summary>历史栈是否非空——in-page nav bar 的 [← 返回] 按钮 IsEnabled 绑此。
+    /// 在 OnEnterAsync 订阅 NavigationService.CanGoBackChanged 同步；OnLeaveAsync 取消订阅</summary>
+    [ObservableProperty]
+    private bool _canGoBack;
+
+    /// <summary>NavigationService 在 configureBeforeEnter 阶段调 RequestOpenDetail 写入；
+    /// OnEnterAsync 读它触发 LoadAsync——与 Tags/Creators/Circles 同款"延迟读取"模式</summary>
+    private int? _pendingMediaId;
+
+    /// <summary>NavigationService 导航前调用：configureBeforeEnter 是 sync 不能 await，
+    /// 写字段让 OnEnterAsync 异步消费</summary>
+    public void RequestOpenDetail(int mediaId)
+    {
+        _pendingMediaId = mediaId > 0 ? mediaId : null;
+    }
+
     [ObservableProperty]
     private bool _isLoading = true;
 
@@ -119,8 +156,18 @@ public partial class MediaDetailViewModel : ObservableObject
     [ObservableProperty]
     private string? _saveError;
 
+    /// <summary>媒体标题（绑 Hero 区 TextBlock/TextBox + WindowTitle 同步源）。
+    /// 注意：字段名 _mediaTitle 而非 _title—— PageViewModelBase 已有 abstract <see cref="Title"/>，
+    /// 同名 ObservableProperty 会冲突。XAML 改绑 <c>{Binding MediaTitle}</c>。</summary>
     [ObservableProperty]
-    private string _title = "";
+    [NotifyPropertyChangedFor(nameof(Title))]
+    private string _mediaTitle = "";
+
+    /// <summary>PageViewModelBase.Title override —— 显示在 NavigationView header / 历史栈等框架位置。
+    /// MediaTitle 空时给"媒体详情"占位；有标题时拼"媒体详情 — {title}"</summary>
+    public override string Title => string.IsNullOrWhiteSpace(MediaTitle)
+        ? "媒体详情"
+        : $"媒体详情 — {MediaTitle}";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasCircle))]
@@ -389,6 +436,23 @@ public partial class MediaDetailViewModel : ObservableObject
     [ObservableProperty]
     private Bitmap? _cover;
 
+    /// <summary>"封面玻璃材质"背景图——预渲染好的 60px 模糊 + 缩到 400x600 的 Bitmap。
+    /// 仅当 <see cref="UseGlassBackground"/> 开启且 Cover 加载成功后才异步生成。
+    /// 切换媒体 / 切关闭 backdrop 时会清空。AXAML 用 <see cref="HasGlassBackdrop"/> 控制 IsVisible。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasGlassBackdrop))]
+    private Bitmap? _blurredPoster;
+
+    /// <summary>用户设置——是否启用封面玻璃背景。由 <see cref="DesktopPreferences"/> 持久化，
+    /// VM 订阅 UseGlassBackgroundChanged 实时同步该字段，UI binding 此值切换 backdrop 层 IsVisible。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasGlassBackdrop))]
+    private bool _useGlassBackground;
+
+    /// <summary>UI Z-stack backdrop 是否显示 = 偏好开启 && 模糊图加载完成。
+    /// 模糊图加载中 / 没有封面 → 等同 fallback 到原 Mica（什么也不画）。</summary>
+    public bool HasGlassBackdrop => UseGlassBackground && BlurredPoster != null;
+
     [ObservableProperty]
     private ObservableCollection<string> _tags = new();
 
@@ -430,7 +494,8 @@ public partial class MediaDetailViewModel : ObservableObject
         NavigationService navigationService,
         IdentificationFlowService identificationFlow,
         IDbContextFactory<MediaDbContext> dbFactory,
-        WindowManager windowManager)
+        WindowManager windowManager,
+        DesktopPreferences preferences)
     {
         _mediaService = mediaService;
         _imageCache = imageCache;
@@ -444,6 +509,76 @@ public partial class MediaDetailViewModel : ObservableObject
         _identificationFlow = identificationFlow;
         _dbFactory = dbFactory;
         _windowManager = windowManager;
+        _preferences = preferences;
+        // 初始同步 + 订阅用户在 Settings 里 toggle 的实时变化
+        UseGlassBackground = preferences.UseGlassBackground;
+        preferences.UseGlassBackgroundChanged += OnUseGlassBackgroundChanged;
+    }
+
+    private async void OnUseGlassBackgroundChanged(object? sender, EventArgs e)
+    {
+        UseGlassBackground = _preferences.UseGlassBackground;
+        // toggle on：异步加载模糊图；toggle off：清空（不必丢 LRU 缓存，下次 toggle on 还能命中）
+        if (UseGlassBackground)
+        {
+            await EnsureBlurredPosterAsync();
+        }
+        else
+        {
+            BlurredPoster = null;
+        }
+    }
+
+    /// <summary>当前媒体 Poster 名存在时异步加载模糊版本到 BlurredPoster。
+    /// 多次调用 idempotent（ImageCacheService 缓存 + 此处也做"已有"检查）。
+    /// 在 LoadAsync 完成 + UseGlassBackground=true 时调一次；用户 toggle on 时再调一次。</summary>
+    private async Task EnsureBlurredPosterAsync()
+    {
+        if (!UseGlassBackground) return;
+        var posterName = _media?.Poster?.Name;
+        if (string.IsNullOrEmpty(posterName))
+        {
+            BlurredPoster = null;
+            return;
+        }
+        try
+        {
+            BlurredPoster = await _imageCache.GetOrLoadBlurredAsync(posterName);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "加载模糊封面失败 Name={Name}", posterName);
+            BlurredPoster = null;
+        }
+    }
+
+    /// <summary>导航进入时调用。NavigationService 在 configureBeforeEnter 阶段已写好 _pendingMediaId
+    /// （通过 RequestOpenDetail）；这里 await 触发实际加载。与 Tags/Creators/Circles 的"延迟读取"
+    /// 模式一致——避免 sync configureBeforeEnter 内 fire-and-forget 与 OnEnterAsync 的 race。</summary>
+    public override async Task OnEnterAsync()
+    {
+        // 同步 CanGoBack + 订阅变化（NavigationService 历史栈是单 Singleton 共享状态）
+        CanGoBack = _navigationService.CanGoBack;
+        _navigationService.CanGoBackChanged += OnNavigationCanGoBackChanged;
+
+        if (_pendingMediaId is int id && id > 0)
+        {
+            _pendingMediaId = null; // 消费一次性参数
+            await LoadAsync(id);
+        }
+    }
+
+    public override Task OnLeaveAsync()
+    {
+        // 取消订阅避免 Singleton NavigationService / DesktopPreferences 累积 handler 引用导致 VM leak
+        _navigationService.CanGoBackChanged -= OnNavigationCanGoBackChanged;
+        _preferences.UseGlassBackgroundChanged -= OnUseGlassBackgroundChanged;
+        return Task.CompletedTask;
+    }
+
+    private void OnNavigationCanGoBackChanged(object? sender, EventArgs e)
+    {
+        CanGoBack = _navigationService.CanGoBack;
     }
 
     public async Task LoadAsync(int mediaId)
@@ -486,6 +621,12 @@ public partial class MediaDetailViewModel : ObservableObject
         try
         {
             Cover = await _imageCache.GetOrLoadAsync(posterName);
+            // Cover 加载完后顺带触发模糊版预渲染（仅在偏好开启时）
+            // —— 不 await，让 UI 先看到清晰封面再淡入模糊背景
+            if (UseGlassBackground)
+            {
+                _ = EnsureBlurredPosterAsync();
+            }
         }
         catch (Exception ex)
         {
@@ -495,7 +636,7 @@ public partial class MediaDetailViewModel : ObservableObject
 
     private void ApplyToProperties(MediaBase media)
     {
-        Title = media.Title;
+        MediaTitle = media.Title;
         WindowTitle = media.Title;
         CircleName = media.Circle?.Name;
         TopCategory = media.Category?.TopCategory ?? TopCategory.Unknown;
@@ -816,19 +957,65 @@ public partial class MediaDetailViewModel : ObservableObject
         }
     }
 
-    /// <summary>点关联媒体卡片整体触发：在 WindowManager 里打开（或激活）该媒体的详情窗。
-    /// 同一 mediaId 重复点会 Activate 现有窗口（WindowManager 内置去重）。</summary>
+    /// <summary>点关联媒体卡片整体触发——按 <see cref="Mode"/> 分支：
+    /// - EmbeddedPage：NavigationService 主窗内导航替换（历史栈支持 ← 返回）
+    /// - IndependentWindow：当前 VM 同窗 LoadAsync 替换（保持独立环境，不污染主窗）
+    /// 与 Web /media/{id} 链式导航语义一致</summary>
     [RelayCommand]
-    private void OpenRelatedMedia(RelatedMediaItemViewModel? item)
+    private async Task OpenRelatedMediaAsync(RelatedMediaItemViewModel? item)
     {
         if (item is null || item.Id <= 0) return;
         try
         {
-            _windowManager.OpenMediaDetail(item.Id);
+            if (Mode == MediaDetailMode.IndependentWindow)
+            {
+                // 独立窗内点关联：同窗替换显示新 media（保持独立环境，不污染主窗导航栈）
+                await LoadAsync(item.Id);
+            }
+            else
+            {
+                // in-page 模式：通过 NavigationService 在主窗内导航——历史栈支持 ← 返回
+                await _navigationService.NavigateToAsync<MediaDetailViewModel>(vm =>
+                {
+                    vm.Mode = MediaDetailMode.EmbeddedPage;
+                    vm.RequestOpenDetail(item.Id);
+                });
+            }
         }
         catch (Exception ex)
         {
             Log.Error(ex, "打开关联媒体失败 Id={Id}", item.Id);
+        }
+    }
+
+    /// <summary>in-page nav bar 右侧 [↗ 在新窗口打开] 按钮——弹独立窗显示同一 media，
+    /// 主窗 in-page 保持不动（用户得到两个并行视图）</summary>
+    [RelayCommand]
+    private void PopOut()
+    {
+        if (_media is null || _media.Id <= 0) return;
+        try
+        {
+            _windowManager.OpenMediaDetail(_media.Id);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "PopOut 失败 Id={Id}", _media.Id);
+        }
+    }
+
+    /// <summary>in-page nav bar 左侧 [← 返回] 按钮——走 NavigationService 历史栈回上一页。
+    /// NavigationService.CanGoBack 控制按钮 IsEnabled（无历史时禁用）</summary>
+    [RelayCommand]
+    private async Task NavigateBackAsync()
+    {
+        try
+        {
+            await _navigationService.NavigateBackAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "NavigateBack 失败");
         }
     }
 

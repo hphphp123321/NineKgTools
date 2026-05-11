@@ -72,6 +72,13 @@ public partial class SettingsViewModel : PageViewModelBase
     public bool IsCloseToTray => CloseAction == CloseAction.MinimizeToTray;
     public bool IsCloseExit => CloseAction == CloseAction.Exit;
 
+    // ========== 媒体详情页玻璃背景 ==========
+    /// <summary>开启后媒体详情页以该作品封面作为模糊背景（自动暗化保证文字可读）。
+    /// 写入 <see cref="DesktopPreferences.SetUseGlassBackground"/> 触发持久化 + 广播让
+    /// MediaDetailViewModel 实时切换；不必重启 / 重新加载媒体。</summary>
+    [ObservableProperty]
+    private bool _useGlassBackground;
+
     // ========== Shell 集成（仅 Win） ==========
     [ObservableProperty]
     private bool _shellIntegrationRegistered;
@@ -217,6 +224,7 @@ public partial class SettingsViewModel : PageViewModelBase
 
             // 关窗行为：从 DesktopPreferences 读
             CloseAction = _preferences.CloseAction;
+            UseGlassBackground = _preferences.UseGlassBackground;
 
             // Shell 集成状态：以 ShellIntegrationService 实际检测为准（注册表可能被外部修改）
             ShellIntegrationRegistered = _shellIntegration.IsRegistered();
@@ -375,6 +383,14 @@ public partial class SettingsViewModel : PageViewModelBase
     // ============================================================
     //  字段变更 handlers
     // ============================================================
+
+    /// <summary>用户 toggle "详情页封面背景"——写回 DesktopPreferences 并广播让
+    /// MediaDetailViewModel 实时切换 UI（不必重启 / 重新加载媒体）</summary>
+    partial void OnUseGlassBackgroundChanged(bool value)
+    {
+        if (_suppressSave) return;
+        _preferences.SetUseGlassBackground(value);
+    }
 
     partial void OnMaxConcurrentIdentificationTasksChanged(int value)
     {

@@ -319,8 +319,8 @@ internal static class Program
         services.AddTransient<FavoritesViewModel>();
         services.AddTransient<WebsitesViewModel>();
         services.AddTransient<SettingsViewModel>();
-
-        // 详情独立窗口 VM（每次 OpenMediaDetail 调用时新建实例）
+        // 媒体详情 VM（同时被 NavigationService 内嵌页 / WindowManager 独立窗 复用）
+        // 升级为 PageViewModelBase 之后由 NavigationService 解析，独立窗 OpenMediaDetail 也走同一 DI
         services.AddTransient<MediaDetailViewModel>();
     }
 

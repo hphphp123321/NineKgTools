@@ -93,7 +93,74 @@ public sealed class ImageCacheService : IDisposable
     }
 
     /// <summary>
+    /// 取"重模糊 + 降采样"版本的封面图——给 MediaDetailContent 玻璃背景用。
+    /// 命中缓存即返；未命中走 <see cref="ImageService.GetBlurredImageBytesAsync"/> 一次性
+    /// 算出 byte[]（ImageSharp GaussianBlur）→ 解码 Avalonia Bitmap → 入缓存。
+    /// 与原图共用同一 LRU，key 加 "blur:" 前缀避免冲突。
+    /// </summary>
+    public async Task<Bitmap?> GetOrLoadBlurredAsync(string? imageName)
+    {
+        if (string.IsNullOrWhiteSpace(imageName)) return null;
+
+        var cacheKey = "blur:" + imageName;
+
+        // 先尝试命中
+        lock (_lock)
+        {
+            if (_cache.TryGetValue(cacheKey, out var entry))
+            {
+                _lruOrder.Remove(entry.Node);
+                _lruOrder.AddFirst(entry.Node);
+                return entry.Bitmap;
+            }
+        }
+
+        // 未命中：调 Core 生成模糊 bytes（不持锁，避免阻塞其他读）
+        Bitmap? bitmap = null;
+        try
+        {
+            var bytes = await _imageService.GetBlurredImageBytesAsync(imageName);
+            if (bytes is null) return null;
+            using var ms = new MemoryStream(bytes);
+            bitmap = new Bitmap(ms);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "ImageCacheService 生成 / 解码模糊图失败：{Name}", imageName);
+            return null;
+        }
+
+        lock (_lock)
+        {
+            if (_cache.TryGetValue(cacheKey, out var existing))
+            {
+                bitmap.Dispose();
+                _lruOrder.Remove(existing.Node);
+                _lruOrder.AddFirst(existing.Node);
+                return existing.Bitmap;
+            }
+
+            var node = _lruOrder.AddFirst(cacheKey);
+            _cache[cacheKey] = (node, bitmap);
+
+            while (_cache.Count > _capacity)
+            {
+                var oldestNode = _lruOrder.Last;
+                if (oldestNode is null) break;
+                _lruOrder.RemoveLast();
+                if (_cache.Remove(oldestNode.Value, out var stale))
+                {
+                    stale.Bitmap.Dispose();
+                }
+            }
+        }
+
+        return bitmap;
+    }
+
+    /// <summary>
     /// 显式驱逐：媒体封面被编辑替换后，发广播让 UI 重新加载新版本。
+    /// 同时驱逐对应的 "blur:" 缓存项——避免显示旧封面的模糊版。
     /// </summary>
     public void Invalidate(string imageName)
     {
@@ -103,6 +170,12 @@ public sealed class ImageCacheService : IDisposable
             {
                 _lruOrder.Remove(entry.Node);
                 entry.Bitmap.Dispose();
+            }
+            var blurKey = "blur:" + imageName;
+            if (_cache.Remove(blurKey, out var blurEntry))
+            {
+                _lruOrder.Remove(blurEntry.Node);
+                blurEntry.Bitmap.Dispose();
             }
         }
     }
