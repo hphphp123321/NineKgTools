@@ -19,6 +19,7 @@ public partial class PendingMediaViewModel : PageViewModelBase
     private readonly SourceService _sourceService;
     private readonly PendingIdentificationService _pendingService;
     private readonly FilesService _filesService;
+    private readonly IdentificationFlowService _identificationFlow;
     private readonly IServiceProvider _services;
 
     public override string Title => "待处理";
@@ -53,12 +54,14 @@ public partial class PendingMediaViewModel : PageViewModelBase
         SourceService sourceService,
         PendingIdentificationService pendingService,
         FilesService filesService,
+        IdentificationFlowService identificationFlow,
         IServiceProvider services)
     {
         _dbFactory = dbFactory;
         _sourceService = sourceService;
         _pendingService = pendingService;
         _filesService = filesService;
+        _identificationFlow = identificationFlow;
         _services = services;
     }
 
@@ -108,15 +111,15 @@ public partial class PendingMediaViewModel : PageViewModelBase
     private async Task IdentifyAsync(PendingMediaItemViewModel? item)
     {
         if (item is null) return;
-        try
+
+        // 走 IdentificationFlowService：选项 → 进度+诊断 → 预览/入库。
+        // 入库成功（Imported）该行就会从"待识别"列表消失——刷新两个 Tab。
+        // 其他结果（取消 / 未匹配 / 用户拒绝）不影响状态，不需要刷新（页面已经在最新态）。
+        var result = await _identificationFlow.RunInteractiveAsync(item.FullPath, IdentificationFlowKind.FirstTime);
+
+        if (result == IdentificationFlowResult.Imported)
         {
-            await _filesService.IdentifySingleMedia(item.FullPath);
-            Log.Information("已提交识别任务：{Path}", item.FullPath);
             await RefreshAsync();
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "提交识别任务失败：{Path}", item.FullPath);
         }
     }
 
@@ -183,16 +186,15 @@ public partial class PendingMediaViewModel : PageViewModelBase
     private async Task ReidentifyAsync(PendingMediaItemViewModel? item)
     {
         if (item is null) return;
-        try
+
+        // 走 IdentificationFlowService：选项 → 进度+诊断 → 预览/入库。Reidentify 语义会自动
+        // 把 SkipCache=true 预填进选项。入库成功 → 旧 Pending 行被 AddMediaToDatabase 清理 + source
+        // 标 InDatabase=true，该行从"待入库"列表消失。用户取消预览（UserDeclined）则旧 Pending 行还在。
+        var result = await _identificationFlow.RunInteractiveAsync(item.FullPath, IdentificationFlowKind.Reidentify);
+
+        if (result == IdentificationFlowResult.Imported)
         {
-            // 重新走识别 — 旧 PendingIdentification 会被新结果覆盖
-            await _filesService.IdentifySingleMedia(item.FullPath);
-            Log.Information("已重新提交识别任务：{Path}", item.FullPath);
             await RefreshAsync();
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "重新识别失败：{Path}", item.FullPath);
         }
     }
 

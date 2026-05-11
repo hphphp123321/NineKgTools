@@ -488,6 +488,69 @@ Row 2 (*):    任务列表 / 空状态
 - 操作按钮排版：合并 ⇨（unicode "rightwards arrow"）+ 删除 ✕，Critical 色仅给删除按钮文字
 - 头像 96x96 比列表卡 80x80 大一档，建立详情页"主角焦点"
 
+### 交互式识别流程（IdentificationFlowService · A→B→C 三步链，Phase 2.0）
+
+**结构**（在媒体详情窗"重新识别"按钮 / 待识别 Tab"识别"按钮 / 待入库 Tab"重新识别"按钮触发，依次弹三个对话框）：
+
+```
+A. 识别选项                       B. 进度 + 诊断                C. 结果预览
+┌──────────────────────────┐    ┌──────────────────────┐    ┌──────────────────────┐
+│ 🔍 重新识别选项           │    │ 🔎 正在识别媒体      │    │ 👁 预览待入库识别结果 │
+├──────────────────────────┤    ├──────────────────────┤    ├──────────────────────┤
+│ 路径：D:\…\file.wav      │    │ ▓▓▓▓▓░░░░ 52.3%      │    │ 标题  |  路径        │
+│                          │    │ 正在查询 DLsite...   │    │                       │
+│ ▸ 基础选项（展开）       │    │ D:\…\file.wav        │    │ chip chip chip       │
+│   网站  | 网站ID         │    │                      │    │                       │
+│   策略  | 类型           │    │ ┌─ 关键词解析 ────┐ │    │ 简介…                 │
+│ ▸ 多网站ID映射 (2)       │    │ │ 代码 [RJ123456] │ │    │                       │
+│ ▸ 高级选项               │    │ │ 关键词「标题」  │ │    │                       │
+│ ▸ 网站优先级             │    │ └─────────────────┘ │    │                       │
+│                          │    │ ┌─ 网站尝试 ─────┐  │    │                       │
+│ [重置] [取消] [开始识别] │    │ │ ✓命中  DLsite  │  │    │                       │
+└──────────────────────────┘    │ │   标题 1234ms  │  │    │                       │
+                                │ │ ⊘跳过  Bangumi │  │    │                       │
+                                │ └────────────────┘  │    │ [关闭] [确认入库]    │
+                                │      [✕ 取消识别]   │    └──────────────────────┘
+                                └──────────────────────┘
+```
+
+**实现要点**：
+
+- **入口分流**（`IdentificationFlowKind`）：
+  - `Reidentify`（详情页 / 待入库 Tab）：标题"重新识别选项"，初始 `SkipCache=true`
+  - `FirstTime`（待识别 Tab）：标题"手动识别选项"，初始 `SkipCache=false`
+  - 两种都强制 `AutoAddToDatabase=false`——结果走 C 让用户确认入库
+- **A · 选项对话框**（`IdentificationOptionsDialog`）：
+  - 4 个 `Expander` 默认只展开第 1 个（基础选项）；其他 3 个收起减视觉噪音
+  - **避坑**：策略 / 类型用 ComboBox + ItemTemplate（DataTemplate 绑 enum-record `StrategyOption`），不用 RadioGroup（Avalonia 12 enum CommandParameter 陷阱见反模式章节）
+  - **网站优先级**：用 `ToggleButton` WrapPanel 模拟多选；选中先后顺序通过 VM 内 `SelectionOrder` 字段维护，UI 顶部用文本 `DLsite → Bangumi → Steam` 形式实时回显
+  - **验证失败**：Strategy=Manual 但未填 ID → 底部红色 InfoBar 提示；`PrimaryButtonClick.Cancel=true` 留住 dialog 让用户改
+  - **重置按钮**：`SecondaryButtonClick.Cancel=true` 截获，跑 `ResetCommand` 但不关 dialog
+- **B · 进度+诊断对话框**（`IdentificationProgressDialog`）：
+  - **进度条**：FluentAvalonia 默认 `ProgressBar`，accent 色；右上百分比大号字加 SystemFillColorAttention 着色
+  - **关键词解析**：诊断对象首次填入 `Keywords` 时显示——产品代码 / 社团 / 主关键词三组 chip
+  - **网站尝试列表**：每行 `ItemTemplate` 含状态徽章（图标 + 文本 + brushKey 着色，复用 IdentificationDiagnostics 系统语义色）+ 网站名 + Top N 标记 + 命中标题 / 失败原因 + 右侧 ms 耗时（等宽字体）
+  - **取消按钮**：红框 outline + `SystemFillColorCriticalBrush` 着色，不用 Critical class（桌面端目前未定义此 class）；点取消触发 `CancellationTokenSource.Cancel()` + UI 切"正在取消..."
+  - **节流**：VM 内 100ms `DispatcherTimer`，Reporter `OnProgress` handler 只 `_pendingEntry = entry` 覆盖式写入；Tick 在 UI 线程统一应用 + 增量同步 `Diagnostics.WebsiteAttempts` 到 `ObservableCollection<WebsiteAttemptItemVm>`（最后两条 `Refresh` 而非新增——活跃 attempt 状态会变更）
+  - **不可关闭**：FAContentDialog 三组按钮全 Hide（`DefaultButton=None`），唯一关闭路径 = 内嵌"取消识别"按钮 / `dialog.Hide()`（由 flow service 在识别完成时调）
+- **C · 结果预览**：完全复用 `PendingMediaPreviewDialog`，用户点"确认入库"→ `FilesService.AddMediaToDatabase`，取消则丢弃（与 Web 一致）
+- **共享流程编排**（`IdentificationFlowService.RunInteractiveAsync`）：
+  1. A 对话框 await（阻塞）
+  2. new `IdentificationDiagnostics` + `DialogProgressReporter`
+  3. **必须** `using (IdentificationDiagnosticsContext.BeginScope(diagnostics))`——AsyncLocal 作用域是网站层 `RecordKeywords` / `RecordCandidates` / `MarkChosen` 上报的唯一入口
+  4. B 对话框 fire-and-forget show + await `FilesService.GetMediaByPath(...)`
+  5. 完成后 `await handle.CloseAsync()` 关 B
+  6. 成功且 media != null → 弹 C 预览；用户确认 → AddMediaToDatabase
+- **返回结果**（`IdentificationFlowResult`）：Canceled / NoMatch / Failed / UserDeclined / Imported；调用方仅在 `Imported` 时 RefreshAsync 刷新列表
+
+**视觉细节**：
+- A 对话框 `PlaceholderText="例如：RJ123456 / 22905 / 730"`——直接给出三个识别源的真实 ID 范例，比抽象 "网站特定 ID" 文案易懂得多
+- B 对话框关键词 chip：产品代码用 `SystemFillColorAttentionBackgroundBrush`（蓝调）强调，主关键词用 `SubtleFillColorTertiaryBrush`（中性灰）次要
+- B 对话框 attempt 状态徽章 brushKey 映射：Success / CacheHit → success/attention；NoMatch / Skipped → neutral；Exception → critical。设计意图：用户一眼能看出"哪个站点失败了"
+- B 对话框完成后**不立刻关**——`Finalise()` 停 timer 但保留终态（红框取消按钮隐藏 + 显示最终诊断），flow service 主动调 `CloseAsync()` 后才关闭
+
+**修改这部分时**：增删 `IdentificationOptions` 属性 → 同步 `IdentificationOptionsDialogContext.RestoreFromOptions/BuildOptions` + axaml 三个面板。`IdentificationStrategy` 枚举值变化 → 更新 `StrategyOption` 名称/描述映射 + 帮助文案。
+
 ### 识别诊断面板（IdentificationDiagnosticsView，Phase 2.1）
 
 **结构**（独立 Window，从 BackgroundTasksPage 行的"🔍 诊断"按钮触发）：

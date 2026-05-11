@@ -1,0 +1,264 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Dialogs"
+             x:Class="NineKgTools.Desktop.Views.Dialogs.IdentificationOptionsDialog"
+             x:DataType="vm:IdentificationOptionsDialogContext"
+             x:Name="RootView"
+             MinWidth="560" MaxWidth="700">
+
+    <StackPanel Spacing="14">
+
+        <!-- 副标题 + 源路径预览（标题图标+主标题由 FAContentDialog.Title slot 负责） -->
+        <StackPanel Spacing="4">
+            <TextBlock Text="{Binding Subtitle}"
+                       FontSize="13"
+                       Opacity="0.75"
+                       TextWrapping="Wrap" />
+            <Border Padding="10,6"
+                    CornerRadius="{StaticResource ControlCornerRadius}"
+                    Background="{DynamicResource LayerFillColorDefaultBrush}">
+                <TextBlock Text="{Binding SourcePath}"
+                           FontFamily="Consolas, Courier New, monospace"
+                           FontSize="11"
+                           Opacity="0.85"
+                           TextWrapping="Wrap"
+                           TextTrimming="CharacterEllipsis" />
+            </Border>
+        </StackPanel>
+
+        <!-- ===== 面板 1：基础选项（默认展开） ===== -->
+        <Expander IsExpanded="True">
+            <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="⚙" FontSize="14" />
+                    <TextBlock Text="基础选项" FontWeight="SemiBold" />
+                </StackPanel>
+            </Expander.Header>
+
+            <StackPanel Spacing="14" Margin="0,8,0,0">
+
+                <!-- 指定网站 + 网站ID -->
+                <Grid ColumnDefinitions="*,12,*">
+                    <StackPanel Grid.Column="0" Spacing="4">
+                        <TextBlock Text="指定网站" FontSize="12" Opacity="0.8" />
+                        <ComboBox ItemsSource="{Binding AvailableWebsites}"
+                                  SelectedItem="{Binding PreferredWebsite, Mode=TwoWay}"
+                                  PlaceholderText="（自动选择）"
+                                  HorizontalAlignment="Stretch" />
+                        <TextBlock Text="留空则按优先级自动选择"
+                                   FontSize="11" Opacity="0.55"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="4">
+                        <TextBlock Text="网站 ID" FontSize="12" Opacity="0.8" />
+                        <TextBox Text="{Binding WebsiteSpecificId, Mode=TwoWay}"
+                                 PlaceholderText="例如：RJ123456 / 22905 / 730" />
+                        <TextBlock Text="指定的网站特定 ID（DLsite 用 RJ 号、Bangumi/Steam 用数字）"
+                                   FontSize="11" Opacity="0.55"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- 自定义识别名称 -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="自定义识别名称" FontSize="12" Opacity="0.8" />
+                    <TextBox Text="{Binding CustomIdentificationName, Mode=TwoWay}"
+                             PlaceholderText="留空则使用文件名" />
+                    <TextBlock Text="覆盖默认文件名进行搜索"
+                               FontSize="11" Opacity="0.55" />
+                </StackPanel>
+
+                <!-- 识别策略 + 类型提示 -->
+                <Grid ColumnDefinitions="*,12,*">
+                    <StackPanel Grid.Column="0" Spacing="4">
+                        <TextBlock Text="识别策略" FontSize="12" Opacity="0.8" />
+                        <ComboBox ItemsSource="{Binding StrategyOptions}"
+                                  SelectedItem="{Binding Strategy, Mode=TwoWay}"
+                                  HorizontalAlignment="Stretch">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:StrategyOption">
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding Description}"
+                                                   FontSize="11"
+                                                   Opacity="0.6"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="4">
+                        <TextBlock Text="媒体类型提示" FontSize="12" Opacity="0.8" />
+                        <ComboBox ItemsSource="{Binding CategoryOptions}"
+                                  SelectedItem="{Binding SuggestedCategory, Mode=TwoWay}"
+                                  HorizontalAlignment="Stretch">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:TopCategoryOption">
+                                    <TextBlock Text="{Binding Display}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <TextBlock Text="可选：提示分类帮助优化识别"
+                                   FontSize="11" Opacity="0.55" />
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </Expander>
+
+        <!-- ===== 面板 2：多网站 ID 映射 ===== -->
+        <Expander>
+            <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="🔗" FontSize="14" />
+                    <TextBlock Text="多网站 ID 映射" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding WebsiteIdsCountText}"
+                               FontSize="11"
+                               Opacity="0.65"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Expander.Header>
+
+            <StackPanel Spacing="10" Margin="0,8,0,0">
+                <TextBlock IsVisible="{Binding !HasWebsiteIds}"
+                           Text="暂无映射，可在下方添加"
+                           FontSize="12"
+                           Opacity="0.65"
+                           Padding="10,6"
+                           Background="{DynamicResource LayerFillColorDefaultBrush}" />
+
+                <ItemsControl ItemsSource="{Binding WebsiteIds}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:WebsiteIdEntryVm">
+                            <Border Padding="10,6" Margin="0,0,0,6"
+                                    CornerRadius="{DynamicResource ControlCornerRadius}"
+                                    Background="{DynamicResource LayerFillColorDefaultBrush}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding Display}"
+                                               FontSize="12"
+                                               VerticalAlignment="Center" />
+                                    <Button Grid.Column="1"
+                                            Command="{Binding #RootView.((vm:IdentificationOptionsDialogContext)DataContext).RemoveWebsiteIdCommand}"
+                                            CommandParameter="{Binding}"
+                                            Padding="6,2"
+                                            ToolTip.Tip="移除此映射">
+                                        <TextBlock Text="✕" FontSize="12" />
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- 添加行 -->
+                <Grid ColumnDefinitions="*,8,*,8,Auto">
+                    <ComboBox Grid.Column="0"
+                              ItemsSource="{Binding AvailableWebsites}"
+                              SelectedItem="{Binding NewWebsiteName, Mode=TwoWay}"
+                              PlaceholderText="网站名"
+                              HorizontalAlignment="Stretch" />
+                    <TextBox Grid.Column="2"
+                             Text="{Binding NewWebsiteId, Mode=TwoWay}"
+                             PlaceholderText="ID（如 RJ123456）" />
+                    <Button Grid.Column="4"
+                            Command="{Binding AddWebsiteIdCommand}"
+                            Classes="accent"
+                            Padding="14,6">
+                        <TextBlock Text="添加" />
+                    </Button>
+                </Grid>
+            </StackPanel>
+        </Expander>
+
+        <!-- ===== 面板 3：高级选项 ===== -->
+        <Expander>
+            <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="🔧" FontSize="14" />
+                    <TextBlock Text="高级选项" FontWeight="SemiBold" />
+                </StackPanel>
+            </Expander.Header>
+
+            <StackPanel Spacing="14" Margin="0,8,0,0">
+
+                <!-- 跳过缓存 -->
+                <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="跳过缓存" FontWeight="SemiBold" FontSize="13" />
+                        <TextBlock Text="强制从网络重新识别，忽略本地缓存"
+                                   FontSize="11" Opacity="0.6" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ToggleSwitch Grid.Column="1"
+                                  IsChecked="{Binding SkipCache, Mode=TwoWay}"
+                                  OnContent="" OffContent="" />
+                </Grid>
+
+                <!-- 超时时间 -->
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding TimeoutDisplay}" FontWeight="SemiBold" FontSize="13" />
+                    <Slider Value="{Binding TimeoutSeconds, Mode=TwoWay}"
+                            Minimum="5" Maximum="120"
+                            TickFrequency="5" IsSnapToTickEnabled="True"
+                            TickPlacement="BottomRight" />
+                    <TextBlock Text="单个网站的识别超时（秒）"
+                               FontSize="11" Opacity="0.6" />
+                </StackPanel>
+
+            </StackPanel>
+        </Expander>
+
+        <!-- ===== 面板 4：网站优先级 ===== -->
+        <Expander>
+            <Expander.Header>
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="⚡" FontSize="14" />
+                    <TextBlock Text="网站优先级（按选中顺序）" FontWeight="SemiBold" />
+                </StackPanel>
+            </Expander.Header>
+
+            <StackPanel Spacing="10" Margin="0,8,0,0">
+                <Border Padding="10,6"
+                        CornerRadius="{StaticResource ControlCornerRadius}"
+                        Background="{DynamicResource LayerFillColorDefaultBrush}">
+                    <TextBlock Text="{Binding PriorityDisplay}"
+                               FontSize="12" TextWrapping="Wrap" />
+                </Border>
+
+                <ItemsControl ItemsSource="{Binding PriorityChoices}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:WebsitePriorityChoiceVm">
+                            <ToggleButton IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                          Margin="0,0,8,8"
+                                          Padding="14,6"
+                                          CornerRadius="14">
+                                <TextBlock Text="{Binding WebsiteName}" FontSize="12" />
+                            </ToggleButton>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="不选 = 使用默认优先级；选中顺序即覆盖优先级"
+                           FontSize="11" Opacity="0.55" />
+            </StackPanel>
+        </Expander>
+
+        <!-- 验证错误条 -->
+        <Border IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                Padding="12,8"
+                CornerRadius="{DynamicResource ControlCornerRadius}"
+                Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="⚠" FontSize="13" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding ErrorMessage}" FontSize="12" TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+    </StackPanel>
+
+</UserControl>

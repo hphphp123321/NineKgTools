@@ -42,6 +42,7 @@ public partial class MediaDetailViewModel : ObservableObject
     private readonly FavoriteService _favoriteService;
     private readonly OpenaiService _openaiService;
     private readonly NavigationService _navigationService;
+    private readonly IdentificationFlowService _identificationFlow;
     private MediaBase? _media;
 
     // ===== 编辑模式临时状态（draft）—— 进入编辑时初始化、Save/Cancel 时清空 =====
@@ -393,7 +394,8 @@ public partial class MediaDetailViewModel : ObservableObject
         NineKgTools.Core.Services.Media.CreatorService creatorService,
         FavoriteService favoriteService,
         OpenaiService openaiService,
-        NavigationService navigationService)
+        NavigationService navigationService,
+        IdentificationFlowService identificationFlow)
     {
         _mediaService = mediaService;
         _imageCache = imageCache;
@@ -404,6 +406,7 @@ public partial class MediaDetailViewModel : ObservableObject
         _favoriteService = favoriteService;
         _openaiService = openaiService;
         _navigationService = navigationService;
+        _identificationFlow = identificationFlow;
     }
 
     public async Task LoadAsync(int mediaId)
@@ -575,14 +578,16 @@ public partial class MediaDetailViewModel : ObservableObject
     private async Task ReidentifyAsync()
     {
         if (string.IsNullOrEmpty(FilePath)) return;
-        try
+
+        // 走 IdentificationFlowService：选项对话框 → 进度+诊断对话框 → 预览/入库（与 Web 端
+        // SourceDetailPage.HandleReidentifyAsync 行为对齐）。入库成功后 reload 当前媒体——
+        // mediaId 在重识别成功后通常不变（FilesService.AddMediaToDatabase 内部已处理 source/media
+        // 关联），但保险起见仍按 _media.Id 重载。
+        var result = await _identificationFlow.RunInteractiveAsync(FilePath, IdentificationFlowKind.Reidentify);
+
+        if (result == IdentificationFlowResult.Imported && _media != null)
         {
-            await _filesService.IdentifySingleMedia(FilePath);
-            Log.Information("已提交重新识别：{Path}", FilePath);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "重新识别失败：{Path}", FilePath);
+            await LoadAsync(_media.Id);
         }
     }
 

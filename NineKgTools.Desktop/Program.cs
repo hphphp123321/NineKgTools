@@ -298,6 +298,8 @@ internal static class Program
         services.AddSingleton<WindowStateService>();
         services.AddSingleton<IpcService>();
         services.AddSingleton<ShellIntegrationService>();
+        // 共享交互式识别流程（选项 / 进度+诊断 / 预览三步链；MediaDetailVM、PendingMediaVM 都会用）
+        services.AddSingleton<IdentificationFlowService>();
 
         // Window-level VM
         services.AddTransient<MainWindowViewModel>();

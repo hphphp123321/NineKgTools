@@ -1036,7 +1036,7 @@
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Center"
                                         Padding="8,4"
-                                        ToolTip.Tip="重新识别（提交后台任务）">
+                                        ToolTip.Tip="重新识别（弹选项对话框 + 实时诊断）">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <PathIcon Data="{StaticResource IconRefresh}" Width="13" Height="13" />
                                         <TextBlock Text="重新识别" FontSize="11" />

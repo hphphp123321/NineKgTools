@@ -1,0 +1,166 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Dialogs"
+             x:Class="NineKgTools.Desktop.Views.Dialogs.IdentificationProgressDialog"
+             x:DataType="vm:IdentificationProgressDialogContext"
+             MinWidth="520" MaxWidth="620">
+
+    <StackPanel Spacing="14">
+
+        <!-- 进度条 + 百分比 -->
+        <StackPanel Spacing="6">
+            <ProgressBar Value="{Binding Progress}"
+                         Minimum="0" Maximum="100"
+                         Height="6"
+                         CornerRadius="3" />
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           IsVisible="{Binding HasMessage}"
+                           Text="{Binding Message}"
+                           FontSize="13"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding ProgressPercentText}"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource SystemFillColorAttentionBrush}"
+                           VerticalAlignment="Center" />
+            </Grid>
+            <TextBlock IsVisible="{Binding HasCurrentItem}"
+                       Text="{Binding CurrentItem}"
+                       FontSize="11"
+                       Opacity="0.65"
+                       FontFamily="Consolas, Courier New, monospace"
+                       TextWrapping="Wrap"
+                       TextTrimming="CharacterEllipsis"
+                       MaxLines="2" />
+        </StackPanel>
+
+        <!-- 关键词解析（识别开始后填充） -->
+        <Border IsVisible="{Binding HasKeywords}"
+                Padding="12,8"
+                CornerRadius="{DynamicResource ControlCornerRadius}"
+                Background="{DynamicResource LayerFillColorDefaultBrush}">
+            <StackPanel Spacing="6">
+                <TextBlock Text="关键词解析" FontSize="11" Opacity="0.65" />
+                <WrapPanel Orientation="Horizontal">
+                    <!-- 产品代码 chip -->
+                    <Border IsVisible="{Binding KeywordsProductCode, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Padding="8,3" Margin="0,0,6,4"
+                            CornerRadius="9"
+                            Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="代码" FontSize="10" Opacity="0.65" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding KeywordsProductCode}"
+                                       FontSize="11" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Border>
+                    <!-- 社团 chip -->
+                    <Border IsVisible="{Binding KeywordsCircleName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Padding="8,3" Margin="0,0,6,4"
+                            CornerRadius="9"
+                            Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="社团" FontSize="10" Opacity="0.65" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding KeywordsCircleName}" FontSize="11" />
+                        </StackPanel>
+                    </Border>
+                    <!-- 主关键词 chip -->
+                    <Border IsVisible="{Binding KeywordsPrimary, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            Padding="8,3" Margin="0,0,6,4"
+                            CornerRadius="9"
+                            Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="关键词" FontSize="10" Opacity="0.65" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding KeywordsPrimary}" FontSize="11" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </Border>
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- 网站尝试列表 -->
+        <Border IsVisible="{Binding HasAttempts}"
+                Padding="12,10"
+                CornerRadius="{DynamicResource ControlCornerRadius}"
+                Background="{DynamicResource LayerFillColorDefaultBrush}">
+            <StackPanel Spacing="8">
+                <TextBlock Text="网站尝试" FontSize="11" Opacity="0.65" />
+
+                <ItemsControl ItemsSource="{Binding AttemptItems}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:WebsiteAttemptItemVm">
+                            <Grid ColumnDefinitions="Auto,8,*,8,Auto"
+                                  Margin="0,0,0,4">
+                                <!-- 状态图标 -->
+                                <Border Grid.Column="0"
+                                        Padding="6,2"
+                                        CornerRadius="9"
+                                        MinWidth="56"
+                                        HorizontalAlignment="Left"
+                                        Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
+                                        <TextBlock Text="{Binding StatusIcon}"
+                                                   FontSize="12"
+                                                   Foreground="{Binding StatusBrushKey, Converter={x:Static vm:BrushKeyConverter.Instance}}"
+                                                   VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding StatusText}"
+                                                   FontSize="11" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- 网站名 + 命中标题 / 失败原因 -->
+                                <StackPanel Grid.Column="2" Spacing="2">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="{Binding WebsiteName}" FontSize="12" FontWeight="SemiBold" />
+                                        <TextBlock IsVisible="{Binding CandidateCount, Converter={x:Static vm:GreaterThanZeroConverter.Instance}}"
+                                                   Text="{Binding CandidateCount, StringFormat='Top {0}'}"
+                                                   FontSize="10" Opacity="0.55"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <TextBlock IsVisible="{Binding HasChosenTitle}"
+                                               Text="{Binding ChosenTitle}"
+                                               FontSize="11" Opacity="0.85"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock IsVisible="{Binding HasReason}"
+                                               Text="{Binding Reason}"
+                                               FontSize="11" Opacity="0.55"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+
+                                <!-- 耗时 -->
+                                <TextBlock Grid.Column="4"
+                                           Text="{Binding DurationDisplay}"
+                                           FontSize="10" Opacity="0.55"
+                                           FontFamily="Consolas, Courier New, monospace"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <!-- 取消识别按钮：用 system critical brush 表达"中止"语义，与全局 NineKgConfirmDialog Destructive 色一致 -->
+        <Button Command="{Binding CancelCommand}"
+                IsVisible="{Binding IsRunning}"
+                HorizontalAlignment="Center"
+                Padding="20,6"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource SystemFillColorCriticalBrush}"
+                Foreground="{DynamicResource SystemFillColorCriticalBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="✕" FontSize="12" />
+                <TextBlock Text="取消识别" />
+            </StackPanel>
+        </Button>
+
+        <TextBlock IsVisible="{Binding IsCancelling}"
+                   Text="正在取消..."
+                   HorizontalAlignment="Center"
+                   FontSize="12" Opacity="0.7" />
+
+    </StackPanel>
+
+</UserControl>
