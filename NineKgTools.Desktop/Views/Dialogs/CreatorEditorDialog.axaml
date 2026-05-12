@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Pages"
+             x:Class="NineKgTools.Desktop.Views.Dialogs.CreatorEditorDialog"
+             x:Name="DialogRoot"
+             MinWidth="460" MaxWidth="540">
+
+    <UserControl.Styles>
+        <!-- 类型 toggle chip：未选 = subtle 边框；选中 = accent fill + accent border -->
+        <Style Selector="ToggleButton.creator-type-chip">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="Margin" Value="0,0,6,6" />
+        </Style>
+        <Style Selector="ToggleButton.creator-type-chip:checked /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentFillColorTertiaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Spacing="14">
+
+        <!-- 名称 -->
+        <StackPanel Spacing="6">
+            <TextBlock Text="创作者名称" FontSize="11" Opacity="0.7" />
+            <TextBox Text="{Binding #DialogRoot.NameValue, Mode=TwoWay}"
+                     PlaceholderText="例如：宫崎骏 / 久石让..." />
+        </StackPanel>
+
+        <!-- 类型多选（可全不选） -->
+        <StackPanel Spacing="6">
+            <TextBlock Text="类型（可多选，可全不选）" FontSize="11" Opacity="0.7" />
+            <ItemsControl ItemsSource="{Binding #DialogRoot.TypeToggles}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:CreatorTypeToggleVm">
+                        <ToggleButton Classes="creator-type-chip"
+                                      IsChecked="{Binding IsSelected, Mode=TwoWay}">
+                            <TextBlock Text="{Binding DisplayName}" FontSize="12" />
+                        </ToggleButton>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+
+    </StackPanel>
+
+</UserControl>

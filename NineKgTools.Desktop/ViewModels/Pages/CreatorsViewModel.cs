@@ -180,6 +180,27 @@ public partial class CreatorsViewModel : PageViewModelBase
         }
     }
 
+    /// <summary>新建创作者——弹 CreatorEditorDialog → CreateCreatorAsync → 刷新列表 + 跳详情。
+    /// Core service 同名允许，不做重名校验；类型可全不选（与 Web 一致）。</summary>
+    [RelayCommand]
+    private async Task AddCreatorAsync()
+    {
+        var result = await CreatorEditorDialog.ShowAsync();
+        if (result is null) return;
+
+        try
+        {
+            var newCreator = await _creatorService.CreateCreatorAsync(result.Name, result.Types.ToList());
+            Log.Information("新建创作者: {Name} (Id={Id})", newCreator.Name, newCreator.Id);
+            await LoadAsync();
+            await LoadDetailByIdAsync(newCreator.Id);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "新建创作者失败 Name={Name}", result.Name);
+        }
+    }
+
     [RelayCommand(CanExecute = nameof(CanGoNextPage))]
     private Task NextPageAsync()
     {

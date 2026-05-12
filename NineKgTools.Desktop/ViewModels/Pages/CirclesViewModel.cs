@@ -168,6 +168,27 @@ public partial class CirclesViewModel : PageViewModelBase
         }
     }
 
+    /// <summary>新建社团——弹 CircleEditorDialog → CreateCircleAsync → 刷新列表 + 跳详情。
+    /// Core service 同名允许，不做重名校验（与 Web 一致）。</summary>
+    [RelayCommand]
+    private async Task AddCircleAsync()
+    {
+        var name = await CircleEditorDialog.ShowAsync();
+        if (string.IsNullOrEmpty(name)) return;
+
+        try
+        {
+            var newCircle = await _creatorService.CreateCircleAsync(name);
+            Log.Information("新建社团: {Name} (Id={Id})", newCircle.Name, newCircle.Id);
+            await LoadAsync();
+            await LoadDetailByIdAsync(newCircle.Id);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "新建社团失败 Name={Name}", name);
+        }
+    }
+
     [RelayCommand(CanExecute = nameof(CanGoNextPage))]
     private Task NextPageAsync()
     {

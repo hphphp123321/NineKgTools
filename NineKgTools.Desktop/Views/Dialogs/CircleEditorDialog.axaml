@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="NineKgTools.Desktop.Views.Dialogs.CircleEditorDialog"
+             x:Name="DialogRoot"
+             MinWidth="420" MaxWidth="500">
+
+    <StackPanel Spacing="6">
+        <TextBlock Text="社团名称" FontSize="11" Opacity="0.7" />
+        <TextBox Text="{Binding #DialogRoot.NameValue, Mode=TwoWay}"
+                 PlaceholderText="例如：Type-Moon / 京都アニメーション..." />
+    </StackPanel>
+
+</UserControl>

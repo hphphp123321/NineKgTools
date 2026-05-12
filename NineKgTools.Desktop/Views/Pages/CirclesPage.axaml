@@ -13,13 +13,24 @@
         <!-- ==================== 列表态 ==================== -->
         <Grid IsVisible="{Binding ShowList}" RowDefinitions="Auto,Auto,*,Auto">
 
-            <Grid Grid.Row="0" Margin="32,24,32,12" ColumnDefinitions="*,Auto">
+            <Grid Grid.Row="0" Margin="32,24,32,12" ColumnDefinitions="*,Auto,8,Auto">
                 <StackPanel Grid.Column="0" Spacing="4">
                     <TextBlock Text="社团" FontSize="28" FontWeight="SemiBold" />
                     <TextBlock Text="项目里收录的全部社团 / 出版社 / 开发商"
                                Opacity="0.7" FontSize="13" />
                 </StackPanel>
-                <Button Grid.Column="1" Command="{Binding LoadCommand}" VerticalAlignment="Center">
+                <Button Grid.Column="1"
+                        Command="{Binding AddCircleCommand}"
+                        Background="{DynamicResource AccentFillColorDefaultBrush}"
+                        Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                        VerticalAlignment="Center"
+                        ToolTip.Tip="手动新建社团 / 出版社 / 开发商">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="+" FontSize="14" FontWeight="Bold" />
+                        <TextBlock Text="添加社团" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="3" Command="{Binding LoadCommand}" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
                         <TextBlock Text="刷新" />
