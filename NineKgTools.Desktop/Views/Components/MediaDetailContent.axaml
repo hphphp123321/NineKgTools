@@ -88,9 +88,9 @@
 
                 <!-- ========== Hero 区（封面 + 标题 + 操作） ========== -->
                 <Border Background="{DynamicResource BrandHeroGradient}"
-                        Padding="32,24,32,24"
-                        MinHeight="280">
-                    <Grid ColumnDefinitions="Auto,32,*">
+                        Padding="32,18,32,18"
+                        MinHeight="252">
+                    <Grid ColumnDefinitions="Auto,24,*">
 
                         <!-- 置顶图钉：浮在 Hero 右上角（系统标题栏底部下方紧贴位置），
                              FluentAvalonia drawn caption buttons 在系统标题栏内，本图钉在 Hero 内
@@ -114,7 +114,7 @@
 
                         <!-- 封面 200x280 + 编辑模式下方"更换封面"按钮 -->
                         <StackPanel Grid.Column="0" Spacing="8" VerticalAlignment="Center">
-                            <Border Width="200" Height="280"
+                            <Border Width="180" Height="252"
                                     CornerRadius="12"
                                     ClipToBounds="True"
                                     Background="{DynamicResource SubtleFillColorTertiaryBrush}">
@@ -142,7 +142,7 @@
                         </StackPanel>
 
                         <!-- 右侧文字 + 操作 -->
-                        <StackPanel Grid.Column="2" Spacing="14" VerticalAlignment="Center">
+                        <StackPanel Grid.Column="2" Spacing="10" VerticalAlignment="Center">
 
                             <!-- 类别 + 标题 -->
                             <StackPanel Spacing="6">
@@ -179,7 +179,7 @@
 
                                 <!-- Title：只读 vs 编辑（绑 MediaTitle 而非 Title——后者已是 PageViewModelBase 框架属性） -->
                                 <TextBlock Text="{Binding MediaTitle}"
-                                           FontSize="28"
+                                           FontSize="26"
                                            FontWeight="SemiBold"
                                            TextWrapping="Wrap"
                                            IsVisible="{Binding !IsEditMode}" />
@@ -247,31 +247,31 @@
                                 <Button Command="{Binding SetRatingCommand}" CommandParameter="1"
                                         Background="Transparent" BorderThickness="0" Padding="3"
                                         IsEnabled="{Binding IsEditMode}" Cursor="Hand">
-                                    <PathIcon Data="{Binding RatingStar1}" Width="22" Height="22"
+                                    <PathIcon Data="{Binding RatingStar1}" Width="20" Height="20"
                                               Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
                                 </Button>
                                 <Button Command="{Binding SetRatingCommand}" CommandParameter="2"
                                         Background="Transparent" BorderThickness="0" Padding="3"
                                         IsEnabled="{Binding IsEditMode}" Cursor="Hand">
-                                    <PathIcon Data="{Binding RatingStar2}" Width="22" Height="22"
+                                    <PathIcon Data="{Binding RatingStar2}" Width="20" Height="20"
                                               Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
                                 </Button>
                                 <Button Command="{Binding SetRatingCommand}" CommandParameter="3"
                                         Background="Transparent" BorderThickness="0" Padding="3"
                                         IsEnabled="{Binding IsEditMode}" Cursor="Hand">
-                                    <PathIcon Data="{Binding RatingStar3}" Width="22" Height="22"
+                                    <PathIcon Data="{Binding RatingStar3}" Width="20" Height="20"
                                               Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
                                 </Button>
                                 <Button Command="{Binding SetRatingCommand}" CommandParameter="4"
                                         Background="Transparent" BorderThickness="0" Padding="3"
                                         IsEnabled="{Binding IsEditMode}" Cursor="Hand">
-                                    <PathIcon Data="{Binding RatingStar4}" Width="22" Height="22"
+                                    <PathIcon Data="{Binding RatingStar4}" Width="20" Height="20"
                                               Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
                                 </Button>
                                 <Button Command="{Binding SetRatingCommand}" CommandParameter="5"
                                         Background="Transparent" BorderThickness="0" Padding="3"
                                         IsEnabled="{Binding IsEditMode}" Cursor="Hand">
-                                    <PathIcon Data="{Binding RatingStar5}" Width="22" Height="22"
+                                    <PathIcon Data="{Binding RatingStar5}" Width="20" Height="20"
                                               Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
                                 </Button>
                                 <TextBlock Text="{Binding Rating, StringFormat='{}{0:0}'}"
@@ -351,7 +351,7 @@
 
                             <!-- 主操作按钮组：只读模式有"入口"（未设/打开+齿轮）+ "编辑"
                                  文件管理器打开 / 重新识别 在右栏元数据 section 底部 -->
-                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0"
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0"
                                         IsVisible="{Binding !IsEditMode}">
                                 <!-- 未设置入口：单按钮 [🎯 设置入口]——所有类型媒体均显示 -->
                                 <Button Command="{Binding SetEntryFileCommand}"
@@ -404,7 +404,7 @@
                             </StackPanel>
 
                             <!-- 主操作按钮组：编辑模式 -->
-                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,8,0,0"
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0"
                                         IsVisible="{Binding IsEditMode}">
                                 <Button Command="{Binding SaveCommand}"
                                         IsEnabled="{Binding !IsSaving}"
