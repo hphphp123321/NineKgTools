@@ -47,10 +47,10 @@
     <Grid>
 
         <!-- ==================== 顶级列表态 ==================== -->
-        <Grid IsVisible="{Binding ShowTopList}" RowDefinitions="Auto,*">
+        <Grid IsVisible="{Binding ShowTopList}" RowDefinitions="Auto,Auto,*">
 
             <!-- 头部 -->
-            <Grid Grid.Row="0" Margin="32,24,32,16" ColumnDefinitions="*,Auto,8,Auto,8,Auto">
+            <Grid Grid.Row="0" Margin="32,24,32,12" ColumnDefinitions="*,Auto,8,Auto,8,Auto">
                 <StackPanel Grid.Column="0" Spacing="4">
                     <TextBlock Text="标签" FontSize="28" FontWeight="SemiBold" />
                     <TextBlock Text="按主题组织你的媒体 · 顶级分类 → 子标签 → 关联媒体"
@@ -85,12 +85,26 @@
                 </Button>
             </Grid>
 
-            <!-- 主区 -->
-            <Grid Grid.Row="1" Margin="32,0,32,24">
+            <!-- 全局搜索栏：搜全部子标签（跨所有顶级）；输入即过滤 -->
+            <Grid Grid.Row="1" Margin="32,0,32,12" ColumnDefinitions="*,Auto">
+                <TextBox Grid.Column="0"
+                         PlaceholderText="搜索全部标签（标签名 / 描述）..."
+                         Text="{Binding SearchText, Mode=TwoWay}" />
+                <Button Grid.Column="1"
+                        Command="{Binding ClearSearchCommand}"
+                        IsVisible="{Binding HasSearchText}"
+                        Margin="6,0,0,0"
+                        Padding="10,6"
+                        ToolTip.Tip="清空搜索">
+                    <TextBlock Text="✕" FontSize="12" />
+                </Button>
+            </Grid>
 
-                <!-- 空状态 -->
-                <Border IsVisible="{Binding ShowEmptyTopList}"
-                        Background="{DynamicResource LayerFillColorAltBrush}"
+            <!-- 主区 -->
+            <Grid Grid.Row="2" Margin="32,0,32,24">
+
+                <!-- 顶级整体空态（数据库无任何顶级标签）—— 仅 ShowTopGrid 时显示 -->
+                <Border Background="{DynamicResource LayerFillColorAltBrush}"
                         BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                         BorderThickness="1"
                         CornerRadius="8"
@@ -99,6 +113,12 @@
                         MaxWidth="480"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center">
+                    <Border.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="ShowEmptyTopList" />
+                            <Binding Path="ShowTopGrid" />
+                        </MultiBinding>
+                    </Border.IsVisible>
                     <StackPanel Spacing="16" HorizontalAlignment="Center">
                         <PathIcon Data="{StaticResource IconTags}" Width="64" Height="64"
                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}"
@@ -114,8 +134,14 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 顶级标签卡片网格（fade-items：列表替换时 200ms 渐入） -->
-                <ScrollViewer IsVisible="{Binding !ShowEmptyTopList}">
+                <!-- 顶级标签卡片网格（fade-items：列表替换时 200ms 渐入）—— ShowTopGrid && 有数据 -->
+                <ScrollViewer>
+                    <ScrollViewer.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="ShowTopGrid" />
+                            <Binding Path="!ShowEmptyTopList" />
+                        </MultiBinding>
+                    </ScrollViewer.IsVisible>
                     <ItemsControl ItemsSource="{Binding TopTags}" Classes="fade-items">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -165,6 +191,133 @@
                                         </StackPanel>
                                     </Grid>
                                 </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- ============= 全局搜索结果（顶级列表态 + SearchText 非空）============= -->
+
+                <!-- 搜索空态 -->
+                <Border Background="{DynamicResource LayerFillColorAltBrush}"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="36,32"
+                        Margin="0,16"
+                        MaxWidth="440"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                    <Border.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="ShowTopSearchResults" />
+                            <Binding Path="ShowEmptySearchedTags" />
+                        </MultiBinding>
+                    </Border.IsVisible>
+                    <StackPanel Spacing="12" HorizontalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconTags}" Width="48" Height="48"
+                                  Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                  Opacity="0.5" HorizontalAlignment="Center" />
+                        <TextBlock Text="没有匹配的标签"
+                                   HorizontalAlignment="Center"
+                                   FontSize="15" FontWeight="SemiBold" />
+                        <TextBlock Text="尝试用更短或部分关键词；搜索范围覆盖标签名与描述。"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center"
+                                   FontSize="12" Opacity="0.7"
+                                   TextWrapping="Wrap" />
+                        <Button Command="{Binding ClearSearchCommand}"
+                                HorizontalAlignment="Center"
+                                Padding="14,6">
+                            <TextBlock Text="清空搜索" FontSize="12" />
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- 搜索结果列表（跨所有顶级匹配的子标签） -->
+                <ScrollViewer>
+                    <ScrollViewer.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="ShowTopSearchResults" />
+                            <Binding Path="!ShowEmptySearchedTags" />
+                        </MultiBinding>
+                    </ScrollViewer.IsVisible>
+                    <ItemsControl ItemsSource="{Binding SearchedTags}" Classes="fade-items">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:TagItemViewModel">
+                                <Border Classes="tag-row">
+                                    <Grid ColumnDefinitions="Auto,12,*,Auto,8,Auto,8,Auto,4,Auto,4,Auto">
+                                        <PathIcon Grid.Column="0"
+                                                  Data="{StaticResource IconTags}"
+                                                  Width="14" Height="14"
+                                                  Foreground="{Binding TopTagAccentBrush}"
+                                                  Opacity="0.85"
+                                                  VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}"
+                                                       FontWeight="SemiBold"
+                                                       FontSize="13"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Description}"
+                                                       FontSize="11" Opacity="0.6"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       IsVisible="{Binding HasDescription}" />
+                                        </StackPanel>
+                                        <!-- 所属顶级 chip：复用顶级卡片同款配色（按 TopTag.Id % 5 在 5 类别色循环），
+                                             与"游戏"分类下的顶级卡片同色 → 与子标签 icon 同色 → 视觉延续 -->
+                                        <Border Grid.Column="3"
+                                                Padding="8,3"
+                                                CornerRadius="10"
+                                                Background="{Binding TopTagFillBrush}"
+                                                IsVisible="{Binding HasTopTagName}"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding TopTagName}"
+                                                       FontSize="11"
+                                                       Foreground="{Binding TopTagAccentBrush}"
+                                                       FontWeight="SemiBold" />
+                                        </Border>
+                                        <Border Grid.Column="5"
+                                                Padding="8,3"
+                                                CornerRadius="10"
+                                                Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding MediaCountText}"
+                                                       FontSize="11"
+                                                       Opacity="0.75" />
+                                        </Border>
+                                        <Button Grid.Column="7"
+                                                Command="{Binding #PageRoot.((vm:TagsViewModel)DataContext).OpenTagDetailCommand}"
+                                                CommandParameter="{Binding}"
+                                                Padding="8,4"
+                                                Background="Transparent"
+                                                ToolTip.Tip="查看关联媒体"
+                                                VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                                <TextBlock Text="📂" FontSize="13" />
+                                                <TextBlock Text="查看" FontSize="12" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Column="9"
+                                                Command="{Binding #PageRoot.((vm:TagsViewModel)DataContext).EditTagCommand}"
+                                                CommandParameter="{Binding}"
+                                                Padding="8,4"
+                                                Background="Transparent"
+                                                ToolTip.Tip="编辑标签"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="✏" FontSize="13" />
+                                        </Button>
+                                        <Button Grid.Column="11"
+                                                Command="{Binding #PageRoot.((vm:TagsViewModel)DataContext).DeleteTagCommand}"
+                                                CommandParameter="{Binding}"
+                                                Padding="8,4"
+                                                Background="Transparent"
+                                                Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                                ToolTip.Tip="删除标签"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="✕" FontSize="13" />
+                                        </Button>
+                                    </Grid>
+                                </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
@@ -256,8 +409,8 @@
                                         <PathIcon Grid.Column="0"
                                                   Data="{StaticResource IconTags}"
                                                   Width="14" Height="14"
-                                                  Foreground="{DynamicResource AccentFillColorDefaultBrush}"
-                                                  Opacity="0.75"
+                                                  Foreground="{Binding TopTagAccentBrush}"
+                                                  Opacity="0.85"
                                                   VerticalAlignment="Center" />
                                         <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Name}"

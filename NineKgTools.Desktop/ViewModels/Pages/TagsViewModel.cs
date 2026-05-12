@@ -33,8 +33,14 @@ public partial class TagsViewModel : PageViewModelBase
     [ObservableProperty]
     private ObservableCollection<TagItemViewModel> _tags = new();
 
+    /// <summary>顶级列表态全局搜索结果——SearchText 非空时显示，跨所有顶级匹配子标签。</summary>
+    [ObservableProperty]
+    private ObservableCollection<TagItemViewModel> _searchedTags = new();
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowTopList))]
+    [NotifyPropertyChangedFor(nameof(ShowTopGrid))]
+    [NotifyPropertyChangedFor(nameof(ShowTopSearchResults))]
     [NotifyPropertyChangedFor(nameof(ShowTopDetail))]
     [NotifyPropertyChangedFor(nameof(SelectedTopName))]
     [NotifyPropertyChangedFor(nameof(SelectedTopCountText))]
@@ -43,6 +49,8 @@ public partial class TagsViewModel : PageViewModelBase
     /// <summary>三态枢纽：选中具体子标签时进入"标签详情"，看其关联媒体网格。</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowTopList))]
+    [NotifyPropertyChangedFor(nameof(ShowTopGrid))]
+    [NotifyPropertyChangedFor(nameof(ShowTopSearchResults))]
     [NotifyPropertyChangedFor(nameof(ShowTopDetail))]
     [NotifyPropertyChangedFor(nameof(ShowTagDetail))]
     [NotifyPropertyChangedFor(nameof(SelectedTagName))]
@@ -64,7 +72,12 @@ public partial class TagsViewModel : PageViewModelBase
     private bool _detailMediasTruncated;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowTopGrid))]
+    [NotifyPropertyChangedFor(nameof(ShowTopSearchResults))]
+    [NotifyPropertyChangedFor(nameof(HasSearchText))]
     private string _searchText = "";
+
+    public bool HasSearchText => !string.IsNullOrWhiteSpace(SearchText);
 
     [ObservableProperty]
     private bool _isLoading;
@@ -75,7 +88,15 @@ public partial class TagsViewModel : PageViewModelBase
     [ObservableProperty]
     private bool _showEmptyTagList;
 
+    /// <summary>顶级列表态全局搜索：无匹配时显示空态。</summary>
+    [ObservableProperty]
+    private bool _showEmptySearchedTags;
+
     public bool ShowTopList => SelectedTopTag is null && SelectedTagDetail is null;
+    /// <summary>顶级列表态 + 搜索框空 = 显示顶级卡片网格</summary>
+    public bool ShowTopGrid => ShowTopList && !HasSearchText;
+    /// <summary>顶级列表态 + 搜索框非空 = 显示跨顶级的搜索结果列表</summary>
+    public bool ShowTopSearchResults => ShowTopList && HasSearchText;
     public bool ShowTopDetail => SelectedTopTag is not null && SelectedTagDetail is null;
     public bool ShowTagDetail => SelectedTagDetail is not null;
     public string SelectedTopName => SelectedTopTag?.Name ?? "—";
@@ -90,6 +111,8 @@ public partial class TagsViewModel : PageViewModelBase
         : $"({TagMedias.Count} 条媒体" + (DetailMediasTruncated ? $" · 仅展示前 {MaxMediasOnTagDetail}" : "") + ")";
 
     private List<TagItemViewModel> _allTagsForSelectedTop = new();
+    /// <summary>顶级列表态全局搜索源——LoadTopTagsAsync 同步加载全部子标签到此处。</summary>
+    private List<TagItemViewModel> _allTags = new();
 
     public TagsViewModel(TagService tagService, MediaService mediaService, ImageCacheService imageCache,
         NavigationService navigation)
@@ -141,12 +164,22 @@ public partial class TagsViewModel : PageViewModelBase
                     t,
                     countByTopId.TryGetValue(t.Id, out var c) ? c : 0)));
             ShowEmptyTopList = TopTags.Count == 0;
+
+            // 同时缓存全部子标签供顶级列表态全局搜索使用（不阻塞顶级网格渲染）
+            _allTags = allTags
+                .OrderByDescending(t => t.Medias?.Count ?? 0)
+                .ThenBy(t => t.Name)
+                .Select(t => new TagItemViewModel(t))
+                .ToList();
+            // 如果当前正在搜索（用户刷新时），重新应用过滤
+            if (ShowTopSearchResults) ApplyTopListSearchFilter();
         }
         catch (Exception ex)
         {
             Log.Error(ex, "加载顶级标签失败");
             TopTags = new ObservableCollection<TopTagItemViewModel>();
             ShowEmptyTopList = true;
+            _allTags = new List<TagItemViewModel>();
         }
         finally
         {
@@ -192,6 +225,13 @@ public partial class TagsViewModel : PageViewModelBase
         SelectedTopTag = null;
         Tags = new ObservableCollection<TagItemViewModel>();
         _allTagsForSelectedTop = new List<TagItemViewModel>();
+        SearchText = "";
+    }
+
+    /// <summary>清空搜索框——顶级列表态搜索结果"×"按钮 + 搜索结果空态 CTA 用。</summary>
+    [RelayCommand]
+    private void ClearSearch()
+    {
         SearchText = "";
     }
 
@@ -282,7 +322,9 @@ public partial class TagsViewModel : PageViewModelBase
 
     partial void OnSearchTextChanged(string value)
     {
-        ApplyTagFilter();
+        // 顶级列表态：搜全部子标签（跨顶级）；顶级详情态：仅在当前顶级内过滤
+        if (SelectedTopTag is not null) ApplyTagFilter();
+        else ApplyTopListSearchFilter();
     }
 
     private void ApplyTagFilter()
@@ -296,6 +338,23 @@ public partial class TagsViewModel : PageViewModelBase
         Tags = new ObservableCollection<TagItemViewModel>(filtered);
         ShowEmptyTagList = Tags.Count == 0;
         OnPropertyChanged(nameof(SelectedTopCountText));
+    }
+
+    /// <summary>顶级列表态全局搜索：跨所有顶级匹配子标签的 Name / Description。</summary>
+    private void ApplyTopListSearchFilter()
+    {
+        if (string.IsNullOrWhiteSpace(SearchText))
+        {
+            SearchedTags = new ObservableCollection<TagItemViewModel>();
+            ShowEmptySearchedTags = false;
+            return;
+        }
+        var filtered = _allTags
+            .Where(t => t.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase)
+                        || (t.Description?.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ?? false))
+            .ToList();
+        SearchedTags = new ObservableCollection<TagItemViewModel>(filtered);
+        ShowEmptySearchedTags = SearchedTags.Count == 0;
     }
 
     // ==================== 顶级标签：新增 / 重命名 / 删除 ====================

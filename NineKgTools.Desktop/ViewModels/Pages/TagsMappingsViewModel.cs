@@ -18,6 +18,7 @@ public enum TagMappingFilter { All, Active, Inactive, Unused }
 public partial class TagsMappingsViewModel : PageViewModelBase
 {
     private readonly TagMappingService _mappingService;
+    private readonly TagService _tagService;
     private readonly NavigationService _navigation;
 
     public override string Title => "标签映射";
@@ -65,9 +66,10 @@ public partial class TagsMappingsViewModel : PageViewModelBase
     public bool IsFilterInactive => SelectedFilter == TagMappingFilter.Inactive;
     public bool IsFilterUnused => SelectedFilter == TagMappingFilter.Unused;
 
-    public TagsMappingsViewModel(TagMappingService mappingService, NavigationService navigation)
+    public TagsMappingsViewModel(TagMappingService mappingService, TagService tagService, NavigationService navigation)
     {
         _mappingService = mappingService;
+        _tagService = tagService;
         _navigation = navigation;
     }
 
@@ -76,6 +78,28 @@ public partial class TagsMappingsViewModel : PageViewModelBase
     /// <summary>从"标签映射"子页面返回到"标签"主页面。</summary>
     [RelayCommand]
     private Task GoBackToTags() => _navigation.NavigateToAsync<TagsViewModel>();
+
+    /// <summary>添加新映射——弹 TagMappingEditorDialog → AddMappingAsync → 刷新列表。
+    /// 重复源名校验在 dialog 内部完成（基于 _allItems.SourceName 全集，忽略大小写）。</summary>
+    [RelayCommand]
+    private async Task AddMappingAsync()
+    {
+        var existingNames = _allItems.Select(i => i.SourceName).ToList();
+        var result = await TagMappingEditorDialog.ShowAsync(_tagService, existingNames);
+        if (result is null) return;
+
+        try
+        {
+            await _mappingService.AddMappingAsync(result.SourceName, result.TargetTag.Id, result.Description);
+            Log.Information("添加标签映射: {Source} → {Target}", result.SourceName, result.TargetTag.Name);
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "添加标签映射失败 Source={Source} TargetId={TargetId}",
+                result.SourceName, result.TargetTag.Id);
+        }
+    }
 
     [RelayCommand]
     private async Task RefreshAsync()
