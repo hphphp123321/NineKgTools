@@ -22,6 +22,11 @@ public partial class MediaCardViewModel : ObservableObject
     [ObservableProperty]
     private Bitmap? _cover;
 
+    /// <summary>批量选择态——目前仅收藏夹页用（左上角 CheckBox + accent 边框）。
+    /// 其他用到 MediaCardViewModel 的地方默认 false 不显示选中视觉。</summary>
+    [ObservableProperty]
+    private bool _isSelected;
+
     public int Id => _media.Id;
     public string Title => _media.Title;
     public string? CircleName => _media.Circle?.Name;

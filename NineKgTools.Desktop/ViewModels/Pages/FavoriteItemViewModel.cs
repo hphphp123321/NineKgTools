@@ -14,6 +14,10 @@ public partial class FavoriteItemViewModel : ObservableObject
     public string Name => Favorite.Name;
     public int MediaCount => Favorite.Medias?.Count ?? 0;
 
+    /// <summary>外部修改底层 <see cref="Favorite.Medias"/> 后调用，触发左侧 count chip 重渲染。
+    /// MediaCount 是 get-only 派生属性，没有自动通知。</summary>
+    public void NotifyMediaCountChanged() => OnPropertyChanged(nameof(MediaCount));
+
     /// <summary>默认收藏夹不可删除 / 不可改名</summary>
     public bool IsDefault => Favorite.Id == StaticFavorites.DefaultFavorite.Id;
 

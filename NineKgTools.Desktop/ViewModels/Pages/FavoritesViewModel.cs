@@ -35,6 +35,30 @@ public partial class FavoritesViewModel : PageViewModelBase
     [ObservableProperty]
     private bool _showEmpty = true;
 
+    // ========== 批量选择态 ==========
+
+    /// <summary>是否进入批量选择模式。true 时卡片左上角 CheckBox 常驻显示，× 隐藏，
+    /// header 右侧按钮组从"重命名/删除收藏夹"切到"移除选中(N)/取消选择"。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSingleActions))]
+    [NotifyPropertyChangedFor(nameof(ShowBatchActions))]
+    private bool _isBatchMode;
+
+    /// <summary>当前选中媒体数。Items 内子项 IsSelected 改变不会自动通知此属性，
+    /// 由 ToggleMediaSelection 命令显式触发 OnPropertyChanged。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BatchRemoveText))]
+    [NotifyPropertyChangedFor(nameof(HasSelection))]
+    private int _selectedCount;
+
+    [ObservableProperty]
+    private bool _isBatchRemoving;
+
+    public bool ShowSingleActions => !IsBatchMode;
+    public bool ShowBatchActions => IsBatchMode;
+    public bool HasSelection => SelectedCount > 0;
+    public string BatchRemoveText => $"移除 {SelectedCount} 项";
+
     public string SelectedFavoriteName => SelectedFavorite?.Name ?? "—";
     public string SelectedFavoriteCountText => SelectedFavorite is null
         ? ""
@@ -78,6 +102,9 @@ public partial class FavoritesViewModel : PageViewModelBase
     private async Task SelectFavoriteAsync(FavoriteItemViewModel? item)
     {
         if (item is null) return;
+
+        // 切换收藏夹强制退出批量态（已选媒体属于旧收藏夹，跨收藏夹批量没意义）
+        if (IsBatchMode) ExitBatchMode();
 
         // 取消旧选中态
         foreach (var f in Favorites) f.IsSelected = false;
@@ -183,11 +210,23 @@ public partial class FavoritesViewModel : PageViewModelBase
 
         // 默认收藏夹的"移除"语义有歧义——意味着取消所有收藏？这里仍然走 RemoveMediaFromFavoriteAsync
         // （仅解除该 media 与默认收藏夹的关联），但用户可能没意识到——保持一致即可
+        var confirmed = await NineKgConfirmDialog.ShowAsync(null,
+            title: "从收藏夹移除",
+            message: $"将「{media.Title}」从「{fav.Name}」中移除。**媒体本身不会被删除**，仅解除关联。",
+            intent: DialogIntent.Destructive,
+            targetName: media.Title,
+            confirmText: "确认移除");
+        if (!confirmed) return;
+
         try
         {
             await _favoriteService.RemoveMediaFromFavoriteAsync(fav.Id, media.Id);
-            // UI 立即移除（避免完整重新拉媒体列表）
+            // UI 立即移除右侧媒体列表
             Items.Remove(media);
+            // 同步左侧 count chip：从底层 Favorite.Medias 集合移除对应项 + 通知 VM
+            var src = fav.Favorite.Medias?.FirstOrDefault(m => m.Id == media.Id);
+            if (src is not null) fav.Favorite.Medias!.Remove(src);
+            fav.NotifyMediaCountChanged();
             ShowEmpty = Items.Count == 0;
             OnPropertyChanged(nameof(SelectedFavoriteCountText));
             Log.Information("已从收藏夹移除媒体：FavoriteId={FavoriteId}, MediaId={MediaId}", fav.Id, media.Id);
@@ -236,6 +275,85 @@ public partial class FavoritesViewModel : PageViewModelBase
             // 找到对应新实例（reload 后 VM 实例换了）
             var match = Favorites.FirstOrDefault(f => f.Id == SelectedFavorite.Id);
             if (match is not null) await SelectFavoriteAsync(match);
+        }
+    }
+
+    // ==================== 批量选择 / 移除 ====================
+
+    /// <summary>进入批量选择模式。所有卡片显左上角 CheckBox，× 隐藏，header 切换按钮组。</summary>
+    [RelayCommand]
+    private void EnterBatchMode()
+    {
+        if (IsBatchMode) return;
+        foreach (var m in Items) m.IsSelected = false;
+        SelectedCount = 0;
+        IsBatchMode = true;
+    }
+
+    /// <summary>退出批量选择模式 + 清空选中。</summary>
+    [RelayCommand]
+    private void ExitBatchMode()
+    {
+        if (!IsBatchMode) return;
+        foreach (var m in Items) m.IsSelected = false;
+        SelectedCount = 0;
+        IsBatchMode = false;
+    }
+
+    /// <summary>批量态下点卡片 → 切换该 media 的选中状态。子项 IsSelected 改变后
+    /// 显式 OnPropertyChanged(SelectedCount) 让 header 按钮文案 / 启用态实时更新。</summary>
+    [RelayCommand]
+    private void ToggleMediaSelection(MediaCardViewModel? media)
+    {
+        if (media is null || !IsBatchMode) return;
+        media.IsSelected = !media.IsSelected;
+        SelectedCount = Items.Count(i => i.IsSelected);
+    }
+
+    /// <summary>批量移除选中媒体——弹 DestructiveBatch confirm → 循环调 service。</summary>
+    [RelayCommand]
+    private async Task BatchRemoveSelectedAsync()
+    {
+        if (!IsBatchMode || SelectedFavorite is null || IsBatchRemoving) return;
+        var selected = Items.Where(i => i.IsSelected).ToList();
+        if (selected.Count == 0) return;
+
+        var fav = SelectedFavorite;
+        var confirmed = await NineKgConfirmDialog.ShowAsync(null,
+            title: "批量从收藏夹移除",
+            message: $"将解除 {selected.Count} 条媒体与「{fav.Name}」的关联。**媒体本身不会被删除**。",
+            intent: DialogIntent.DestructiveBatch,
+            affectedCount: selected.Count,
+            targetItems: selected.Take(20).Select(m => m.Title).ToList(),
+            confirmText: "确认移除");
+        if (!confirmed) return;
+
+        IsBatchRemoving = true;
+        try
+        {
+            foreach (var media in selected)
+            {
+                try
+                {
+                    await _favoriteService.RemoveMediaFromFavoriteAsync(fav.Id, media.Id);
+                    Items.Remove(media);
+                    var src = fav.Favorite.Medias?.FirstOrDefault(m => m.Id == media.Id);
+                    if (src is not null) fav.Favorite.Medias!.Remove(src);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "批量移除中单项失败：FavoriteId={FavoriteId}, MediaId={MediaId}", fav.Id, media.Id);
+                }
+            }
+            fav.NotifyMediaCountChanged();
+            ShowEmpty = Items.Count == 0;
+            OnPropertyChanged(nameof(SelectedFavoriteCountText));
+            Log.Information("批量从收藏夹移除完成：FavoriteId={FavoriteId}, Count={Count}", fav.Id, selected.Count);
+        }
+        finally
+        {
+            IsBatchRemoving = false;
+            ExitBatchMode();
         }
     }
 }

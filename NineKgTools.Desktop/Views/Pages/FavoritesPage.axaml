@@ -31,6 +31,39 @@
         <Style Selector="Button.fav-item.selected TextBlock.name">
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
+
+        <!-- ========== 媒体卡片 hover / 选中态 ========== -->
+
+        <!-- 卡片外层 Border 选中时的 accent 描边 -->
+        <Style Selector="Border.fav-card">
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+                    <ThicknessTransition Property="BorderThickness" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.fav-card.selected">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+
+        <!-- 右上角 × 移除按钮：默认透明 + hit-test off；外层 Grid hover 时 150ms 淡入 -->
+        <Style Selector="Grid.fav-card-host Button.remove-btn">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Grid.fav-card-host:pointerover Button.remove-btn">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="IsHitTestVisible" Value="True" />
+        </Style>
     </UserControl.Styles>
 
     <Grid ColumnDefinitions="240,1,*">
@@ -116,8 +149,18 @@
                                VerticalAlignment="Center" />
                 </StackPanel>
 
+                <!-- 浏览态按钮组：批量选择 / 重命名 / 删除收藏夹 -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
-                            VerticalAlignment="Center">
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding ShowSingleActions}">
+                    <Button Command="{Binding EnterBatchModeCommand}"
+                            IsEnabled="{Binding !!Items.Count}"
+                            ToolTip.Tip="进入批量选择模式（可一次移除多条）">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="☑" FontSize="13" />
+                            <TextBlock Text="批量选择" />
+                        </StackPanel>
+                    </Button>
                     <Button Command="{Binding RenameSelectedCommand}"
                             IsVisible="{Binding CanRenameSelected}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
@@ -130,6 +173,30 @@
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <TextBlock Text="✕" Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
                             <TextBlock Text="删除收藏夹" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- 批量态按钮组：移除 N 项 / 取消选择 -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding ShowBatchActions}">
+                    <Button Command="{Binding BatchRemoveSelectedCommand}"
+                            IsEnabled="{Binding HasSelection}"
+                            Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}"
+                            BorderBrush="{DynamicResource SystemFillColorCriticalBrush}"
+                            BorderThickness="1">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="✕"
+                                       Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                            <TextBlock Text="{Binding BatchRemoveText}"
+                                       Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding ExitBatchModeCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="↩" FontSize="13" />
+                            <TextBlock Text="取消选择" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -174,17 +241,21 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:MediaCardViewModel">
-                                <Grid Margin="0,0,12,12">
+                                <!-- fav-card-host：外层 Grid，hover 时让右上角 × 淡入；批量态时显左上角 CheckBox -->
+                                <Grid Classes="fav-card-host" Margin="0,0,12,12">
+                                    <!-- 浏览态：点卡片 = 进详情；批量态：点卡片 = 切换选中
+                                         两个 Button 互斥 IsVisible，确保 hit-test 行为正确 -->
                                     <Button Command="{Binding OpenDetailCommand}"
+                                            IsVisible="{Binding #PageRoot.((vm:FavoritesViewModel)DataContext).ShowSingleActions}"
                                             Padding="0" Background="Transparent" BorderThickness="0"
                                             HorizontalContentAlignment="Stretch"
                                             VerticalContentAlignment="Stretch"
                                             CornerRadius="8"
                                             ClipToBounds="True">
-                                        <Border Width="180" Height="320"
+                                        <Border Classes="fav-card"
+                                                Classes.selected="{Binding IsSelected}"
+                                                Width="180" Height="320"
                                                 Background="{DynamicResource LayerFillColorDefaultBrush}"
-                                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                                                BorderThickness="1"
                                                 CornerRadius="8"
                                                 ClipToBounds="True">
                                             <Grid RowDefinitions="*,Auto">
@@ -221,8 +292,87 @@
                                         </Border>
                                     </Button>
 
-                                    <!-- 右上角浮动 × 移除按钮：从当前选中收藏夹移除媒体（不删媒体本身） -->
-                                    <Button HorizontalAlignment="Right" VerticalAlignment="Top"
+                                    <!-- 批量态卡片按钮：点 = 切换选中（不进详情） -->
+                                    <Button Command="{Binding #PageRoot.((vm:FavoritesViewModel)DataContext).ToggleMediaSelectionCommand}"
+                                            CommandParameter="{Binding}"
+                                            IsVisible="{Binding #PageRoot.((vm:FavoritesViewModel)DataContext).ShowBatchActions}"
+                                            Padding="0" Background="Transparent" BorderThickness="0"
+                                            HorizontalContentAlignment="Stretch"
+                                            VerticalContentAlignment="Stretch"
+                                            CornerRadius="8"
+                                            ClipToBounds="True"
+                                            ToolTip.Tip="点击切换选中状态">
+                                        <Border Classes="fav-card"
+                                                Classes.selected="{Binding IsSelected}"
+                                                Width="180" Height="320"
+                                                Background="{DynamicResource LayerFillColorDefaultBrush}"
+                                                CornerRadius="8"
+                                                ClipToBounds="True">
+                                            <Grid RowDefinitions="*,Auto">
+                                                <Grid Grid.Row="0" Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                                                    <Image Source="{Binding Cover}"
+                                                           Stretch="UniformToFill"
+                                                           IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                    <Border IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNull}}"
+                                                            Background="{Binding TopCategory, Converter={x:Static conv:CategoryFillBrushConverter.Instance}}">
+                                                        <PathIcon Data="{Binding CategoryIcon}"
+                                                                  Width="48" Height="48"
+                                                                  Foreground="{Binding CategoryBrush}"
+                                                                  Opacity="0.6"
+                                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                </Grid>
+                                                <Border Grid.Row="1" Padding="10,8">
+                                                    <StackPanel Spacing="3">
+                                                        <TextBlock Text="{Binding Title}"
+                                                                   FontWeight="SemiBold"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   ToolTip.Tip="{Binding Title}" />
+                                                        <TextBlock Text="{Binding CircleName}"
+                                                                   FontSize="11" Opacity="0.6"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   IsVisible="{Binding CircleName, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                        <TextBlock Text="{Binding RatingText}"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource SystemFillColorAttentionBrush}"
+                                                                   IsVisible="{Binding HasRating}" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                    </Button>
+
+                                    <!-- 左上角 CheckBox：仅批量态可见，显示当前 IsSelected。
+                                         IsHitTestVisible=False 让点击穿透到下面的整卡 Button（CheckBox 仅作视觉反馈）。
+                                         两层 Border 互斥 IsVisible：未选 = 灰边框空圆；已选 = accent 实心 + ✓ -->
+                                    <Grid HorizontalAlignment="Left" VerticalAlignment="Top"
+                                          Margin="8,8,0,0"
+                                          Width="22" Height="22"
+                                          IsHitTestVisible="False"
+                                          IsVisible="{Binding #PageRoot.((vm:FavoritesViewModel)DataContext).ShowBatchActions}">
+                                        <!-- 未选：灰边框 + 白底 + 半透 -->
+                                        <Border CornerRadius="11"
+                                                BorderThickness="2"
+                                                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                IsVisible="{Binding !IsSelected}" />
+                                        <!-- 已选：accent 实心 + ✓ -->
+                                        <Border CornerRadius="11"
+                                                BorderThickness="2"
+                                                Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                                BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                                IsVisible="{Binding IsSelected}">
+                                            <TextBlock Text="✓"
+                                                       FontSize="13" FontWeight="Bold"
+                                                       Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" />
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- 右上角浮动 × 单移除按钮：仅浏览态可见，hover 才显示（Style 控制） -->
+                                    <Button Classes="remove-btn"
+                                            HorizontalAlignment="Right" VerticalAlignment="Top"
                                             Margin="0,6,6,0"
                                             Width="26" Height="26"
                                             Padding="0"
@@ -230,6 +380,7 @@
                                             Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}"
                                             BorderBrush="{DynamicResource SystemFillColorCriticalBrush}"
                                             BorderThickness="1"
+                                            IsVisible="{Binding #PageRoot.((vm:FavoritesViewModel)DataContext).ShowSingleActions}"
                                             ToolTip.Tip="从此收藏夹移除（不会删除媒体）"
                                             Command="{Binding #PageRoot.((vm:FavoritesViewModel)DataContext).RemoveMediaFromFavoriteCommand}"
                                             CommandParameter="{Binding}">
