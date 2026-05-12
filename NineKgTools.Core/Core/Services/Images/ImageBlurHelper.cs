@@ -13,13 +13,20 @@ internal static class ImageBlurHelper
 {
     /// <summary>
     /// 把输入流的图像缩到 <paramref name="maxWidth"/>×<paramref name="maxHeight"/> 以内（保持比例，仅缩不放），
-    /// 应用高斯模糊，编码为 Jpeg byte[] 返回。失败时 Log Warning 并返回 null。
+    /// 应用饱和度增强 + 高斯模糊，编码为 Jpeg byte[] 返回。失败时 Log Warning 并返回 null。
+    ///
+    /// **关键调参（v2 修复"看不出封面"问题）**：
+    /// - 源图保留 900×1350（之前 400×600 太小，下采样本身就在丢识别度）
+    /// - GaussianBlur σ=24（之前 60 把图磨成色场；24 是"软焦"级别保留主色块 + 轮廓）
+    /// - Saturate(1.6) 抵消 blur 自带褪色 —— Apple Music / Spotify "Now Playing" 同款手法
+    /// - 顺序：Resize → Saturate → GaussianBlur → SaveAsJpeg（饱和度在模糊前提升避免边缘 banding）
     /// </summary>
     public static async Task<byte[]?> BlurAndDownscaleAsync(
         Stream sourceStream,
-        float blurRadius,
-        int maxWidth,
-        int maxHeight)
+        float blurRadius = 24f,
+        int maxWidth = 900,
+        int maxHeight = 1350,
+        float saturation = 1.6f)
     {
         try
         {
@@ -33,7 +40,7 @@ internal static class ImageBlurHelper
                 image.Mutate(x => x.Resize(newW, newH));
             }
 
-            image.Mutate(x => x.GaussianBlur(blurRadius));
+            image.Mutate(x => x.Saturate(saturation).GaussianBlur(blurRadius));
 
             using var ms = new MemoryStream();
             await image.SaveAsJpegAsync(ms, new JpegEncoder { Quality = 85 });

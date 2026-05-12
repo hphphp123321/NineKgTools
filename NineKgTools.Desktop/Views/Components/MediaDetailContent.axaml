@@ -34,38 +34,27 @@
              声明顺序 = Z 序：先声明在最底，后续 sibling 自动覆盖在上。
              Z0：UserControl 透明（露 Window Mica）—— 这是 fallback；
              Z1：BlurredPoster（ImageSharp 离线预渲染好的 400x600 + 60px Gaussian）
-             Z2：60% 黑暗化层 —— 确保任何封面色下文字 ≥ 4.5:1 contrast
-             Z3：径向 vignette —— 边缘暗化让视线聚焦中心内容
-             Z3b：顶部高光暗化 —— 让 28px 标题在任何封面色上都清晰
+             Z2：GlassTintBrush —— 主题感知的半透膜（暗：40% 黑 / 亮：65% 白）；
+                 保证任何封面色下文字 ≥ 4.5:1 contrast，同时让模糊封面透出来
+             Z3：GlassVignetteBrush —— 径向暗角（暗：边缘 40% 黑 / 亮：边缘 20% 黑）
+             Z3b：GlassTopGradientBrush —— Hero 区顶部层次（暗：黑色暗化 / 亮：白色微提亮）
              Z4+：后续声明的内容（加载态 / 错误态 / 主内容 ScrollViewer）
+
+             所有 brush 在 BrandResources.axaml 的 ThemeDictionaries 里定义，
+             DynamicResource 让 FluentAvalonia 切主题时自动重算（无需 VM 通知）。
              ============================================================ -->
         <Grid Grid.Row="0" Grid.RowSpan="2"
               IsVisible="{Binding HasGlassBackdrop}"
               ClipToBounds="True">
             <!-- Z1：模糊封面铺满（UniformToFill 优先填满，边缘溢出无所谓——Grid ClipToBounds=True 已裁切） -->
             <Image Source="{Binding BlurredPoster}" Stretch="UniformToFill" />
-            <!-- Z2：暗化层。#99 = 60% 黑，足够任何浅色封面下文字仍可读；
-                 不过分暗化导致看不出封面色 -->
-            <Border Background="#99000000" />
-            <!-- Z3：径向 vignette（中心透明 → 边缘 50% 黑），聚焦中央内容 -->
-            <Border>
-                <Border.Background>
-                    <RadialGradientBrush Center="50%,50%" GradientOrigin="50%,50%"
-                                         RadiusX="85%" RadiusY="85%">
-                        <GradientStop Offset="0.45" Color="#00000000" />
-                        <GradientStop Offset="1.0" Color="#80000000" />
-                    </RadialGradientBrush>
-                </Border.Background>
-            </Border>
-            <!-- Z3b：顶部 200px 高光暗化，让 Hero 区 28px 标题在任何封面色上都清晰 -->
-            <Border VerticalAlignment="Top" Height="200">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                        <GradientStop Offset="0.0" Color="#40000000" />
-                        <GradientStop Offset="1.0" Color="#00000000" />
-                    </LinearGradientBrush>
-                </Border.Background>
-            </Border>
+            <!-- Z2：主题感知 tint 膜 -->
+            <Border Background="{DynamicResource GlassTintBrush}" />
+            <!-- Z3：径向 vignette，聚焦中央内容 -->
+            <Border Background="{DynamicResource GlassVignetteBrush}" />
+            <!-- Z3b：顶部 200px 层次渐变，让 Hero 区与下方内容分层 -->
+            <Border VerticalAlignment="Top" Height="200"
+                    Background="{DynamicResource GlassTopGradientBrush}" />
         </Grid>
 
         <!-- 加载态 -->

@@ -56,9 +56,9 @@ public class ImageService(MediaDbContext dbContext, Config config, HttpService h
     /// </summary>
     public async Task<byte[]?> GetBlurredImageBytesAsync(
         string imageName,
-        float blurRadius = 60f,
-        int maxWidth = 400,
-        int maxHeight = 600)
+        float blurRadius = 24f,
+        int maxWidth = 900,
+        int maxHeight = 1350)
     {
         await using var stream = await GetImageByNameAsync(imageName);
         if (stream is null) return null;
