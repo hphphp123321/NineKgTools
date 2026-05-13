@@ -849,12 +849,13 @@ Views/Windows/MediaDetailWindow                Views/Pages/MediaDetailPage
 - 编辑态：复用现成 `<comp:EditableAliasList Aliases="{Binding EditingAliases}" IsEditable="True" />` chip 编辑器
 - 标题→别名→社团→评分→收藏夹 五行垂直递减信息密度（标识 / 标识 / 元数据 / 元数据 / 用户归属）
 
-**社团编辑（InputDialog 复用，不做完整 CircleSelectorDialog）**：
-- 编辑模式社团 chip 旁出现 `[修改社团]` + `[✕]` 两个按钮
-- 修改社团：`InputDialog.ShowAsync` 弹简单文本框（initial = current CircleName）→ `CreatorService.AddOrUpdateCircle({Name})` 入库（已存在同名复用 db 实体）→ `_media.Circle = result`
-- 清除社团：直接 `_media.Circle = null`（同步 UI CircleName=null）
-- Save 时 _media.Circle 随其他字段一起持久化
-- 简化决策：用户场景以"为这媒体改个社团名"为主而非"选已有 N 个 Circle 之一"——InputDialog 比完整 selector 工作量小 10 倍且够用
+**社团选择（CircleSelectorDialog，仅挑已有 Circle）**：
+- **职责单一**：媒体详情页的社团编辑仅解决"为这个 media 挑社团"——**不提供创建 / 改名 / 删除 Circle 本身的入口**。Circle 实体的内容编辑（名称、别名、描述、Avatar）请到 CirclesPage 完成。这条边界保证媒体页 UI 不再混杂两个层级的操作（"换社团" vs "改社团内容"）
+- **单一 chip 双模式**：HasCircle 的社团 chip 是浏览/编辑共用入口——`Command="{Binding CircleChipClickCommand}"` 内部按 `IsEditMode` 路由到 `OpenCircleAsync`（跳社团详情）或 `PickCircleAsync`（弹选择器）。编辑态 chip trailing 加一个 11×11 `IconEdit` 铅笔 PathIcon（Opacity 0.55）暗示"点击换社团"
+- **取消"修改社团 / ✕ 清除"两个独立按钮**：每个媒体必须有且仅有一个社团（业务约束），所以**不提供清除入口**；换社团是用户唯一会做的操作，所以不需要额外按钮
+- **无社团 + 编辑态**：显示 1px 虚边 `+ 添加社团` 占位 chip（`ShowAddCirclePlaceholder = !HasCircle && IsEditMode`）→ 同样调 `PickCircleCommand` 弹选择器
+- **CircleSelectorDialog 实现**（`Views/Dialogs/CircleSelectorDialog.axaml(.cs)` + `ViewModels/Dialogs/CircleSelectorDialogContext.cs`）：搜索框 + ToggleButton WrapPanel（**强制单选**：`OnChoiceToggled` 切换时清掉其他 chip 的 IsSelected；`CanSubmit = _selectedCircle is not null`）；走 `CreatorService.GetAllCirclesAsync()` 初始装载 + `SearchCirclesByNameAsync(term, maxResults=50)` 按名/别名搜索；300ms 防抖；空结果提示"没有匹配的社团（编辑 / 创建社团请前往「社团」页面）"
+- **派生属性联动**：`IsEditMode` / `CircleName` 任一变化都触发 `ShowAddCirclePlaceholder` + `CircleChipTooltip` 通知（`CircleChipTooltip` 编辑态返回"点击选择其他社团（创建 / 编辑社团请去「社团」页面）"，浏览态返回"查看该社团关联媒体"）
 
 **chip 跨页跳转（点 chip → 对应实体的详情页，与 Web 端 /tag/{id} /creator/{id} /circle/{id} 路由语义一致）**：
 - 标签 / 创作者 / 社团 chip 整体即 `<Button>`（不是 Border），点击 → `NavigationService.NavigateToAsync<TagsViewModel/CreatorsViewModel/CirclesViewModel>` 切主窗到对应列表页并直达详情态

@@ -203,7 +203,10 @@
                                                         IsVisible="{Binding IsEditMode}" />
                             </StackPanel>
 
-                            <!-- 副标题：仅"社团"小 chip（创作者已下放右侧栏按职责分组）+ 编辑模式修改/清除按钮 -->
+                            <!-- 社团 chip：浏览模式 = 跳转社团详情 / 编辑模式 = 弹 CircleSelectorDialog 从已有 Circle 中挑一个（社团必有且仅有一个，因此无清除按钮）
+                                 - HasCircle=true：显示 chip；编辑态 trailing 加铅笔图标暗示"点击换社团"
+                                 - HasCircle=false && IsEditMode：显示虚线"+ 添加社团"占位 chip
+                                 - 创建 / 改名 / 删除 Circle 本身的操作在 CirclesPage 做，此处只解决"为这个 media 挑社团" -->
                             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                 <Button IsVisible="{Binding HasCircle}"
                                         CornerRadius="10"
@@ -212,30 +215,34 @@
                                         BorderThickness="0"
                                         VerticalAlignment="Center"
                                         Cursor="Hand"
-                                        Command="{Binding OpenCircleCommand}"
-                                        ToolTip.Tip="查看该社团关联媒体">
+                                        Command="{Binding CircleChipClickCommand}"
+                                        ToolTip.Tip="{Binding CircleChipTooltip}">
                                     <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                         <PathIcon Data="{StaticResource IconBusiness}" Width="14" Height="14"
                                                   Opacity="0.75" />
                                         <TextBlock Text="{Binding CircleName}"
                                                    FontSize="14"
                                                    Opacity="0.9" />
+                                        <PathIcon IsVisible="{Binding IsEditMode}"
+                                                  Data="{StaticResource IconEdit}" Width="11" Height="11"
+                                                  Opacity="0.55"
+                                                  Margin="2,0,0,0" />
                                     </StackPanel>
                                 </Button>
-                                <!-- 编辑模式：修改社团（弹 InputDialog） + 清除按钮 -->
-                                <Button IsVisible="{Binding IsEditMode}"
-                                        Command="{Binding EditCircleCommand}"
-                                        Padding="8,2"
-                                        Content="修改社团"
-                                        ToolTip.Tip="设置 / 修改社团（已存在同名将复用 db Circle）"
-                                        VerticalAlignment="Center" />
-                                <Button IsVisible="{Binding IsEditMode}"
-                                        IsEnabled="{Binding HasCircle}"
-                                        Command="{Binding ClearCircleCommand}"
-                                        Padding="6,2"
-                                        ToolTip.Tip="清除社团"
-                                        VerticalAlignment="Center">
-                                    <TextBlock Text="✕" FontSize="11" Opacity="0.7" />
+                                <Button IsVisible="{Binding ShowAddCirclePlaceholder}"
+                                        CornerRadius="10"
+                                        Padding="12,6"
+                                        Background="Transparent"
+                                        BorderThickness="1"
+                                        BorderBrush="{DynamicResource ControlStrokeColorSecondaryBrush}"
+                                        VerticalAlignment="Center"
+                                        Cursor="Hand"
+                                        Command="{Binding PickCircleCommand}"
+                                        ToolTip.Tip="从已有社团中选一个（创建 / 编辑社团请去「社团」页面）">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <TextBlock Text="+" FontSize="15" Opacity="0.7" FontWeight="SemiBold" />
+                                        <TextBlock Text="添加社团" FontSize="13" Opacity="0.7" />
+                                    </StackPanel>
                                 </Button>
                             </StackPanel>
 

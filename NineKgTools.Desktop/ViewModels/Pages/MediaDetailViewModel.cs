@@ -147,6 +147,8 @@ public partial class MediaDetailViewModel : NineKgTools.Desktop.ViewModels.PageV
     [NotifyPropertyChangedFor(nameof(ShowAuthorsSection))]
     [NotifyPropertyChangedFor(nameof(ShowAnyCreatorsSection))]
     [NotifyPropertyChangedFor(nameof(ShowRelatedMediasSection))]
+    [NotifyPropertyChangedFor(nameof(ShowAddCirclePlaceholder))]
+    [NotifyPropertyChangedFor(nameof(CircleChipTooltip))]
     private bool _isEditMode;
 
     [ObservableProperty]
@@ -171,9 +173,20 @@ public partial class MediaDetailViewModel : NineKgTools.Desktop.ViewModels.PageV
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasCircle))]
+    [NotifyPropertyChangedFor(nameof(ShowAddCirclePlaceholder))]
     private string? _circleName;
 
     public bool HasCircle => !string.IsNullOrEmpty(CircleName);
+
+    /// <summary>编辑模式下且当前无社团时，显示"+ 添加社团"占位 chip 让用户能补全。
+    /// 浏览模式下永远不显示（社团缺失就缺失，与用户当下浏览动作无关）。</summary>
+    public bool ShowAddCirclePlaceholder => IsEditMode && !HasCircle;
+
+    /// <summary>社团 chip 的 tooltip：浏览态提示跳页，编辑态提示换社团。
+    /// 与 CircleChipClickCommand 行为分支保持语义一致。</summary>
+    public string CircleChipTooltip => IsEditMode
+        ? "点击选择其他社团（创建 / 编辑社团请去「社团」页面）"
+        : "查看该社团关联媒体";
 
     // ===== 创作者按职责分组（替代原 CreatorsText 单字符串扁平化设计）==========================
     // ApplyToProperties 按 _media is VideoMedia/AudioMedia/... 分发数据到对应字段；
@@ -1071,47 +1084,37 @@ public partial class MediaDetailViewModel : NineKgTools.Desktop.ViewModels.PageV
         IsEditMode = false;
     }
 
-    /// <summary>编辑模式下点击社团 chip 旁的"修改"按钮：弹 InputDialog 输入新名字 → 走 CreatorService.AddOrUpdateCircle
-    /// 入库并拿到 db Circle 实体（已存在同名则取已有，否则新建）→ set _media.Circle + UI CircleName 立即刷新。
-    /// 简化方案：不做完整 CircleSelectorDialog（带搜索/列表），用户场景以"为这个媒体改个社团名"为主，
-    /// 复用 InputDialog 即可。后续如果要用户场景变了（频繁选已有 Circle），再升级。</summary>
+    /// <summary>编辑模式下点击社团 chip / "+ 添加社团"占位 → 弹 CircleSelectorDialog 从已有 Circle 列表挑一个。
+    /// **不在这里做创建 / 改名 / 删除社团等动作** —— 那些都是 Circle 实体本身的内容编辑，应该在 CirclesPage 完成。
+    /// 这里只解决"为当前媒体挑社团"这一个动作，所以返回值只能是 db 已存在的 Circle 实例（或 null=取消）。</summary>
     [RelayCommand]
-    private async Task EditCircleAsync()
+    private async Task PickCircleAsync()
     {
         if (!IsEditMode || _media is null) return;
         try
         {
-            var newName = await InputDialog.ShowAsync(
-                title: string.IsNullOrEmpty(CircleName) ? "添加社团" : "修改社团",
-                message: "输入社团 / 工作室名（已存在同名将复用已有 Circle）",
-                initialValue: CircleName,
-                placeholder: "例如：Studio Trigger",
-                confirmText: "确定",
-                maxLength: 100);
-            if (string.IsNullOrWhiteSpace(newName)) return;
+            var picked = await CircleSelectorDialog.ShowAsync(_media.Circle, _creatorService);
+            if (picked is null) return; // 用户取消，保持现状
 
-            // AddOrUpdateCircle 内部按 Name 找已有，找到返回 db 实体；找不到新建——避免出现重名 db 记录
-            var dbCircle = await _creatorService.AddOrUpdateCircle(
-                new NineKgTools.Core.Models.Media.Circle { Name = newName.Trim() });
-
-            _media.Circle = dbCircle;
-            CircleName = dbCircle?.Name;
-            Log.Information("Circle 修改：mediaId={Id}, circle={Name}", _media.Id, dbCircle?.Name);
+            _media.Circle = picked;
+            CircleName = picked.Name;
+            Log.Information("Circle 选择：mediaId={Id}, circle={Name}", _media.Id, picked.Name);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "EditCircleAsync 失败");
-            SaveError = "保存失败，请稍后重试。";
+            Log.Error(ex, "PickCircleAsync 失败");
+            SaveError = "操作失败，请稍后重试。";
         }
     }
 
-    /// <summary>清除社团（编辑模式）。直接 set _media.Circle = null + UI 刷新；Save 时随其他字段一起持久化。</summary>
+    /// <summary>社团 chip 单一交互入口：编辑态弹选择器（PickCircle），浏览态跳转 CirclesPage（OpenCircle）。
+    /// 不再为编辑态额外渲染"修改社团 / ✕ 清除"按钮——社团是 1:1 必填语义（每个 media 必须有且仅有一个 Circle），
+    /// 用户在媒体页只做"换社团"，社团本身的编辑请去 CirclesPage。</summary>
     [RelayCommand]
-    private void ClearCircle()
+    private async Task CircleChipClickAsync()
     {
-        if (!IsEditMode || _media is null) return;
-        _media.Circle = null;
-        CircleName = null;
+        if (IsEditMode) await PickCircleAsync();
+        else await OpenCircleAsync();
     }
 
     /// <summary>评分 5 星：CommandParameter "1"-"5"；点击当前已选中星 → 清零（取消评分）。
