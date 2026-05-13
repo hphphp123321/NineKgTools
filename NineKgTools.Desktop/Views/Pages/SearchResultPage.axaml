@@ -7,53 +7,178 @@
              x:DataType="vm:SearchResultViewModel"
              x:Name="PageRoot">
 
+    <UserControl.Styles>
+        <!-- 媒体卡：与 MediaOverviewPage 一致（外层 Button 透明，内嵌 Border 持视觉）。
+             hover 时内层 Border 的 BorderBrush 切到 accent + 整卡轻微抬起。 -->
+        <Style Selector="Button.search-media-card">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="RenderTransform" Value="translateY(0)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.search-media-card /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style Selector="Button.search-media-card:pointerover">
+            <Setter Property="RenderTransform" Value="translateY(-2px)" />
+        </Style>
+        <!-- 内层 Border 的 hover 边框切换 -->
+        <Style Selector="Border.search-media-inner">
+            <Setter Property="Background" Value="{DynamicResource LayerFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.search-media-card:pointerover Border.search-media-inner">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+        </Style>
+
+        <!-- 标签 chip：照搬媒体卡同款"透明 Button + 内嵌 Border 持视觉"（避免 Button 模板吞掉 bg） -->
+        <Style Selector="Button.search-tag-chip">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="RenderTransform" Value="translateY(0)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.search-tag-chip /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style Selector="Button.search-tag-chip:pointerover">
+            <Setter Property="RenderTransform" Value="translateY(-2px)" />
+        </Style>
+
+        <!-- 人物 / 社团卡 -->
+        <Style Selector="Button.search-person-card">
+            <Setter Property="Background" Value="{DynamicResource LayerFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="RenderTransform" Value="translateY(0)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.search-person-card:pointerover">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+            <Setter Property="RenderTransform" Value="translateY(-2px)" />
+        </Style>
+        <Style Selector="Button.search-person-card /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+    </UserControl.Styles>
+
     <Grid RowDefinitions="Auto,Auto,*">
 
-        <!-- 头部：搜索框 + 选项 + 摘要 -->
-        <StackPanel Grid.Row="0" Margin="32,24,32,16" Spacing="12">
-            <Grid ColumnDefinitions="*,12,Auto,12,Auto">
-                <TextBox Grid.Column="0"
-                         Text="{Binding Query, Mode=TwoWay}"
-                         PlaceholderText="搜索关键词..."
-                         FontSize="14" />
-                <ToggleSwitch Grid.Column="2"
-                              IsChecked="{Binding EnableVectorSearch, Mode=TwoWay}"
-                              OnContent="AI 语义"
-                              OffContent="关键词"
-                              VerticalAlignment="Center"
-                              ToolTip.Tip="向量搜索（需在设置启用 AI + Embedding 模型）" />
-                <Button Grid.Column="4"
-                        Command="{Binding ExecuteSearchCommand}"
-                        IsEnabled="{Binding !IsLoading}"
-                        Classes="accent">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <ui:FAProgressRing IsIndeterminate="True"
-                                           Width="14" Height="14"
-                                           IsVisible="{Binding IsLoading}" />
-                        <TextBlock Text="搜索" />
-                    </StackPanel>
-                </Button>
-            </Grid>
+        <!-- ========= 顶部 Search Hero 卡片 ========= -->
+        <Border Grid.Row="0" Margin="32,24,32,16"
+                Padding="20,16"
+                CornerRadius="10"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                Background="{DynamicResource LayerFillColorAltBrush}">
+            <StackPanel Spacing="12">
 
-            <!-- 摘要行 -->
-            <StackPanel Orientation="Horizontal" Spacing="12"
-                        IsVisible="{Binding HasSearched}">
-                <TextBlock Text="{Binding SummaryText}"
-                           FontSize="12" Opacity="0.7"
-                           VerticalAlignment="Center" />
-            </StackPanel>
+                <!-- 搜索行：search icon prefix + TextBox + AI toggle，全部 36px 同高 -->
+                <Grid ColumnDefinitions="*,16,Auto">
+                    <Grid Grid.Column="0" Height="36">
+                        <TextBox Text="{Binding Query, Mode=TwoWay}"
+                                 PlaceholderText="搜索关键词..."
+                                 FontSize="14"
+                                 Padding="36,6,12,6"
+                                 VerticalContentAlignment="Center"
+                                 Height="36">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Gesture="Enter" Command="{Binding ExecuteSearchCommand}" />
+                            </TextBox.KeyBindings>
+                        </TextBox>
+                        <!-- 左侧 search icon overlay，不参与 hit-test 让点击仍落到 TextBox -->
+                        <PathIcon Data="{StaticResource IconSearch}"
+                                  Width="14" Height="14"
+                                  Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                  Margin="12,0,0,0"
+                                  HorizontalAlignment="Left" VerticalAlignment="Center"
+                                  IsHitTestVisible="False" />
+                    </Grid>
+                    <ToggleSwitch Grid.Column="2"
+                                  IsChecked="{Binding EnableVectorSearch, Mode=TwoWay}"
+                                  OnContent="AI 语义"
+                                  OffContent="关键词"
+                                  VerticalAlignment="Center"
+                                  Height="36"
+                                  Padding="0"
+                                  MinHeight="36"
+                                  ToolTip.Tip="向量搜索（需在设置启用 AI + Embedding 模型）" />
+                </Grid>
 
-            <!-- 错误条 -->
-            <Border IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                    Padding="12,8"
-                    CornerRadius="{DynamicResource ControlCornerRadius}"
-                    Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="⚠" FontSize="13" VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding ErrorMessage}" FontSize="12" VerticalAlignment="Center" />
+                <!-- 摘要行 / 加载态——AI 状态由顶部 ToggleSwitch 显示，此处不再重复 -->
+                <StackPanel Orientation="Horizontal" Spacing="8"
+                            IsVisible="{Binding HasSearched}"
+                            VerticalAlignment="Center">
+                    <ui:FAProgressRing IsIndeterminate="True"
+                                       Width="14" Height="14"
+                                       IsVisible="{Binding IsLoading}" />
+                    <TextBlock Text="{Binding SummaryText}"
+                               FontSize="12" Opacity="0.7"
+                               VerticalAlignment="Center" />
                 </StackPanel>
-            </Border>
-        </StackPanel>
+
+                <!-- 错误条：降饱和版（左 4px accent bar + 浅底） -->
+                <Border IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                        Padding="12,10"
+                        CornerRadius="6"
+                        BorderThickness="1"
+                        BorderBrush="{DynamicResource SystemFillColorCriticalBrush}"
+                        Background="{DynamicResource LayerFillColorDefaultBrush}">
+                    <Grid ColumnDefinitions="Auto,12,*">
+                        <Border Grid.Column="0"
+                                Width="3"
+                                CornerRadius="2"
+                                Background="{DynamicResource SystemFillColorCriticalBrush}"
+                                VerticalAlignment="Stretch" />
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding ErrorMessage}"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                   VerticalAlignment="Center"
+                                   TextWrapping="Wrap" />
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </Border>
 
         <!-- 4-Tab 类型切换 -->
         <TabControl Grid.Row="2" Margin="32,0,32,16"
@@ -63,19 +188,18 @@
             <!-- ============== Tab 0: 媒体 ============== -->
             <TabItem>
                 <TabItem.Header>
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="媒体" />
-                        <Border Padding="6,1" CornerRadius="8"
-                                Background="{DynamicResource SubtleFillColorTertiaryBrush}">
-                            <TextBlock Text="{Binding MediaCount}" FontSize="11" />
-                        </Border>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconLibrary}" Width="14" Height="14" />
+                        <TextBlock VerticalAlignment="Center">
+                            <Run Text="媒体 (" /><Run Text="{Binding MediaCount}" /><Run Text=")" />
+                        </TextBlock>
                     </StackPanel>
                 </TabItem.Header>
                 <Grid Margin="0,12,0,0">
                     <Border IsVisible="{Binding !MediaCount}"
                             Padding="32"
                             HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="无媒体匹配"
+                        <TextBlock Text="🔍 无媒体匹配"
                                    FontSize="14" Opacity="0.6"
                                    HorizontalAlignment="Center" />
                     </Border>
@@ -88,28 +212,26 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:MediaCardViewModel">
-                                    <Button Command="{Binding OpenDetailCommand}"
-                                            Padding="0" Background="Transparent" BorderThickness="0"
+                                    <!-- 与 MediaOverviewPage 模板一致：Button 透明 + 内 Border 持 bg/border + 类别色 fallback + Rating 行 -->
+                                    <Button Classes="search-media-card"
+                                            Command="{Binding OpenDetailCommand}"
                                             Margin="0,0,12,12"
-                                            CornerRadius="8"
-                                            ClipToBounds="True">
-                                        <Border Width="180" Height="320"
-                                                Background="{DynamicResource LayerFillColorDefaultBrush}"
-                                                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                                                BorderThickness="1"
-                                                CornerRadius="8"
-                                                ClipToBounds="True">
+                                            CornerRadius="8">
+                                        <Border Classes="search-media-inner"
+                                                Width="180" Height="320">
                                             <Grid RowDefinitions="*,Auto">
                                                 <Grid Grid.Row="0" Background="{DynamicResource SubtleFillColorTertiaryBrush}">
                                                     <Image Source="{Binding Cover}"
                                                            Stretch="UniformToFill"
                                                            IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                                    <PathIcon Data="{Binding CategoryIcon}"
-                                                              Width="48" Height="48"
-                                                              Foreground="{Binding CategoryBrush}"
-                                                              Opacity="0.5"
-                                                              IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNull}}"
-                                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    <Border IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNull}}"
+                                                            Background="{Binding TopCategory, Converter={x:Static conv:CategoryFillBrushConverter.Instance}}">
+                                                        <PathIcon Data="{Binding CategoryIcon}"
+                                                                  Width="48" Height="48"
+                                                                  Foreground="{Binding CategoryBrush}"
+                                                                  Opacity="0.6"
+                                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
                                                 </Grid>
                                                 <Border Grid.Row="1" Padding="10,8">
                                                     <StackPanel Spacing="3">
@@ -121,6 +243,10 @@
                                                                    FontSize="11" Opacity="0.6"
                                                                    TextTrimming="CharacterEllipsis"
                                                                    IsVisible="{Binding CircleName, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                        <TextBlock Text="{Binding RatingText}"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource SystemFillColorAttentionBrush}"
+                                                                   IsVisible="{Binding HasRating}" />
                                                     </StackPanel>
                                                 </Border>
                                             </Grid>
@@ -136,19 +262,19 @@
             <!-- ============== Tab 1: 标签 ============== -->
             <TabItem>
                 <TabItem.Header>
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="标签" />
-                        <Border Padding="6,1" CornerRadius="8"
-                                Background="{DynamicResource SubtleFillColorTertiaryBrush}">
-                            <TextBlock Text="{Binding TagCount}" FontSize="11" />
-                        </Border>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconTags}" Width="14" Height="14" />
+                        <TextBlock VerticalAlignment="Center">
+                            <Run Text="标签 (" /><Run Text="{Binding TagCount}" /><Run Text=")" />
+                        </TextBlock>
                     </StackPanel>
                 </TabItem.Header>
                 <Grid Margin="0,12,0,0">
                     <Border IsVisible="{Binding !TagCount}"
                             Padding="32"
                             HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="无标签匹配" FontSize="14" Opacity="0.6"
+                        <TextBlock Text="🔍 无标签匹配 · 试试更简短的关键词"
+                                   FontSize="14" Opacity="0.6"
                                    HorizontalAlignment="Center" />
                     </Border>
                     <ScrollViewer IsVisible="{Binding TagCount}">
@@ -160,18 +286,30 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:TagItemViewModel">
-                                    <Border Padding="14,8" Margin="0,0,8,8"
-                                            CornerRadius="14"
-                                            Background="{DynamicResource SubtleFillColorTertiaryBrush}"
-                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                                            BorderThickness="1">
-                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <TextBlock Text="{Binding Name}" FontSize="13" />
-                                            <TextBlock Text="{Binding MediaCountText}"
-                                                       FontSize="11"
-                                                       Opacity="0.5" />
-                                        </StackPanel>
-                                    </Border>
+                                    <Button Classes="search-tag-chip"
+                                            Margin="0,0,8,8"
+                                            Command="{Binding $parent[ItemsControl].((vm:SearchResultViewModel)DataContext).OpenTagCommand}"
+                                            CommandParameter="{Binding Id}"
+                                            ToolTip.Tip="{Binding TopTagName, TargetNullValue='孤儿标签', FallbackValue='孤儿标签'}">
+                                        <!-- 内嵌 Border 持 TopTag 色 fill + accent 边框（与 TagsPage 子标签 chip 同款） -->
+                                        <Border Background="{Binding TopTagFillBrush, FallbackValue={DynamicResource SubtleFillColorTertiaryBrush}, TargetNullValue={DynamicResource SubtleFillColorTertiaryBrush}}"
+                                                BorderBrush="{Binding TopTagAccentBrush, FallbackValue={DynamicResource ControlStrokeColorDefaultBrush}, TargetNullValue={DynamicResource ControlStrokeColorDefaultBrush}}"
+                                                BorderThickness="1"
+                                                CornerRadius="14"
+                                                Padding="14,8">
+                                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontSize="13" FontWeight="SemiBold"
+                                                           Foreground="{Binding TopTagAccentBrush, FallbackValue={DynamicResource TextFillColorPrimaryBrush}, TargetNullValue={DynamicResource TextFillColorPrimaryBrush}}"
+                                                           VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding MediaCountText}"
+                                                           FontSize="11"
+                                                           Foreground="{Binding TopTagAccentBrush, FallbackValue={DynamicResource TextFillColorSecondaryBrush}, TargetNullValue={DynamicResource TextFillColorSecondaryBrush}}"
+                                                           Opacity="0.7"
+                                                           VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Border>
+                                    </Button>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -182,19 +320,18 @@
             <!-- ============== Tab 2: 创作者 ============== -->
             <TabItem>
                 <TabItem.Header>
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="创作者" />
-                        <Border Padding="6,1" CornerRadius="8"
-                                Background="{DynamicResource SubtleFillColorTertiaryBrush}">
-                            <TextBlock Text="{Binding CreatorCount}" FontSize="11" />
-                        </Border>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconCreators}" Width="14" Height="14" />
+                        <TextBlock VerticalAlignment="Center">
+                            <Run Text="创作者 (" /><Run Text="{Binding CreatorCount}" /><Run Text=")" />
+                        </TextBlock>
                     </StackPanel>
                 </TabItem.Header>
                 <Grid Margin="0,12,0,0">
                     <Border IsVisible="{Binding !CreatorCount}"
                             Padding="32"
                             HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="无创作者匹配" FontSize="14" Opacity="0.6"
+                        <TextBlock Text="🔍 无创作者匹配" FontSize="14" Opacity="0.6"
                                    HorizontalAlignment="Center" />
                     </Border>
                     <ScrollViewer IsVisible="{Binding CreatorCount}">
@@ -206,12 +343,11 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:CreatorItemViewModel">
-                                    <Border Width="180" Height="200"
+                                    <Button Classes="search-person-card"
+                                            Width="180" Height="200"
                                             Margin="0,0,12,12"
-                                            CornerRadius="8"
-                                            Background="{DynamicResource LayerFillColorDefaultBrush}"
-                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                                            BorderThickness="1">
+                                            Command="{Binding $parent[ItemsControl].((vm:SearchResultViewModel)DataContext).OpenCreatorCommand}"
+                                            CommandParameter="{Binding Id}">
                                         <StackPanel Margin="14,18,14,14" Spacing="8" HorizontalAlignment="Center">
                                             <Border Width="72" Height="72" CornerRadius="36"
                                                     ClipToBounds="True"
@@ -238,7 +374,7 @@
                                                        FontSize="11" Opacity="0.55"
                                                        HorizontalAlignment="Center" />
                                         </StackPanel>
-                                    </Border>
+                                    </Button>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -249,19 +385,18 @@
             <!-- ============== Tab 3: 社团 ============== -->
             <TabItem>
                 <TabItem.Header>
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <TextBlock Text="社团" />
-                        <Border Padding="6,1" CornerRadius="8"
-                                Background="{DynamicResource SubtleFillColorTertiaryBrush}">
-                            <TextBlock Text="{Binding CircleCount}" FontSize="11" />
-                        </Border>
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource IconBusiness}" Width="14" Height="14" />
+                        <TextBlock VerticalAlignment="Center">
+                            <Run Text="社团 (" /><Run Text="{Binding CircleCount}" /><Run Text=")" />
+                        </TextBlock>
                     </StackPanel>
                 </TabItem.Header>
                 <Grid Margin="0,12,0,0">
                     <Border IsVisible="{Binding !CircleCount}"
                             Padding="32"
                             HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="无社团匹配" FontSize="14" Opacity="0.6"
+                        <TextBlock Text="🔍 无社团匹配" FontSize="14" Opacity="0.6"
                                    HorizontalAlignment="Center" />
                     </Border>
                     <ScrollViewer IsVisible="{Binding CircleCount}">
@@ -273,12 +408,11 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:CircleItemViewModel">
-                                    <Border Width="180" Height="200"
+                                    <Button Classes="search-person-card"
+                                            Width="180" Height="200"
                                             Margin="0,0,12,12"
-                                            CornerRadius="8"
-                                            Background="{DynamicResource LayerFillColorDefaultBrush}"
-                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                                            BorderThickness="1">
+                                            Command="{Binding $parent[ItemsControl].((vm:SearchResultViewModel)DataContext).OpenCircleCommand}"
+                                            CommandParameter="{Binding Id}">
                                         <StackPanel Margin="14,18,14,14" Spacing="8" HorizontalAlignment="Center">
                                             <Border Width="72" Height="72" CornerRadius="36"
                                                     ClipToBounds="True"
@@ -305,7 +439,7 @@
                                                        FontSize="11" Opacity="0.55"
                                                        HorizontalAlignment="Center" />
                                         </StackPanel>
-                                    </Border>
+                                    </Button>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

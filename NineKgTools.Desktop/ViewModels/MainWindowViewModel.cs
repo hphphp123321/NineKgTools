@@ -12,13 +12,14 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private PageViewModelBase? _currentPage;
 
-    /// <summary>主窗顶部 / 侧栏底部的全局搜索框输入。Enter 时触发 ExecuteSearchCommand。</summary>
-    [ObservableProperty]
-    private string _searchText = "";
+    /// <summary>侧栏底部全局搜索框对应的 Flyout VM——MainWindow.axaml 的 SearchBox.Text 绑到 SearchFlyoutVm.Query；
+    /// SearchBox.GotFocus → IsOpen=true；键盘 ↑↓/Enter/Esc/Ctrl+Enter 路由到 Flyout VM 方法。</summary>
+    public GlobalSearchFlyoutViewModel SearchFlyoutVm { get; }
 
-    public MainWindowViewModel(NavigationService nav)
+    public MainWindowViewModel(NavigationService nav, GlobalSearchFlyoutViewModel searchFlyoutVm)
     {
         _nav = nav;
+        SearchFlyoutVm = searchFlyoutVm;
         _nav.CurrentPageChanged += (_, page) => CurrentPage = page;
     }
 
@@ -26,24 +27,13 @@ public partial class MainWindowViewModel : ObservableObject
     public Task InitializeAsync() => _nav.NavigateToAsync<HomeViewModel>();
 
     /// <summary>由 MainWindow 的 NavigationView SelectionChanged 调用。
-    /// 走 NavigateAsRootAsync —— 主菜单是"横向跳"语义，不该进历史栈
-    /// （用户在新页点 ← 不该退回主菜单跳转前的页）。</summary>
+    /// 走 NavigateAsRootAsync —— 主菜单是"横向跳"语义，不该进历史栈。</summary>
     public Task NavigateAsync(Type viewModelType) => _nav.NavigateAsRootAsync(viewModelType);
 
-    /// <summary>
-    /// 全局搜索：导航到 SearchResultPage，预填 Query 触发 4 类型搜索（媒体 / 标签 / 创作者 / 社团）。
-    /// AI 语义搜索由用户在结果页 ToggleSwitch 控制。
-    /// </summary>
+    /// <summary>Ctrl+Enter / SearchBox 按 Enter（无高亮项时） → 跳完整 SearchResultPage。委托给 Flyout VM 的 ViewAll。</summary>
     [RelayCommand]
     private async Task ExecuteSearchAsync()
     {
-        var term = SearchText?.Trim() ?? "";
-        if (string.IsNullOrEmpty(term)) return;
-
-        await _nav.NavigateToAsync<SearchResultViewModel>(vm =>
-        {
-            vm.Query = term;
-        });
+        await SearchFlyoutVm.ViewAllAsync();
     }
 }
-

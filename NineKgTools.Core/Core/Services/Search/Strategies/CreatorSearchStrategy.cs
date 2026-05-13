@@ -12,7 +12,9 @@ using Serilog;
 namespace NineKgTools.Core.Services.Search.Strategies;
 
 /// <summary>
-/// 创作者搜索策略
+/// 创作者搜索策略 —— 仅支持 Exact / StartsWith / Contains 三档相关度。
+/// **不走 Fuzzy 编辑距离**：创作者名字 / 别名都是用户可识别的专名，模糊匹配只会产生
+/// "为什么这个也搜出来了"的困惑结果。query 不真正出现在某字段中则该项不命中。
 /// </summary>
 public class CreatorSearchStrategy : ISearchStrategy<Creator>
 {
@@ -35,7 +37,6 @@ public class CreatorSearchStrategy : ISearchStrategy<Creator>
 
         try
         {
-            // 获取所有创作者
             var allCreators = await _context.Creators
                 .AsNoTracking()
                 .ToListAsync(cancellationToken);
@@ -45,27 +46,50 @@ public class CreatorSearchStrategy : ISearchStrategy<Creator>
                 cancellationToken.ThrowIfCancellationRequested();
 
                 double maxScore = 0;
-                SearchMatchType matchType = SearchMatchType.Fuzzy;
+                // 命中时由 GetMatchType 精化到 Exact / Contains —— 不可能 Fuzzy
+                SearchMatchType matchType = SearchMatchType.Contains;
                 string matchField = "";
 
-                // 精确匹配名称
-                if (creator.Name.Equals(query, StringComparison.OrdinalIgnoreCase))
+                // 1. Name（只 Exact / StartsWith / Contains，不 Fuzzy）
+                var nameScore = RelevanceScorer.CalculateContainsRelevance(query, creator.Name, "name");
+                if (nameScore > maxScore)
                 {
-                    maxScore = 1.0;
-                    matchType = SearchMatchType.Exact;
+                    maxScore = nameScore;
+                    matchType = GetMatchType(query, creator.Name);
                     matchField = "Name";
                 }
-                // 精确匹配别名
-                else if (creator.AliasNames.Any(alias =>
-                             alias.Equals(query, StringComparison.OrdinalIgnoreCase)))
+
+                // 2. AliasNames（所有别名取最高分）
+                if (creator.AliasNames is { Count: > 0 })
                 {
-                    maxScore = 0.95;
-                    matchType = SearchMatchType.Alias;
-                    matchField = "AliasName";
+                    foreach (var alias in creator.AliasNames)
+                    {
+                        if (string.IsNullOrWhiteSpace(alias)) continue;
+                        var aliasScore = RelevanceScorer.CalculateContainsRelevance(query, alias, "aliasname");
+                        if (aliasScore > maxScore)
+                        {
+                            maxScore = aliasScore;
+                            matchType = SearchMatchType.Alias;
+                            matchField = "AliasName";
+                        }
+                    }
                 }
 
+                // 3. Description（权重较低，仅在主字段无命中时纳入）
+                if (!string.IsNullOrWhiteSpace(creator.Description))
+                {
+                    var descScore = RelevanceScorer.CalculateContainsRelevance(query, creator.Description, "description");
+                    if (descScore > maxScore * 0.7)
+                    {
+                        maxScore = Math.Max(maxScore, descScore);
+                        if (matchField == "")
+                        {
+                            matchType = SearchMatchType.Description;
+                            matchField = "Description";
+                        }
+                    }
+                }
 
-                // 如果有匹配且超过阈值，添加到结果
                 if (maxScore >= options.MinRelevanceScore)
                 {
                     var resultItem = new SearchResultItem<Creator>
@@ -75,18 +99,14 @@ public class CreatorSearchStrategy : ISearchStrategy<Creator>
                         MatchType = matchType,
                         MatchDetails = $"匹配字段: {matchField} | 类型: {GetCreatorTypeString(creator.Types)}"
                     };
-
-                    // 生成高亮
-                    GenerateHighlights(resultItem, query);
-
+                    GenerateHighlights(resultItem, query, matchField);
                     results.Add(resultItem);
                 }
             }
 
-            // 排序并限制结果数量
             results = results
                 .OrderByDescending(r => r.RelevanceScore)
-                .ThenBy(r => r.Entity.Types.FirstOrDefault()) // 按类型次要排序
+                .ThenBy(r => r.Entity.Types.FirstOrDefault())
                 .Take(options.MaxResultsPerType)
                 .ToList();
         }
@@ -94,6 +114,10 @@ public class CreatorSearchStrategy : ISearchStrategy<Creator>
         {
             Log.Debug("创作者搜索被取消: {Query}", query);
             throw;
+        }
+        catch (Exception ex) when (cancellationToken.IsCancellationRequested)
+        {
+            Log.Debug(ex, "创作者搜索被取消（连接关闭）: {Query}", query);
         }
         catch (Exception ex)
         {
@@ -103,53 +127,56 @@ public class CreatorSearchStrategy : ISearchStrategy<Creator>
         return results;
     }
 
-    private void GenerateHighlights(SearchResultItem<Creator> result, string query)
+    private static SearchMatchType GetMatchType(string query, string text)
+    {
+        var q = query.ToLowerInvariant();
+        var t = text.ToLowerInvariant();
+        // 关键词搜索只可能 Exact 或 Contains —— Fuzzy 路径已删除
+        if (t.Equals(q)) return SearchMatchType.Exact;
+        return SearchMatchType.Contains;
+    }
+
+    private static void GenerateHighlights(SearchResultItem<Creator> result, string query, string matchField)
     {
         var creator = result.Entity;
-
-        // 向量搜索模式下不生成高亮（因为只有精确匹配）
-        if (result.MatchType == SearchMatchType.Exact)
+        switch (matchField)
         {
-            result.Highlights.Add(new HighlightSnippet
-            {
-                FieldName = "Name",
-                OriginalText = creator.Name,
-                HighlightedText = creator.Name
-            });
-        }
-        else if (result.MatchType == SearchMatchType.Alias)
-        {
-            var matchedAlias = creator.AliasNames.FirstOrDefault(a =>
-                a.Equals(query, StringComparison.OrdinalIgnoreCase));
-            if (matchedAlias != null)
-            {
+            case "Name":
                 result.Highlights.Add(new HighlightSnippet
                 {
-                    FieldName = "AliasName",
-                    OriginalText = matchedAlias,
-                    HighlightedText = matchedAlias
+                    FieldName = "Name",
+                    OriginalText = creator.Name,
+                    HighlightedText = RelevanceScorer.HighlightText(creator.Name, query)
                 });
-            }
+                break;
+            case "AliasName":
+                var alias = creator.AliasNames.FirstOrDefault(a =>
+                    !string.IsNullOrEmpty(a) && a.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    ?? creator.AliasNames.FirstOrDefault();
+                if (alias is not null)
+                {
+                    result.Highlights.Add(new HighlightSnippet
+                    {
+                        FieldName = "AliasName",
+                        OriginalText = alias,
+                        HighlightedText = RelevanceScorer.HighlightText(alias, query)
+                    });
+                }
+                break;
+            case "Description" when !string.IsNullOrWhiteSpace(creator.Description):
+                result.Highlights.Add(new HighlightSnippet
+                {
+                    FieldName = "Description",
+                    OriginalText = creator.Description!,
+                    HighlightedText = RelevanceScorer.HighlightText(creator.Description!, query)
+                });
+                break;
         }
     }
 
-    private SearchMatchType GetMatchType(string query, string text)
+    private static string GetCreatorTypeString(List<CreatorType> types)
     {
-        var queryLower = query.ToLowerInvariant();
-        var textLower = text.ToLowerInvariant();
-
-        if (textLower.Equals(queryLower))
-            return SearchMatchType.Exact;
-        if (textLower.Contains(queryLower))
-            return SearchMatchType.Contains;
-        return SearchMatchType.Fuzzy;
-    }
-
-    private string GetCreatorTypeString(List<CreatorType> types)
-    {
-        if (!types.Any())
-            return "未知";
-
+        if (types is null || types.Count == 0) return "未知";
         var typeNames = types.Select(t => t switch
         {
             CreatorType.Author => "作者",
@@ -161,7 +188,6 @@ public class CreatorSearchStrategy : ISearchStrategy<Creator>
             CreatorType.Actor => "演员",
             _ => t.ToString()
         });
-
         return string.Join(", ", typeNames);
     }
 }

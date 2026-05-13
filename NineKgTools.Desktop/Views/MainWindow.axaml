@@ -5,6 +5,7 @@
         xmlns:vm="using:NineKgTools.Desktop.ViewModels"
         xmlns:ui="using:FluentAvalonia.UI.Controls"
         xmlns:anim="using:NineKgTools.Desktop.Animations"
+        xmlns:components="using:NineKgTools.Desktop.Views.Components"
         mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
         x:Class="NineKgTools.Desktop.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -27,15 +28,28 @@
                        PaneTitle="NineKgTools"
                        SelectionChanged="OnNavigationSelectionChanged">
 
-        <!-- 侧栏底部全局搜索（§12 决策入口①）。Ctrl+K 快捷键由 Window.KeyBindings 触发聚焦本框。 -->
+        <!-- 侧栏底部全局搜索（§12 决策入口①）。Ctrl+K 快捷键由 Window.KeyBindings 触发聚焦本框。
+             SearchBox.GotFocus → 弹 Flyout Popup 显示 4 类型实时预览；Up/Down/Enter/Esc/Ctrl+Enter 路由到 Flyout VM。 -->
         <ui:FANavigationView.PaneFooter>
             <Border Padding="12,8" x:Name="SearchFooter">
                 <StackPanel Spacing="6">
                     <TextBlock Text="全局搜索" FontSize="11" Opacity="0.6" />
                     <TextBox x:Name="GlobalSearchBox"
-                             Text="{Binding SearchText, Mode=TwoWay}"
-                             PlaceholderText="搜索媒体（Ctrl+K）"
+                             Text="{Binding SearchFlyoutVm.Query, Mode=TwoWay}"
+                             PlaceholderText="搜索媒体、标签、创作者、社团（Ctrl+K）"
+                             GotFocus="OnSearchBoxGotFocus"
+                             TextChanged="OnSearchBoxTextChanged"
                              KeyDown="OnSearchBoxKeyDown" />
+                    <!-- 实时预览 Popup —— PlacementTarget=SearchBox / Right 弹 / LightDismiss 自动关 -->
+                    <Popup x:Name="SearchFlyoutPopup"
+                           PlacementTarget="{Binding #GlobalSearchBox}"
+                           Placement="RightEdgeAlignedTop"
+                           HorizontalOffset="8"
+                           IsOpen="{Binding SearchFlyoutVm.IsOpen, Mode=TwoWay}"
+                           IsLightDismissEnabled="True"
+                           OverlayDismissEventPassThrough="False">
+                        <components:GlobalSearchFlyout DataContext="{Binding SearchFlyoutVm}" />
+                    </Popup>
                 </StackPanel>
             </Border>
         </ui:FANavigationView.PaneFooter>

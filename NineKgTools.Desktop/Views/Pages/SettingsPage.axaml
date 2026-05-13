@@ -90,14 +90,6 @@
                         </StackPanel>
                     </Button>
                     <Button Classes="nav-item"
-                            Classes.active="{Binding IsGroupSources}"
-                            Command="{Binding SelectGroupCommand}" CommandParameter="Sources">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <PathIcon Data="{StaticResource IconFolderOpen}" Width="14" Height="14" />
-                            <TextBlock Text="媒体源" />
-                        </StackPanel>
-                    </Button>
-                    <Button Classes="nav-item"
                             Classes.active="{Binding IsGroupFiles}"
                             Command="{Binding SelectGroupCommand}" CommandParameter="Files">
                         <StackPanel Orientation="Horizontal" Spacing="10">
@@ -135,14 +127,6 @@
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <PathIcon Data="{StaticResource IconTasks}" Width="14" Height="14" />
                             <TextBlock Text="日志" />
-                        </StackPanel>
-                    </Button>
-                    <Button Classes="nav-item"
-                            Classes.active="{Binding IsGroupDatabase}"
-                            Command="{Binding SelectGroupCommand}" CommandParameter="Database">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <PathIcon Data="{StaticResource IconLibrary}" Width="14" Height="14" />
-                            <TextBlock Text="数据库" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -346,74 +330,6 @@
                                    Minimum="0" Maximum="1" Increment="0.05"
                                    FormatString="0.00"
                                    MaxWidth="200" HorizontalAlignment="Left" />
-                </StackPanel>
-            </StackPanel>
-
-            <!-- 媒体源分组（监视文件夹） -->
-            <StackPanel IsVisible="{Binding IsGroupSources}" Spacing="0">
-                <TextBlock Text="媒体源" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,4" />
-                <TextBlock Text="监视文件夹 · 新文件加入会自动触发识别"
-                           FontSize="13" Opacity="0.65" Margin="0,0,0,28" />
-
-                <StackPanel Classes="field">
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Classes="label" Text="监视文件夹" VerticalAlignment="Center" />
-                        <Button Grid.Column="1"
-                                Command="{Binding AddWatchFolderCommand}"
-                                Background="{DynamicResource AccentFillColorDefaultBrush}"
-                                Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Text="+" FontSize="14" FontWeight="Bold" />
-                                <TextBlock Text="添加文件夹" />
-                            </StackPanel>
-                        </Button>
-                    </Grid>
-                    <TextBlock Classes="help" Text="加入新文件夹会自动开始监控；删除会停止监控并从 config.yaml 移除。" />
-
-                    <Border IsVisible="{Binding WatchFolders.Count}"
-                            Margin="0,8,0,0"
-                            Padding="0"
-                            Background="Transparent">
-                        <ItemsControl ItemsSource="{Binding WatchFolders}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Margin="0,0,0,6" Padding="12,8"
-                                            CornerRadius="6"
-                                            Background="{DynamicResource LayerFillColorAltBrush}"
-                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-                                            BorderThickness="1">
-                                        <Grid ColumnDefinitions="*,Auto">
-                                            <TextBlock Grid.Column="0"
-                                                       Text="{Binding}"
-                                                       FontFamily="Consolas, monospace"
-                                                       FontSize="12"
-                                                       VerticalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       ToolTip.Tip="{Binding}" />
-                                            <Button Grid.Column="1"
-                                                    Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemoveWatchFolderCommand}"
-                                                    CommandParameter="{Binding}"
-                                                    Padding="8,4"
-                                                    Background="Transparent"
-                                                    Foreground="{DynamicResource SystemFillColorCriticalBrush}"
-                                                    ToolTip.Tip="移除监视">
-                                                <TextBlock Text="✕" FontSize="13" />
-                                            </Button>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </Border>
-
-                    <Border IsVisible="{Binding !WatchFolders.Count}"
-                            Margin="0,8,0,0" Padding="20,16"
-                            CornerRadius="6"
-                            Background="{DynamicResource LayerFillColorAltBrush}">
-                        <TextBlock Text="尚未配置监视文件夹。点击「+ 添加文件夹」选择目录。"
-                                   FontSize="12" Opacity="0.65"
-                                   HorizontalAlignment="Center" />
-                    </Border>
                 </StackPanel>
             </StackPanel>
 
@@ -628,50 +544,6 @@
                 <ui:FAInfoBar Severity="Warning" IsOpen="True" IsClosable="False"
                             Title="部分字段需重启"
                             Message="日志级别只在 Serilog 初始化时读取，修改后需要重启应用才能完全生效（已记录的日志保持原级别）。日志路径 / Server / 模板等高级字段请直接编辑 config.yaml。" />
-            </StackPanel>
-
-            <!-- 数据库分组 -->
-            <StackPanel IsVisible="{Binding IsGroupDatabase}" Spacing="0">
-                <TextBlock Text="数据库" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,4" />
-                <TextBlock Text="存储路径（只读）"
-                           FontSize="13" Opacity="0.65" Margin="0,0,0,28" />
-
-                <StackPanel Classes="field">
-                    <TextBlock Classes="label" Text="主数据库（database.db）" />
-                    <Border Padding="12,10"
-                            Background="{DynamicResource LayerFillColorAltBrush}"
-                            CornerRadius="6">
-                        <TextBlock Text="{Binding DatabasePath}"
-                                   FontSize="12" TextWrapping="Wrap"
-                                   FontFamily="Consolas, Courier New, monospace" />
-                    </Border>
-                </StackPanel>
-
-                <StackPanel Classes="field">
-                    <TextBlock Classes="label" Text="Hangfire 任务库（hangfire.db）" />
-                    <Border Padding="12,10"
-                            Background="{DynamicResource LayerFillColorAltBrush}"
-                            CornerRadius="6">
-                        <TextBlock Text="{Binding HangfirePath}"
-                                   FontSize="12" TextWrapping="Wrap"
-                                   FontFamily="Consolas, Courier New, monospace" />
-                    </Border>
-                </StackPanel>
-
-                <StackPanel Classes="field">
-                    <TextBlock Classes="label" Text="数据根目录" />
-                    <Border Padding="12,10"
-                            Background="{DynamicResource LayerFillColorAltBrush}"
-                            CornerRadius="6">
-                        <TextBlock Text="{Binding DataDirectory}"
-                                   FontSize="12" TextWrapping="Wrap"
-                                   FontFamily="Consolas, Courier New, monospace" />
-                    </Border>
-                </StackPanel>
-
-                <ui:FAInfoBar Severity="Warning" IsOpen="True" IsClosable="False"
-                            Title="为何只读？"
-                            Message="数据库路径由桌面端独立管理（与 Web/Docker 隔离），不可在此修改。如需迁移数据请直接复制 dataDir 到目标位置后修改 config.yaml。" />
             </StackPanel>
 
         </Grid>

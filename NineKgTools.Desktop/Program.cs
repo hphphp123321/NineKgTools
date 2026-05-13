@@ -303,6 +303,7 @@ internal static class Program
 
         // Window-level VM
         services.AddTransient<MainWindowViewModel>();
+        services.AddTransient<GlobalSearchFlyoutViewModel>();
 
         // Page VMs（PageViewModelBase 子类，由 NavigationService 解析）
         services.AddTransient<HomeViewModel>();

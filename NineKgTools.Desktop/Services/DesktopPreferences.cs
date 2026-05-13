@@ -54,6 +54,10 @@ public class DesktopPreferences
     /// </summary>
     public bool UseGlassBackground { get; set; } = false;
 
+    /// <summary>全局搜索是否启用 AI 语义（向量）搜索。在 GlobalSearchFlyout 顶部 toggle 控制；
+    /// 与 SearchResultPage 共享同一字段（保持入口 / 结果页一致体验）。需要 AI / Embedding 已配置才有效。</summary>
+    public bool EnableVectorSearch { get; set; } = false;
+
     /// <summary>UseGlassBackground 变化广播——MediaDetailViewModel 订阅实时切换 UI。
     /// event 默认不被 System.Text.Json 序列化，无需 JsonIgnore（特性不适用于 event 声明）</summary>
     public event EventHandler? UseGlassBackgroundChanged;

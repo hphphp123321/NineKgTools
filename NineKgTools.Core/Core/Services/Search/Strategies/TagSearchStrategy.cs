@@ -164,25 +164,26 @@ public class TagSearchStrategy : ISearchStrategy<Tag>
         foreach (var tag in allTags)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            
+
             double maxScore = 0;
-            SearchMatchType matchType = SearchMatchType.Fuzzy;
+            // 关键词搜索默认 Contains（不走 Fuzzy 编辑距离）—— 命中时由 GetMatchType 精化到 Exact / Contains
+            SearchMatchType matchType = SearchMatchType.Contains;
             string matchField = "";
-            
-            // 搜索标签名
-            var nameScore = RelevanceScorer.CalculateTextRelevance(query, tag.Name, "name");
+
+            // 搜索标签名（只 Exact / StartsWith / Contains，不 Fuzzy）
+            var nameScore = RelevanceScorer.CalculateContainsRelevance(query, tag.Name, "name");
             if (nameScore > maxScore)
             {
                 maxScore = nameScore;
                 matchType = GetMatchType(query, tag.Name);
                 matchField = "Name";
             }
-            
-            // 搜索描述
+
+            // 搜索描述（权重较低）
             if (!string.IsNullOrWhiteSpace(tag.Description))
             {
-                var descScore = RelevanceScorer.CalculateTextRelevance(query, tag.Description, "description");
-                if (descScore > maxScore * 0.7) // 描述匹配权重较低
+                var descScore = RelevanceScorer.CalculateContainsRelevance(query, tag.Description, "description");
+                if (descScore > maxScore * 0.7)
                 {
                     maxScore = Math.Max(maxScore, descScore);
                     if (matchField == "")
@@ -242,12 +243,11 @@ public class TagSearchStrategy : ISearchStrategy<Tag>
     {
         var queryLower = query.ToLowerInvariant();
         var textLower = text.ToLowerInvariant();
-        
+
+        // 关键词搜索只可能 Exact 或 Contains —— Fuzzy 路径已删除
         if (textLower.Equals(queryLower))
             return SearchMatchType.Exact;
-        if (textLower.Contains(queryLower))
-            return SearchMatchType.Contains;
-        return SearchMatchType.Fuzzy;
+        return SearchMatchType.Contains;
     }
     
     private SearchMatchType ConvertMatchType(TagMatchType matchType)

@@ -108,11 +108,13 @@ public partial class MainWindow : Window
         if (e.KeyModifiers != KeyModifiers.Control) return;
 
         // Ctrl+K → 聚焦全局搜索框（§12 决策入口②）
+        // 用 NavigationMethod.Tab 让 GotFocus 收到非 Unspecified 的 NavigationMethod，
+        // 从而自动通过 OnSearchBoxGotFocus 的 Unspecified 过滤打开 popup
         if (e.Key == Key.K)
         {
             try
             {
-                GlobalSearchBox.Focus();
+                GlobalSearchBox.Focus(NavigationMethod.Tab);
                 GlobalSearchBox.SelectAll();
                 e.Handled = true;
             }
@@ -151,21 +153,80 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>SearchBox 按 Enter → 触发 MainWindowViewModel.ExecuteSearchCommand 跳到媒体库</summary>
-    private void OnSearchBoxKeyDown(object? sender, KeyEventArgs e)
+    /// <summary>SearchBox 聚焦时打开 Flyout 预览。
+    /// **NavigationMethod 关键过滤**：Avalonia 12 在 Window 启动时会把焦点自动设到第一个可 focus 元素
+    /// （NavigationMethod=Unspecified），跳过它避免应用启动就弹 popup。
+    /// 仅 Pointer / Tab / Directional（用户主动）才开 popup。Ctrl+K 走 Focus(NavigationMethod.Tab) 自然触发。</summary>
+    private void OnSearchBoxGotFocus(object? sender, Avalonia.Input.FocusChangedEventArgs e)
     {
-        if (e.Key != Key.Enter) return;
+        if (e.NavigationMethod == NavigationMethod.Unspecified) return;
         if (DataContext is not MainWindowViewModel vm) return;
+        vm.SearchFlyoutVm.IsOpen = true;
+    }
+
+    /// <summary>每次输入都强制 Flyout 可见——保证用户在搜索框里打字时 popup 一定显示，
+    /// 即使之前被 IsLightDismiss 误关也会立刻重弹。
+    /// **必须**检查 IsFocused：防止 binding 初始化 / 程序外部 set Query 时把 popup 误打开。</summary>
+    private void OnSearchBoxTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (sender is not Control c || !c.IsFocused) return;
+        if (DataContext is not MainWindowViewModel vm) return;
+        vm.SearchFlyoutVm.IsOpen = true;
+    }
+
+    /// <summary>
+    /// SearchBox 键盘路由：
+    /// - ↓/↑ → 在 Flyout 内移动高亮（即便 popup 没开也尝试开）
+    /// - Enter → 激活高亮项跳详情（若无高亮则跳完整结果页）
+    /// - Ctrl+Enter → 跳完整结果页
+    /// - Esc → 关 popup
+    /// </summary>
+    private async void OnSearchBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        var flyout = vm.SearchFlyoutVm;
 
         try
         {
-            if (vm.ExecuteSearchCommand.CanExecute(null))
-                vm.ExecuteSearchCommand.Execute(null);
-            e.Handled = true;
+            switch (e.Key)
+            {
+                case Key.Down:
+                    flyout.IsOpen = true;
+                    flyout.MoveSelection(1);
+                    e.Handled = true;
+                    return;
+                case Key.Up:
+                    flyout.IsOpen = true;
+                    flyout.MoveSelection(-1);
+                    e.Handled = true;
+                    return;
+                case Key.Escape:
+                    if (flyout.IsOpen)
+                    {
+                        flyout.IsOpen = false;
+                        e.Handled = true;
+                    }
+                    return;
+                case Key.Enter:
+                    // Web 搜索框标准体验：
+                    //  - 默认无高亮（用户未按 ↓） → Enter 跳完整结果页
+                    //  - 用户已按 ↓/↑ 进入键盘导航态 → Enter 激活当前高亮项
+                    //  - Ctrl+Enter 永远跳完整页（覆盖键盘导航态作为兜底）
+                    if (e.KeyModifiers.HasFlag(KeyModifiers.Control) || !flyout.HasKeyboardSelection)
+                    {
+                        await flyout.ViewAllAsync();
+                    }
+                    else
+                    {
+                        await flyout.ActivateHighlightedAsync();
+                    }
+                    e.Handled = true;
+                    return;
+            }
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "全局搜索 Enter 提交失败");
+            Log.Warning(ex, "全局搜索 KeyDown 处理失败 Key={Key}", e.Key);
         }
     }
 

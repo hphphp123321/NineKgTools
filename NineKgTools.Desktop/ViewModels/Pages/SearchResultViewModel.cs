@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using NineKgTools.Core.Models.Search;
 using NineKgTools.Core.Services.Search;
 using NineKgTools.Desktop.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
 namespace NineKgTools.Desktop.ViewModels.Pages;
@@ -164,6 +165,52 @@ public partial class SearchResultViewModel : PageViewModelBase
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    /// <summary>跳到标签详情——通过 NavigationService 切到 TagsViewModel + PendingIntent</summary>
+    [RelayCommand]
+    private async Task OpenTagAsync(int id)
+    {
+        try
+        {
+            var nav = Program.Services?.GetService<NavigationService>();
+            if (nav is null) return;
+            await nav.NavigateToAsync<TagsViewModel>(vm => vm.RequestOpenDetail(id));
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "SearchResult 跳标签详情失败 Id={Id}", id);
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenCreatorAsync(int id)
+    {
+        try
+        {
+            var nav = Program.Services?.GetService<NavigationService>();
+            if (nav is null) return;
+            await nav.NavigateToAsync<CreatorsViewModel>(vm => vm.RequestOpenDetail(id));
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "SearchResult 跳创作者详情失败 Id={Id}", id);
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenCircleAsync(int id)
+    {
+        try
+        {
+            var nav = Program.Services?.GetService<NavigationService>();
+            if (nav is null) return;
+            await nav.NavigateToAsync<CirclesViewModel>(vm => vm.RequestOpenDetail(id));
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "SearchResult 跳社团详情失败 Id={Id}", id);
         }
     }
 }

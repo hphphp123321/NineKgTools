@@ -345,7 +345,9 @@ Row 2 (*):    任务列表 / 空状态
 │  外观[active] │  主题                                 │
 │  任务         │  跟随系统会随 Win11 浅深模式切换。    │
 │  识别         │  ◉ 跟随系统  ○ 浅色  ○ 深色          │
-│  数据库       │                                      │
+│  文件过滤     │                                      │
+│  AI           │                                      │
+│  ...          │                                      │
 │              │                                      │
 │  ────────    │                                      │
 │  打开数据目录 │                                      │
@@ -356,20 +358,16 @@ Row 2 (*):    任务列表 / 空状态
 
 **实现要点**：
 
-- **分组**（Phase 2.3 完整 10 组）：外观 / 任务 / 识别 / 媒体源 / 文件过滤 / AI / 标签匹配 / 搜索 / 日志 / 数据库
-- **左侧导航**：`ScrollViewer` 包裹 nav 列表——10+ 项时窄屏会被截断，必须滚动
-- **主题切换**：直接调 `Application.Current.RequestedThemeVariant = ThemeVariant.Light/Dark/Default`，本会话不持久化（持久化等桌面端 window-state.json 体系，未实现）
+- **分组**（Phase 2.3，共 8 组）：外观 / 任务 / 识别 / 文件过滤 / AI / 标签匹配 / 搜索 / 日志
+- **不在此页**：
+  - **媒体源（监视文件夹）** 已迁移到 `SourcesPage` —— 设置页不重复入口，避免数据双源
+  - **数据库路径只读卡** 已删除 —— 全是只读字段没有可操作动作；如需查路径走"打开数据目录"按钮 / `config.yaml`
+- **左侧导航**：`ScrollViewer` 包裹 nav 列表
+- **主题切换**：调 `Application.Current.RequestedThemeVariant = ThemeVariant.Light/Dark/Default`，落 `DesktopPreferences.Theme` 持久化
 - **重置默认**：备份当前 `config.yaml` → `config.backup.<timestamp>.yaml` 后从 `config.example.yaml` 覆盖，再 `Config.InitConfig()` in-place 刷新；走 `NineKgConfirmDialog Destructive intent` 确认
-- **数据库分组只读**：path 字段用 `<TextBlock FontFamily="Consolas">` 等宽字体显示，外加 `<ui:InfoBar Severity="Warning">` 解释"为何只读"
+- **数据根目录** `_dataDirectory` 字段仍由 VM 内部持有（`Environment.CurrentDirectory`，等于桌面端 platform-specific dataDir），仅用于"打开数据目录"/ "清空缓存"/ "重置默认"三个底部按钮拼路径，**不暴露到 UI**
 - **数值字段**：用 `<NumericUpDown Value="..." Minimum=".." Maximum=".." Increment="..">` 限制有效区间，避免错误输入炸 Hangfire/识别管线
 - **重启字段提示**：分组顶部用 `<ui:InfoBar Severity="Warning">` 标注（任务 → MaxConcurrent；日志 → LogLevel）
-
-**媒体源分组 — 监视文件夹列表编辑**：
-
-- "+ 添加文件夹"调 `topLevel.StorageProvider.OpenFolderPickerAsync` 拿原生文件夹选择器；返回的 `IStorageFolder` 通过 `TryGetLocalPath()` 拿到本机路径
-- 重复路径不重复加（`WatchFolders.Contains(path)` 守卫）
-- 每行右侧 ✕ 按钮调 `RemoveWatchFolder(path)`，从 `ObservableCollection` 删除并立即 `DebouncedSave`
-- list 操作不会触发 `WatchFolders` 整体 setter——所以**不能**用 `partial void OnWatchFoldersChanged` 拦截，必须显式调 `PersistWatchFolders()` 把 `ObservableCollection<string>` → `_config.Source.WatchFolders` 同步
 
 **AI 分组 — 嵌套 OpenAI 字段 + 总开关 IsEnabled 联动**：
 
@@ -952,6 +950,70 @@ Views/Windows/MediaDetailWindow                Views/Pages/MediaDetailPage
 
 **多窗口管理**：`Services/WindowManager.cs` 维护 `Dictionary<string, Window>`，key 为 `media:{id}`。同一 media 重复点击 → `Activate()` 现有窗口，不重复开。主窗 `Closing` 触发 `WindowManager.CloseAll()`。
 
+### 全局搜索 Flyout（MainWindow PaneFooter，Phase 2.7）
+
+**与 Web 对齐**：侧栏 SearchBox 聚焦 → 弹出实时预览 popup，4 类型分组展示（媒体 / 标签 / 创作者 / 社团），不必跳页就能浏览匹配结果。直接搬 Web `GlobalSearchBox` 的体验到桌面端。
+
+**结构**：
+
+```
+侧栏 PaneFooter        弹出 Popup（PlacementMode=RightEdgeAlignedTop）
+┌──────────────┐       ┌─ 智能搜索 ───────────────────────┐
+│ 全局搜索      │       │ 媒体 · 标签 · 创作者 · 社团  [AI▢]│
+│ ┌──────────┐ │  →    │ ───────────────                   │
+│ │ 搜索...  │ │       │ 📺 媒体 (5)                       │
+│ └──────────┘ │       │ ┌─ icon  标题   [精确 92%]      │
+│              │       │ │  社团 · 视频                    │
+│              │       │ └─ ...                            │
+│              │       │ 🏷 标签 (3)                       │
+│              │       │ 👤 创作者 (2)                     │
+│              │       │ 🏢 社团 (1)                       │
+│              │       │ ───────────────                   │
+│              │       │ 共 11 条 · 42ms · 查看全部 →       │
+│              │       └───────────────────────────────────┘
+```
+
+**实现要点**：
+
+- **`ViewModels/GlobalSearchFlyoutViewModel.cs`** —— Transient DI；持 `Query` / `IsOpen` / `IsLoading` / `EnableVectorSearch` / `ErrorMessage` / `ElapsedMs` + 4 个 `ObservableCollection<FlyoutSearchItem>` + 各分组 Count
+- **300ms 防抖 + CTS 取消追尾**：`OnQueryChanged` 重置 `DispatcherTimer`；Tick → `RunSearchAsync` 调 `GlobalSearchService.SearchAsync(EntityTypes=All)`；每次 search 取消上次 `CancellationTokenSource`
+- **每分组 max 5 条**：`MaxPerSection = 5`，匹配 Web 默认；超出走 footer "查看全部"按钮跳 `SearchResultPage`
+- **键盘导航**：内部维护 `_flatItems: List<FlyoutSearchItem>` 跨分组扁平化；`MoveSelection(±1)` 在 `IsHighlighted` 上跑（带循环边界）；`ActivateHighlightedAsync` Enter 时跳；MainWindow `OnSearchBoxKeyDown` 路由 ↓/↑/Enter/Esc/Ctrl+Enter
+- **AI 语义开关**：Toggle 持久化到 `DesktopPreferences.EnableVectorSearch`；与 `SearchResultViewModel.EnableVectorSearch` 共享一个字段（保持 Flyout / 完整页一致体验）
+- **激活路径**：Media → `MediaDetailViewModel.RequestOpenDetail(Id)`；Tag/Creator/Circle → 跳对应列表页（暂不带 Id 自动选中，P2 可扩展接收 `InitialFocusId`）
+- **Popup 配置**：Avalonia `Popup` 控件 + `PlacementTarget="{Binding #GlobalSearchBox}"` + `Placement="RightEdgeAlignedTop"` + `HorizontalOffset="8"` + `IsLightDismissEnabled="True"` 点击外部自动关
+- **`MainWindowViewModel.SearchFlyoutVm`** 持 Flyout VM；SearchBox.Text 直接绑 `SearchFlyoutVm.Query`（不再走主 VM 的 `SearchText` 字段）；`MainWindowViewModel.ExecuteSearchAsync` 委托给 `SearchFlyoutVm.ViewAllAsync()` 作为兜底入口
+
+**状态机**：
+- 空字符串 + IsOpen=true → 显示"🔍 开始探索"占位
+- 输入未到 300ms → 保留上次结果 + 顶部进度条（暂不做，先简单显加载态）
+- 搜索中 → FAProgressRing + "智能搜索中..."
+- 有结果 → 4 分组依序渲染；默认高亮第一项；hover 与键盘共享 `IsHighlighted`（hover 用 `:pointerover` Style 单独高亮，键盘用 class `.highlighted`）
+- 空结果 → "未找到「{query}」相关内容 · 试试更简短的关键词"
+- 错误 → accent error 边框 + "搜索失败，请稍后重试。"
+
+**与完整页关系**：`SearchResultPage`（`SearchResultViewModel`）继续作为"查看全部"承接 + 深入筛选页，但默认入口体验由 Flyout 接管。Flyout 与完整页共享 `EnableVectorSearch` 状态（都从 `DesktopPreferences` 读写）。
+
+**4 类型详情跳转**（Flyout + 完整页一致）：
+
+- **媒体** → `MediaDetailViewModel.RequestOpenDetail(id)` —— 内嵌页模式
+- **标签** → `TagsViewModel.RequestOpenDetail(id)` —— 内部走 `OpenDetailByIdAsync` 自动加载 TopTag + 选中
+- **创作者** → `CreatorsViewModel.RequestOpenDetail(id)` —— PendingIntent 模式（OnEnter 消费）
+- **社团** → `CirclesViewModel.RequestOpenDetail(id)` —— 同上
+
+`SearchResultViewModel` 暴露 `OpenTagCommand` / `OpenCreatorCommand` / `OpenCircleCommand` 接受 int id，axaml 卡片绑 `$parent[ItemsControl].((vm:SearchResultViewModel)DataContext).OpenXxxCommand`。`Program.Services` root provider 解析 `NavigationService`（与 `MediaCardViewModel.OpenDetailAsync` 同模式）。
+
+**视觉同步 TagsPage 子标签 chip**：
+
+- `SearchResultPage` 标签 Tab + Flyout 标签 chip 都使用 `TagItemViewModel.TopTagAccentBrush / TopTagFillBrush`（`TopTag.Id % 5` 映射 5 类别色系），与 `TagsPage` 子标签卡完全一致
+- 孤儿标签（无 TopTag）fallback 中性 `SubtleFillColorTertiaryBrush` + `ControlStrokeColorDefaultBrush`
+- Flyout 通过 `FlyoutSearchItem.AccentBrush / FillBrush` 字段（`BuildTagEntry` 时一次性 `Application.Current.TryGetResource` lookup）携带色信息
+- **媒体 / 创作者 / 社团 Tab 全部走 Button hover translateY(-2px) + accent border** 抬起效果，与 TagsPage / MediaOverviewPage 视觉语系统一
+
+**MatchType / Relevance 视觉降权**：
+- **完全移除** Flyout + SearchResultPage 的 MatchType chip + Relevance 百分比 chip——10 次搜索 9 次用户不读"怎么匹配的"，密度浪费在低价值信息上
+- 后续真有"低相关度警示"需求再加（< 70% 显黄色警示 chip）
+
 ## 交互模式
 
 ### 平滑过渡（Transitions）
@@ -1300,7 +1362,7 @@ return new WindowIcon(ms);
 | **SourcesPage** | `Config.Source.WatchFolders` + `MonitorService.IsMonitoring` | 编辑"应该监控什么" |
 | **BackgroundTasksPage** | `TaskProgressService.GetAllRootTasks()` | 看实时识别 / 监控任务进度 |
 
-修改 SourcesPage 的添加 / 删除逻辑时**必须**两边对齐——Settings"媒体源"分组的列表编辑器走同一份 `_config.Source.WatchFolders`，行为保持一致。
+SourcesPage 是监视文件夹**唯一**编辑入口——Settings 不再有"媒体源"分组（已删，避免数据双源）。
 
 ### 拖拽接收（DragDropDispatcher + Overlay）
 

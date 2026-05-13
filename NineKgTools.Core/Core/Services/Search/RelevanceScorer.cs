@@ -53,6 +53,46 @@ public static class RelevanceScorer
     }
     
     /// <summary>
+    /// 只支持 Exact / StartsWith / Contains 三档的相关度评分——不做编辑距离 Fuzzy 模糊匹配。
+    /// 用于标签 / 创作者等"必须真正出现关键词才能命中"的场景，避免 Fuzzy 产生
+    /// 用户难理解的"为什么这个也搜出来了"结果。query 不出现在 text 中则返回 0。
+    /// </summary>
+    public static double CalculateContainsRelevance(string query, string text, string fieldName)
+    {
+        if (string.IsNullOrWhiteSpace(query) || string.IsNullOrWhiteSpace(text))
+            return 0.0;
+
+        var queryLower = query.ToLowerInvariant();
+        var textLower = text.ToLowerInvariant();
+
+        // 精确匹配
+        if (textLower.Equals(queryLower))
+            return 1.0 * GetFieldWeight(fieldName);
+
+        double score;
+        // 开头匹配
+        if (textLower.StartsWith(queryLower))
+        {
+            score = 0.8 + (0.1 * (query.Length / (double)text.Length));
+        }
+        // 包含匹配
+        else if (textLower.Contains(queryLower))
+        {
+            var position = textLower.IndexOf(queryLower);
+            var positionWeight = 1.0 - (position / (double)text.Length * 0.2);
+            score = 0.5 + (0.2 * (query.Length / (double)text.Length)) * positionWeight;
+        }
+        else
+        {
+            // 不出现 → 不命中（不走 Fuzzy）
+            return 0.0;
+        }
+
+        score *= GetFieldWeight(fieldName);
+        return Math.Min(score, 1.0);
+    }
+
+    /// <summary>
     /// 获取字段权重
     /// </summary>
     private static double GetFieldWeight(string fieldName)

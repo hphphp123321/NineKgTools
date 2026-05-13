@@ -13,7 +13,7 @@ using Serilog.Events;
 
 namespace NineKgTools.Desktop.ViewModels.Pages;
 
-public enum SettingsGroup { Appearance, Tasks, Identification, Sources, Files, AI, TagMatching, Search, Log, Database }
+public enum SettingsGroup { Appearance, Tasks, Identification, Files, AI, TagMatching, Search, Log }
 
 public enum ThemeChoice { System, Light, Dark }
 
@@ -32,25 +32,21 @@ public partial class SettingsViewModel : PageViewModelBase
     [NotifyPropertyChangedFor(nameof(IsGroupAppearance))]
     [NotifyPropertyChangedFor(nameof(IsGroupTasks))]
     [NotifyPropertyChangedFor(nameof(IsGroupIdentification))]
-    [NotifyPropertyChangedFor(nameof(IsGroupSources))]
     [NotifyPropertyChangedFor(nameof(IsGroupFiles))]
     [NotifyPropertyChangedFor(nameof(IsGroupAI))]
     [NotifyPropertyChangedFor(nameof(IsGroupTagMatching))]
     [NotifyPropertyChangedFor(nameof(IsGroupSearch))]
     [NotifyPropertyChangedFor(nameof(IsGroupLog))]
-    [NotifyPropertyChangedFor(nameof(IsGroupDatabase))]
     private SettingsGroup _selectedGroup = SettingsGroup.Appearance;
 
     public bool IsGroupAppearance => SelectedGroup == SettingsGroup.Appearance;
     public bool IsGroupTasks => SelectedGroup == SettingsGroup.Tasks;
     public bool IsGroupIdentification => SelectedGroup == SettingsGroup.Identification;
-    public bool IsGroupSources => SelectedGroup == SettingsGroup.Sources;
     public bool IsGroupFiles => SelectedGroup == SettingsGroup.Files;
     public bool IsGroupAI => SelectedGroup == SettingsGroup.AI;
     public bool IsGroupTagMatching => SelectedGroup == SettingsGroup.TagMatching;
     public bool IsGroupSearch => SelectedGroup == SettingsGroup.Search;
     public bool IsGroupLog => SelectedGroup == SettingsGroup.Log;
-    public bool IsGroupDatabase => SelectedGroup == SettingsGroup.Database;
 
     // ========== 外观 ==========
     [ObservableProperty]
@@ -96,9 +92,6 @@ public partial class SettingsViewModel : PageViewModelBase
     [ObservableProperty] private bool _skipCache;
     [ObservableProperty] private double _minSimilarity;
 
-    // ========== 媒体源（监视文件夹） ==========
-    [ObservableProperty] private ObservableCollection<string> _watchFolders = new();
-
     // ========== 文件 ==========
     [ObservableProperty] private long _filesMinimumSize;
     [ObservableProperty] private bool _filesSkipHidden;
@@ -135,10 +128,8 @@ public partial class SettingsViewModel : PageViewModelBase
         "Verbose", "Debug", "Information", "Warning", "Error", "Fatal"
     };
 
-    // ========== 数据库（只读） ==========
-    [ObservableProperty] private string _databasePath = "";
-    [ObservableProperty] private string _hangfirePath = "";
-    [ObservableProperty] private string _dataDirectory = "";
+    /// <summary>数据根目录——不暴露到 UI，仅 OpenDataDirectory / ClearCache / ResetDefaults 内部用。</summary>
+    private string _dataDirectory = "";
 
     [ObservableProperty] private string? _saveStatusText;
 
@@ -169,9 +160,6 @@ public partial class SettingsViewModel : PageViewModelBase
             PendingRetentionDays = _config.Identification?.PendingRetentionDays ?? 30;
             SkipCache = _config.Identification?.SkipCache ?? false;
             MinSimilarity = _config.Identification?.MinSimilarity ?? 0;
-
-            // 媒体源
-            WatchFolders = new ObservableCollection<string>(_config.Source?.WatchFolders ?? new List<string>());
 
             // 文件
             FilesMinimumSize = _config.Files?.MinimumFileSize ?? 1024;
@@ -204,10 +192,8 @@ public partial class SettingsViewModel : PageViewModelBase
             // 日志
             LogLevelChoice = (_config.Log?.LogLevel ?? LogEventLevel.Information).ToString();
 
-            // 数据库
-            DatabasePath = _config.Database?.Path ?? "";
-            HangfirePath = _config.Database?.HangfirePath ?? "";
-            DataDirectory = Environment.CurrentDirectory;
+            // 数据根目录（内部用，不暴露 UI）
+            _dataDirectory = Environment.CurrentDirectory;
 
             // 主题：从 DesktopPreferences 持久化字段读，回退到当前 Application 主题
             if (Enum.TryParse<ThemeChoice>(_preferences.Theme, ignoreCase: true, out var saved))
@@ -591,56 +577,6 @@ public partial class SettingsViewModel : PageViewModelBase
         }
     }
 
-    // ============================================================
-    //  媒体源（监视文件夹）—— 列表编辑
-    // ============================================================
-
-    [RelayCommand]
-    private async Task AddWatchFolderAsync()
-    {
-        try
-        {
-            var topLevel = GetTopLevel();
-            if (topLevel?.StorageProvider is null) return;
-
-            var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-            {
-                Title = "选择要监视的文件夹",
-                AllowMultiple = false,
-            });
-            if (folders.Count == 0) return;
-            var path = folders[0].TryGetLocalPath();
-            if (string.IsNullOrEmpty(path)) return;
-
-            // 防止重复添加
-            if (WatchFolders.Contains(path)) return;
-
-            WatchFolders.Add(path);
-            PersistWatchFolders();
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "添加监视文件夹失败");
-            SaveStatusText = "添加监视文件夹失败";
-        }
-    }
-
-    [RelayCommand]
-    private void RemoveWatchFolder(string? path)
-    {
-        if (string.IsNullOrEmpty(path)) return;
-        if (!WatchFolders.Contains(path)) return;
-        WatchFolders.Remove(path);
-        PersistWatchFolders();
-    }
-
-    private void PersistWatchFolders()
-    {
-        if (_config.Source is null) return;
-        _config.Source.WatchFolders = WatchFolders.ToList();
-        DebouncedSave();
-    }
-
     private static Avalonia.Controls.TopLevel? GetTopLevel()
     {
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime
@@ -689,7 +625,7 @@ public partial class SettingsViewModel : PageViewModelBase
     {
         try
         {
-            System.Diagnostics.Process.Start("explorer.exe", DataDirectory);
+            System.Diagnostics.Process.Start("explorer.exe", _dataDirectory);
         }
         catch (Exception ex)
         {
@@ -710,7 +646,7 @@ public partial class SettingsViewModel : PageViewModelBase
         try
         {
             _imageCache.Clear();
-            var cacheDir = Path.Combine(DataDirectory, ".cache");
+            var cacheDir = Path.Combine(_dataDirectory, ".cache");
             if (Directory.Exists(cacheDir))
             {
                 Directory.Delete(cacheDir, recursive: true);
@@ -738,7 +674,7 @@ public partial class SettingsViewModel : PageViewModelBase
 
         try
         {
-            var configDir = Path.Combine(DataDirectory, "Config");
+            var configDir = Path.Combine(_dataDirectory, "Config");
             var configPath = Path.Combine(configDir, "config.yaml");
             var examplePath = Path.Combine(configDir, "config.example.yaml");
 

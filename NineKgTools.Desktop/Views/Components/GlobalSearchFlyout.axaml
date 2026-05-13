@@ -1,0 +1,340 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels"
+             xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:cat="using:NineKgTools.Core.Models.Categories"
+             x:Class="NineKgTools.Desktop.Views.Components.GlobalSearchFlyout"
+             x:DataType="vm:GlobalSearchFlyoutViewModel"
+             Width="440">
+
+    <UserControl.Styles>
+        <!-- 单条搜索结果：默认 transparent，hover/键盘高亮变 accent 浅底 -->
+        <Style Selector="Border.search-item">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.1" />
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.1" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.search-item:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+        </Style>
+        <Style Selector="Border.search-item.highlighted">
+            <Setter Property="Background" Value="{DynamicResource AccentFillColorTertiaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+        </Style>
+
+        <!-- 分组 header -->
+        <Style Selector="TextBlock.section-label">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Opacity" Value="0.55" />
+            <Setter Property="Margin" Value="2,0,0,4" />
+        </Style>
+
+        <!-- 计数 chip / match chip -->
+        <Style Selector="Border.count-chip">
+            <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="6,1" />
+        </Style>
+        <Style Selector="Border.match-chip">
+            <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="6,1" />
+        </Style>
+    </UserControl.Styles>
+
+    <Border Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="14"
+            BoxShadow="0 8 24 0 #33000000">
+        <Grid RowDefinitions="Auto,Auto,*,Auto" MaxHeight="560">
+
+            <!-- ============ Header: 标题 + AI 开关 ============ -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="智能搜索" FontSize="13" FontWeight="SemiBold" />
+                    <TextBlock Text="媒体 · 标签 · 创作者 · 社团"
+                               FontSize="11" Opacity="0.55" />
+                </StackPanel>
+                <ToggleSwitch Grid.Column="1"
+                              IsChecked="{Binding EnableVectorSearch, Mode=TwoWay}"
+                              OnContent="AI 语义"
+                              OffContent="关键词"
+                              VerticalAlignment="Center"
+                              ToolTip.Tip="开启后走向量搜索（需在设置启用 AI + Embedding）" />
+            </Grid>
+
+            <Border Grid.Row="1" Height="1"
+                    Background="{DynamicResource ControlStrokeColorDefaultBrush}"
+                    Margin="0,0,0,10" />
+
+            <!-- ============ 中央内容区 ============ -->
+            <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <StackPanel Spacing="12">
+
+                    <!-- Loading -->
+                    <StackPanel IsVisible="{Binding IsLoading}"
+                                Orientation="Horizontal" Spacing="10"
+                                HorizontalAlignment="Center"
+                                Margin="0,32">
+                        <ui:FAProgressRing IsIndeterminate="True" Width="20" Height="20" />
+                        <TextBlock Text="🔍 智能搜索中..."
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Error -->
+                    <Border IsVisible="{Binding HasError}"
+                            Padding="12,10"
+                            CornerRadius="6"
+                            Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="⚠" FontSize="14" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding ErrorMessage}"
+                                       FontSize="12" VerticalAlignment="Center"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Empty state（无 query 占位 / 无结果） -->
+                    <Border IsVisible="{Binding ShowEmptyState}"
+                            Padding="20,32"
+                            CornerRadius="6"
+                            Background="{DynamicResource SubtleFillColorSecondaryBrush}">
+                        <TextBlock Text="{Binding EmptyText}"
+                                   FontSize="12" Opacity="0.7"
+                                   HorizontalAlignment="Center"
+                                   TextAlignment="Center"
+                                   TextWrapping="Wrap" />
+                    </Border>
+
+                    <!-- ====== 媒体 ====== -->
+                    <StackPanel IsVisible="{Binding HasMedia}" Spacing="4">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Classes="section-label" Text="📺 媒体" />
+                            <Border Grid.Column="1" Classes="count-chip">
+                                <TextBlock Text="{Binding MediaCount}" FontSize="10" />
+                            </Border>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding MediaItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="2" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:FlyoutSearchItem">
+                                    <Border Classes="search-item"
+                                            Classes.highlighted="{Binding IsHighlighted}"
+                                            Tag="{Binding}"
+                                            PointerPressed="OnItemClicked">
+                                        <Grid ColumnDefinitions="Auto,10,*,8,Auto" VerticalAlignment="Center">
+                                            <PathIcon Grid.Column="0"
+                                                      Data="{StaticResource IconCategoryVideo}"
+                                                      Width="16" Height="16"
+                                                      Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                      VerticalAlignment="Center" />
+                                            <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Title}"
+                                                           FontSize="13" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip.Tip="{Binding Title}" />
+                                                <TextBlock Text="{Binding Subtitle}"
+                                                           FontSize="11" Opacity="0.6"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            </StackPanel>
+                                            <!-- MatchType / Relevance 完全移除——用户关心"是什么" > "怎么匹配的" -->
+
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- ====== 标签（用 TopTag 色系，与 TagsPage 子标签 chip 一致） ====== -->
+                    <StackPanel IsVisible="{Binding HasTag}" Spacing="4">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Classes="section-label" Text="🏷 标签" />
+                            <Border Grid.Column="1" Classes="count-chip">
+                                <TextBlock Text="{Binding TagCount}" FontSize="10" />
+                            </Border>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding TagItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="2" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:FlyoutSearchItem">
+                                    <Border Classes="search-item"
+                                            Classes.highlighted="{Binding IsHighlighted}"
+                                            Tag="{Binding}"
+                                            PointerPressed="OnItemClicked">
+                                        <Grid ColumnDefinitions="Auto,10,*,8,Auto" VerticalAlignment="Center">
+                                            <Border Grid.Column="0"
+                                                    Width="20" Height="20"
+                                                    CornerRadius="10"
+                                                    Background="{Binding FillBrush, FallbackValue={DynamicResource SubtleFillColorTertiaryBrush}, TargetNullValue={DynamicResource SubtleFillColorTertiaryBrush}}"
+                                                    BorderBrush="{Binding AccentBrush, FallbackValue={DynamicResource ControlStrokeColorDefaultBrush}, TargetNullValue={DynamicResource ControlStrokeColorDefaultBrush}}"
+                                                    BorderThickness="1"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="#" FontSize="11" FontWeight="Bold"
+                                                           Foreground="{Binding AccentBrush, FallbackValue={DynamicResource TextFillColorPrimaryBrush}, TargetNullValue={DynamicResource TextFillColorPrimaryBrush}}"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Title}"
+                                                           FontSize="13" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Subtitle}"
+                                                           FontSize="11" Opacity="0.6"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- ====== 创作者 ====== -->
+                    <StackPanel IsVisible="{Binding HasCreator}" Spacing="4">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Classes="section-label" Text="👤 创作者" />
+                            <Border Grid.Column="1" Classes="count-chip">
+                                <TextBlock Text="{Binding CreatorCount}" FontSize="10" />
+                            </Border>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding CreatorItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="2" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:FlyoutSearchItem">
+                                    <Border Classes="search-item"
+                                            Classes.highlighted="{Binding IsHighlighted}"
+                                            Tag="{Binding}"
+                                            PointerPressed="OnItemClicked">
+                                        <Grid ColumnDefinitions="Auto,10,*,8,Auto" VerticalAlignment="Center">
+                                            <Border Grid.Column="0"
+                                                    Width="20" Height="20"
+                                                    CornerRadius="10"
+                                                    Background="{DynamicResource BrandCategoryVideoFillBrush}"
+                                                    VerticalAlignment="Center">
+                                                <PathIcon Data="{StaticResource IconCreators}"
+                                                          Width="11" Height="11"
+                                                          Foreground="{DynamicResource BrandCategoryVideoBrush}"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Title}"
+                                                           FontSize="13" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Subtitle}"
+                                                           FontSize="11" Opacity="0.6"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            </StackPanel>
+                                            <!-- MatchType / Relevance 完全移除——用户关心"是什么" > "怎么匹配的" -->
+
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- ====== 社团 ====== -->
+                    <StackPanel IsVisible="{Binding HasCircle}" Spacing="4">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Classes="section-label" Text="🏢 社团" />
+                            <Border Grid.Column="1" Classes="count-chip">
+                                <TextBlock Text="{Binding CircleCount}" FontSize="10" />
+                            </Border>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding CircleItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="2" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:FlyoutSearchItem">
+                                    <Border Classes="search-item"
+                                            Classes.highlighted="{Binding IsHighlighted}"
+                                            Tag="{Binding}"
+                                            PointerPressed="OnItemClicked">
+                                        <Grid ColumnDefinitions="Auto,10,*,8,Auto" VerticalAlignment="Center">
+                                            <Border Grid.Column="0"
+                                                    Width="20" Height="20"
+                                                    CornerRadius="10"
+                                                    Background="{DynamicResource BrandCategoryAudioFillBrush}"
+                                                    VerticalAlignment="Center">
+                                                <PathIcon Data="{StaticResource IconBusiness}"
+                                                          Width="11" Height="11"
+                                                          Foreground="{DynamicResource BrandCategoryAudioBrush}"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Title}"
+                                                           FontSize="13" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Subtitle}"
+                                                           FontSize="11" Opacity="0.6"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            </StackPanel>
+                                            <!-- MatchType / Relevance 完全移除——用户关心"是什么" > "怎么匹配的" -->
+
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ============ Footer: summary + 查看全部 ============ -->
+            <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Margin="0,10,0,0"
+                  IsVisible="{Binding HasAnyResults}">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding SummaryText}"
+                           FontSize="11" Opacity="0.6"
+                           VerticalAlignment="Center" />
+                <Button Grid.Column="1"
+                        Command="{Binding ViewAllCommand}"
+                        Padding="10,4"
+                        Background="Transparent"
+                        BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                        BorderThickness="1"
+                        Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                        CornerRadius="6">
+                    <TextBlock Text="查看全部 →" FontSize="11" />
+                </Button>
+            </Grid>
+
+        </Grid>
+    </Border>
+</UserControl>
