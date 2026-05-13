@@ -1,18 +1,25 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using Avalonia;
+using Avalonia.Media;
+using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NineKgTools.Core.Models.Categories;
 using NineKgTools.Core.Services.Configs;
+using NineKgTools.Core.Services.Websites;
 using Serilog;
 
 namespace NineKgTools.Desktop.ViewModels.Pages;
 
 /// <summary>
-/// 识别网站配置页。Phase 2.2 MVP：三张网站状态卡 + 启用开关 + 凭证字段。
-/// 拖拽优先级（5 分类×N 网站）留给下一轮——AXAML DragDrop 实现量大，先把"配置 ApiKey"高频路径走通。
+/// 识别网站配置页。Phase 2.2：三张站点配置卡 + 识别优先级 6 行卡（与 Web 对齐：
+/// 全部分类一屏展示 / chip 可单独删除 / + 添加 走 Flyout，按"已添加""不兼容"过滤）。
 /// </summary>
 public partial class WebsitesViewModel : PageViewModelBase
 {
     private readonly Config _config;
+    private readonly WebsiteService _websiteService;
     private bool _suppressSave;
     private CancellationTokenSource? _saveDebounceCts;
 
@@ -75,30 +82,17 @@ public partial class WebsitesViewModel : PageViewModelBase
     [ObservableProperty]
     private string? _saveStatusText;
 
-    // ========== 网站优先级（§6.1，上下箭头版——拖拽留 SortableList 落地后再做） ==========
+    // ========== 网站优先级（6 行全开版，与 Web 对齐） ==========
 
-    public ObservableCollection<PriorityCategoryChoice> PriorityCategories { get; } = new()
-    {
-        new("Video", "视频"),
-        new("Audio", "音频"),
-        new("Game", "游戏"),
-        new("Picture", "图片"),
-        new("Text", "文本"),
-    };
+    /// <summary>6 行分类（视频/音频/游戏/图片/文字/未知）。每行独立持 Chips 集合，CollectionChanged 自动回写 Config + 防抖保存。</summary>
+    public IReadOnlyList<PriorityRowViewModel> PriorityRows { get; }
 
-    [ObservableProperty]
-    private PriorityCategoryChoice _selectedPriorityCategory;
-
-    /// <summary>当前所选分类下的网站顺序——双向：移动时改这个 + 落到 Config + 防抖保存</summary>
-    [ObservableProperty]
-    private ObservableCollection<string> _priorityItems = new();
-
-    public WebsitesViewModel(Config config)
+    public WebsitesViewModel(Config config, WebsiteService websiteService)
     {
         _config = config;
-        _selectedPriorityCategory = PriorityCategories[0];
+        _websiteService = websiteService;
         LoadFromConfig();
-        RebuildPriorityItems();
+        PriorityRows = BuildPriorityRows();
     }
 
     private void LoadFromConfig()
@@ -121,7 +115,6 @@ public partial class WebsitesViewModel : PageViewModelBase
             {
                 SteamEnable = w.Steam.Enable;
                 SteamLanguage = string.IsNullOrWhiteSpace(w.Steam.Language) ? "schinese" : w.Steam.Language;
-                // 强制兜底——cn 不允许
                 SteamCountryCode = string.Equals(w.Steam.CountryCode, "cn", StringComparison.OrdinalIgnoreCase)
                     ? "us"
                     : (string.IsNullOrWhiteSpace(w.Steam.CountryCode) ? "us" : w.Steam.CountryCode);
@@ -132,6 +125,33 @@ public partial class WebsitesViewModel : PageViewModelBase
             _suppressSave = false;
         }
     }
+
+    private IReadOnlyList<PriorityRowViewModel> BuildPriorityRows()
+    {
+        var priority = _config.Website?.Priority;
+        var map = _websiteService.WebsiteNameMap;
+
+        // 顺序按 Web 端 CategoryZones 一致：视频/音频/图片/文字/游戏/未知
+        return new[]
+        {
+            CreateRow("Video", "视频", "IconCategoryVideo", "BrandCategoryVideoBrush", "BrandCategoryVideoFillBrush", TopCategory.Video, priority?.Video, map),
+            CreateRow("Audio", "音频", "IconCategoryAudio", "BrandCategoryAudioBrush", "BrandCategoryAudioFillBrush", TopCategory.Audio, priority?.Audio, map),
+            CreateRow("Picture", "图片", "IconCategoryPicture", "BrandCategoryPictureBrush", "BrandCategoryPictureFillBrush", TopCategory.Picture, priority?.Picture, map),
+            CreateRow("Text", "文字", "IconCategoryText", "BrandCategoryTextBrush", "BrandCategoryTextFillBrush", TopCategory.Text, priority?.Text, map),
+            CreateRow("Game", "游戏", "IconCategoryGame", "BrandCategoryGameBrush", "BrandCategoryGameFillBrush", TopCategory.Game, priority?.Game, map),
+            CreateRow("Unknown", "未知", "IconCategoryUnknown", "BrandCategoryAllBrush", "BrandCategoryAllFillBrush", TopCategory.Unknown, priority?.Unknown, map),
+        };
+    }
+
+    private PriorityRowViewModel CreateRow(
+        string key, string displayName, string iconKey, string accentKey, string fillKey,
+        TopCategory category, List<string>? configList, IDictionary<string, IWebsite> map)
+    {
+        configList ??= new List<string>();
+        return new PriorityRowViewModel(key, displayName, iconKey, accentKey, fillKey, category, configList, map, OnPriorityDirty);
+    }
+
+    private void OnPriorityDirty() => DebouncedSave();
 
     partial void OnDLsiteEnableChanged(bool value)
     {
@@ -178,7 +198,6 @@ public partial class WebsitesViewModel : PageViewModelBase
     partial void OnSteamCountryCodeChanged(string value)
     {
         if (_suppressSave || _config.Website?.Steam is null) return;
-        // 防御：UI 上 cn 项已 disabled，但万一被绑定上来强制兜底
         if (string.Equals(value, "cn", StringComparison.OrdinalIgnoreCase))
         {
             Log.Warning("Steam CountryCode 不允许 cn，已重置为 us");
@@ -234,73 +253,221 @@ public partial class WebsitesViewModel : PageViewModelBase
             Log.Error(ex, "打开 Bangumi 申请页失败");
         }
     }
+}
 
-    // ========== 优先级编辑命令 ==========
+/// <summary>
+/// 优先级单行 VM——承载某个分类的 chip 列表 + "+ 添加"可选项。Chips.CollectionChanged 触发回写 Config。
+/// 不持 brush 引用：chip 颜色由 Row 持 AccentBrush/FillBrush（一次性 lookup），chip VM 通过 Row 引用拿色，
+/// theme 切换需要重新进入页面才能换色（开发阶段可接受，与 frontend-design 同等权衡）。
+/// </summary>
+public partial class PriorityRowViewModel : ObservableObject
+{
+    private readonly List<string> _configList;
+    private readonly IDictionary<string, IWebsite> _websiteMap;
+    private readonly Action _onDirty;
+    private bool _suppressWriteback;
 
-    partial void OnSelectedPriorityCategoryChanged(PriorityCategoryChoice value)
+    public string Key { get; }
+    public string DisplayName { get; }
+    public TopCategory Category { get; }
+    public IBrush? AccentBrush { get; }
+    public IBrush? FillBrush { get; }
+    public Geometry? IconGeometry { get; }
+
+    /// <summary>当前行的 chip 列表，按顺序对应 PriorityConfig.{Video|Audio|...}</summary>
+    public ObservableCollection<PriorityChipViewModel> Chips { get; } = new();
+
+    /// <summary>Flyout 上段——本分类还能添加的站点。点击触发 AddSiteCommand。</summary>
+    public ObservableCollection<AddableSiteOption> AddableSites { get; } = new();
+
+    /// <summary>Flyout 下段——已添加 / 不兼容的站点。仅显示状态，不可点。</summary>
+    public ObservableCollection<AddableSiteOption> OtherSites { get; } = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EmptyHint))]
+    [NotifyPropertyChangedFor(nameof(HasChips))]
+    private bool _isEmpty = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EmptyFlyoutMessage))]
+    [NotifyPropertyChangedFor(nameof(EmptyFlyoutIsWarning))]
+    private bool _hasAddable;
+
+    [ObservableProperty]
+    private bool _hasOthers;
+
+    public bool HasChips => !IsEmpty;
+    public string EmptyHint => "（尚未配置识别源）";
+
+    /// <summary>Flyout header 文案，按分类名拼。</summary>
+    public string FlyoutHeader => $"添加识别源到「{DisplayName}」";
+
+    /// <summary>无可添加时的 empty state 文案。如果其他全是"已添加"→ 全部已加；否则 → 无可用</summary>
+    public string EmptyFlyoutMessage
     {
-        RebuildPriorityItems();
+        get
+        {
+            if (HasAddable) return "";
+            var allAdded = OtherSites.All(s => string.Equals(s.UnavailableReason, "已添加", StringComparison.Ordinal));
+            return allAdded
+                ? $"已添加全部支持「{DisplayName}」的识别源"
+                : $"暂无可用于「{DisplayName}」识别的站点";
+        }
     }
 
-    private void RebuildPriorityItems()
+    public bool EmptyFlyoutIsWarning => !HasAddable && OtherSites.Any(s => !string.Equals(s.UnavailableReason, "已添加", StringComparison.Ordinal));
+
+    public PriorityRowViewModel(
+        string key, string displayName, string iconKey, string accentKey, string fillKey,
+        TopCategory category, List<string> configList, IDictionary<string, IWebsite> websiteMap,
+        Action onDirty)
     {
-        var src = GetPriorityListForCategory(SelectedPriorityCategory.Key);
-        PriorityItems = new ObservableCollection<string>(src ?? new List<string>());
+        Key = key;
+        DisplayName = displayName;
+        Category = category;
+        _configList = configList;
+        _websiteMap = websiteMap;
+        _onDirty = onDirty;
+
+        AccentBrush = ResolveBrush(accentKey);
+        FillBrush = ResolveBrush(fillKey);
+        IconGeometry = ResolveGeometry(iconKey);
+
+        _suppressWriteback = true;
+        try
+        {
+            foreach (var siteName in configList)
+            {
+                Chips.Add(new PriorityChipViewModel(this, siteName));
+            }
+        }
+        finally { _suppressWriteback = false; }
+
+        IsEmpty = Chips.Count == 0;
+        RebuildAvailableSites();
+        Chips.CollectionChanged += OnChipsChanged;
     }
 
-    /// <summary>从 Config.Website.Priority 取对应分类的 List 引用——直接修改也会反映到 Config 上</summary>
-    private List<string>? GetPriorityListForCategory(string key) => key switch
+    private void OnChipsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        "Video" => _config.Website?.Priority?.Video,
-        "Audio" => _config.Website?.Priority?.Audio,
-        "Game" => _config.Website?.Priority?.Game,
-        "Picture" => _config.Website?.Priority?.Picture,
-        "Text" => _config.Website?.Priority?.Text,
-        _ => null,
+        IsEmpty = Chips.Count == 0;
+        RebuildAvailableSites();
+        if (_suppressWriteback) return;
+        WriteBackToConfig();
+        _onDirty();
+    }
+
+    private void WriteBackToConfig()
+    {
+        _configList.Clear();
+        foreach (var chip in Chips) _configList.Add(chip.SiteName);
+    }
+
+    private void RebuildAvailableSites()
+    {
+        AddableSites.Clear();
+        OtherSites.Clear();
+        foreach (var pair in _websiteMap)
+        {
+            var name = pair.Key;
+            var site = pair.Value;
+            var alreadyAdded = Chips.Any(c => string.Equals(c.SiteName, name, StringComparison.Ordinal));
+            var compatible = Category == TopCategory.Unknown || site.TopCategories.Contains(Category);
+            if (!alreadyAdded && compatible)
+            {
+                // 可添加项：副标用"支持：xxx"指明此站点擅长哪些分类
+                var supports = string.Join("/", site.TopCategories.Select(TopCategoryDisplayName));
+                var subtitle = string.IsNullOrEmpty(supports) ? "通用识别源" : $"支持：{supports}";
+                AddableSites.Add(new AddableSiteOption(name, true, subtitle));
+            }
+            else
+            {
+                string reason;
+                if (alreadyAdded) reason = "已添加";
+                else
+                {
+                    var supports = string.Join("/", site.TopCategories.Select(TopCategoryDisplayName));
+                    reason = string.IsNullOrEmpty(supports) ? "不支持此分类" : $"仅支持：{supports}";
+                }
+                OtherSites.Add(new AddableSiteOption(name, false, reason));
+            }
+        }
+        HasAddable = AddableSites.Count > 0;
+        HasOthers = OtherSites.Count > 0;
+        OnPropertyChanged(nameof(EmptyFlyoutMessage));
+        OnPropertyChanged(nameof(EmptyFlyoutIsWarning));
+    }
+
+    [RelayCommand]
+    private void AddSite(string? siteName)
+    {
+        if (string.IsNullOrEmpty(siteName)) return;
+        var opt = AddableSites.FirstOrDefault(s => string.Equals(s.Name, siteName, StringComparison.Ordinal));
+        if (opt is null || !opt.IsAddable) return;
+        Chips.Add(new PriorityChipViewModel(this, siteName));
+    }
+
+    public void RemoveChip(PriorityChipViewModel chip)
+    {
+        Chips.Remove(chip);
+    }
+
+    /// <summary>横向 reorder 拖拽用——同 row 内 from→to。从 axaml.cs 调。</summary>
+    public void MoveChip(int from, int to)
+    {
+        if (from == to) return;
+        if (from < 0 || from >= Chips.Count) return;
+        if (to < 0 || to >= Chips.Count) return;
+        Chips.Move(from, to);
+    }
+
+    private static string TopCategoryDisplayName(TopCategory cat) => cat switch
+    {
+        TopCategory.Video => "视频",
+        TopCategory.Audio => "音频",
+        TopCategory.Picture => "图片",
+        TopCategory.Text => "文字",
+        TopCategory.Game => "游戏",
+        TopCategory.Unknown => "未知",
+        _ => cat.ToString(),
     };
 
-    [RelayCommand]
-    private void MovePriorityUp(string? siteName)
+    private static IBrush? ResolveBrush(string key)
     {
-        if (string.IsNullOrEmpty(siteName)) return;
-        var idx = PriorityItems.IndexOf(siteName);
-        if (idx <= 0) return; // 已在顶
-        PriorityItems.Move(idx, idx - 1);
-        ApplyPriorityToConfig();
+        if (Application.Current is null) return null;
+        if (Application.Current.TryGetResource(key, Application.Current.ActualThemeVariant, out var v) && v is IBrush b)
+            return b;
+        return null;
     }
 
-    /// <summary>给拖拽 reorder 用——直接指定 from/to。完成后写回 Config + 防抖保存。</summary>
-    public void MovePriorityItem(int from, int to)
+    private static Geometry? ResolveGeometry(string key)
     {
-        if (from < 0 || from >= PriorityItems.Count) return;
-        if (to < 0 || to >= PriorityItems.Count) return;
-        if (from == to) return;
-        PriorityItems.Move(from, to);
-        ApplyPriorityToConfig();
-    }
-
-    [RelayCommand]
-    private void MovePriorityDown(string? siteName)
-    {
-        if (string.IsNullOrEmpty(siteName)) return;
-        var idx = PriorityItems.IndexOf(siteName);
-        if (idx < 0 || idx >= PriorityItems.Count - 1) return;
-        PriorityItems.Move(idx, idx + 1);
-        ApplyPriorityToConfig();
-    }
-
-    private void ApplyPriorityToConfig()
-    {
-        var list = GetPriorityListForCategory(SelectedPriorityCategory.Key);
-        if (list is null) return;
-        list.Clear();
-        list.AddRange(PriorityItems);
-        DebouncedSave();
+        if (Application.Current is null) return null;
+        if (Application.Current.TryGetResource(key, Application.Current.ActualThemeVariant, out var v) && v is Geometry g)
+            return g;
+        return null;
     }
 }
+
+/// <summary>chip：站点名 + 持父 Row 引用（用于 Remove）</summary>
+public partial class PriorityChipViewModel : ObservableObject
+{
+    public PriorityRowViewModel Row { get; }
+    public string SiteName { get; }
+
+    public PriorityChipViewModel(PriorityRowViewModel row, string siteName)
+    {
+        Row = row;
+        SiteName = siteName;
+    }
+
+    [RelayCommand]
+    private void Remove() => Row.RemoveChip(this);
+}
+
+/// <summary>"+ 添加" Flyout 项。IsAddable=false 时点击 no-op，UnavailableReason 用于次行灰字。</summary>
+public record AddableSiteOption(string Name, bool IsAddable, string? UnavailableReason);
 
 public record SteamLanguageOption(string Code, string Display);
 
 public record SteamCountryOption(string Code, string Display);
-
-public record PriorityCategoryChoice(string Key, string DisplayName);

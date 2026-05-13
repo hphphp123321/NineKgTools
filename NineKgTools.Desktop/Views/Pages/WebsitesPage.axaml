@@ -31,6 +31,75 @@
             <Setter Property="Opacity" Value="0.7" />
             <Setter Property="Margin" Value="0,0,0,4" />
         </Style>
+
+        <!-- 优先级行 hover 提亮 -->
+        <Style Selector="Border.priority-row">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.priority-row:pointerover">
+            <Setter Property="Background" Value="{DynamicResource LayerOnAcrylicFillColorDefaultBrush}" />
+        </Style>
+
+        <!-- chip Border 默认带 RenderTransformOrigin，避免拖拽 scale 时偏移 -->
+        <Style Selector="Border.priority-chip">
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+        </Style>
+
+        <!-- drop indicator：拖拽时显示的 accent 竖线，IsHitTestVisible=False 不挡光标 -->
+        <Style Selector="Border.drop-indicator">
+            <Setter Property="Width" Value="3" />
+            <Setter Property="CornerRadius" Value="1.5" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.1" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.13" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.drop-indicator.active">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <!-- chip hover 抬升 + 显示 ✕ -->
+        <Style Selector="Grid.priority-chip-host Button.chip-remove">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Grid.priority-chip-host:pointerover Button.chip-remove">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="IsHitTestVisible" Value="True" />
+        </Style>
+
+        <!-- Flyout 可添加项：默认浅 accent bg + accent border，hover 加深 -->
+        <Style Selector="Button.addable-site">
+            <Setter Property="Background" Value="{DynamicResource SubtleFillColorTransparentBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12" />
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.addable-site:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentFillColorTertiaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+        </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,*">
@@ -232,83 +301,267 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ==================== 优先级配置（§6.1，上下箭头版） ==================== -->
+                <!-- ==================== 识别优先级（6 行全开，与 Web 对齐） ==================== -->
                 <Border Classes="site-card">
                     <StackPanel Spacing="14">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
-                                <TextBlock Text="识别优先级" FontSize="14" FontWeight="SemiBold" />
-                                <TextBlock Text="按媒体类型分别设置识别源顺序。每行 ↑/↓ 调整位置，自动保存到 config.yaml"
-                                           FontSize="11" Opacity="0.65" />
-                            </StackPanel>
-                            <ComboBox Grid.Column="1"
-                                      ItemsSource="{Binding PriorityCategories}"
-                                      SelectedItem="{Binding SelectedPriorityCategory, Mode=TwoWay}"
-                                      MinWidth="120">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:PriorityCategoryChoice">
-                                        <TextBlock Text="{Binding DisplayName}" />
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                        </Grid>
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="识别优先级" FontSize="14" FontWeight="SemiBold" />
+                            <TextBlock Text="按媒体类型分别配置识别源顺序 · 靠前的优先使用 · 修改自动保存"
+                                       FontSize="11" Opacity="0.65" />
+                        </StackPanel>
 
                         <Border Background="{DynamicResource ControlStrokeColorDefaultBrush}" Height="1" />
 
-                        <!-- ListBox 启用 reorder 拖拽（DragDrop.AllowDrop="True"），同时保留 ↑↓ 按钮兜底 -->
-                        <ListBox ItemsSource="{Binding PriorityItems}"
-                                 Background="Transparent"
-                                 BorderThickness="0"
-                                 Padding="0"
-                                 DragDrop.AllowDrop="True">
-                            <ListBox.Styles>
-                                <Style Selector="ListBoxItem">
-                                    <Setter Property="Padding" Value="0" />
-                                    <Setter Property="Margin" Value="0,0,0,6" />
-                                </Style>
-                            </ListBox.Styles>
-                            <ListBox.ItemTemplate>
-                                <DataTemplate x:DataType="x:String">
-                                    <Border Padding="14,10"
-                                            CornerRadius="6"
-                                            Background="{DynamicResource LayerFillColorAltBrush}"
-                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                        <ItemsControl ItemsSource="{Binding PriorityRows}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="8" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:PriorityRowViewModel">
+                                    <Border Classes="priority-row"
+                                            Padding="14,12"
+                                            CornerRadius="8"
                                             BorderThickness="1"
-                                            Cursor="Hand"
-                                            PointerPressed="OnItemPointerPressed"
-                                            ToolTip.Tip="按住拖拽以重排">
-                                        <Grid ColumnDefinitions="Auto,12,*,Auto,4,Auto,4,Auto">
-                                            <!-- 拖拽手柄 -->
-                                            <TextBlock Grid.Column="0"
-                                                       Text="≡"
-                                                       FontSize="18"
-                                                       Opacity="0.45"
-                                                       VerticalAlignment="Center" />
-
-                                            <TextBlock Grid.Column="2"
-                                                       Text="{Binding}"
+                                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                            Background="{DynamicResource LayerFillColorAltBrush}">
+                                        <Grid ColumnDefinitions="Auto,10,Auto,8,Auto,16,*,8,Auto">
+                                            <!-- 左侧 accent 色条 + 图标 + 分类名 -->
+                                            <Border Grid.Column="0"
+                                                    Width="3"
+                                                    VerticalAlignment="Stretch"
+                                                    CornerRadius="2"
+                                                    Background="{Binding AccentBrush}" />
+                                            <PathIcon Grid.Column="2"
+                                                      Data="{Binding IconGeometry}"
+                                                      Width="18" Height="18"
+                                                      Foreground="{Binding AccentBrush}"
+                                                      VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="4"
+                                                       Text="{Binding DisplayName}"
                                                        FontSize="13" FontWeight="SemiBold"
-                                                       VerticalAlignment="Center" />
+                                                       VerticalAlignment="Center"
+                                                       MinWidth="32" />
+                                            <!-- chip 行 + drop indicator overlay -->
+                                            <Grid Grid.Column="6"
+                                                  Tag="ChipsContainer"
+                                                  VerticalAlignment="Center">
+                                                <ItemsControl Classes="chips-list"
+                                                              VerticalAlignment="Center"
+                                                              ItemsSource="{Binding Chips}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel Orientation="Horizontal" />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:PriorityChipViewModel">
+                                                            <!-- Margin top=8 给浮出的 ✕ 留出血空间，避免被 WrapPanel 行高裁切 -->
+                                                            <Grid Classes="priority-chip-host" Margin="0,8,6,2">
+                                                                <Border Classes="priority-chip"
+                                                                        Background="{Binding Row.FillBrush}"
+                                                                        BorderBrush="{Binding Row.AccentBrush}"
+                                                                        BorderThickness="1"
+                                                                        CornerRadius="14"
+                                                                        Padding="12,5,12,5"
+                                                                        Cursor="SizeAll"
+                                                                        PointerPressed="OnChipPointerPressed"
+                                                                        ToolTip.Tip="按住拖拽以重排">
+                                                                    <TextBlock Text="{Binding SiteName}"
+                                                                               FontSize="12"
+                                                                               FontWeight="SemiBold"
+                                                                               Foreground="{Binding Row.AccentBrush}"
+                                                                               VerticalAlignment="Center" />
+                                                                </Border>
+                                                                <!-- hover ✕ 移除按钮 -->
+                                                                <Button Classes="chip-remove"
+                                                                        Command="{Binding RemoveCommand}"
+                                                                        HorizontalAlignment="Right"
+                                                                        VerticalAlignment="Top"
+                                                                        Margin="0,-6,-6,0"
+                                                                        Width="18" Height="18"
+                                                                        Padding="0"
+                                                                        CornerRadius="9"
+                                                                        Background="{DynamicResource SystemFillColorCriticalBrush}"
+                                                                        Foreground="White"
+                                                                        BorderThickness="0"
+                                                                        ToolTip.Tip="从此分类移除">
+                                                                    <TextBlock Text="✕" FontSize="10" FontWeight="Bold"
+                                                                               HorizontalAlignment="Center"
+                                                                               VerticalAlignment="Center" />
+                                                                </Button>
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
 
-                                            <Button Grid.Column="3"
-                                                    Command="{Binding $parent[ListBox].((vm:WebsitesViewModel)DataContext).MovePriorityUpCommand}"
-                                                    CommandParameter="{Binding}"
-                                                    Padding="8,4"
-                                                    ToolTip.Tip="上移">
-                                                <TextBlock Text="↑" FontSize="13" />
-                                            </Button>
-                                            <Button Grid.Column="5"
-                                                    Command="{Binding $parent[ListBox].((vm:WebsitesViewModel)DataContext).MovePriorityDownCommand}"
-                                                    CommandParameter="{Binding}"
-                                                    Padding="8,4"
-                                                    ToolTip.Tip="下移">
-                                                <TextBlock Text="↓" FontSize="13" />
+                                                <!-- 拖拽 drop indicator——code-behind 控制 RenderTransform / Classes.active -->
+                                                <Border Classes="drop-indicator"
+                                                        Name="DropIndicator"
+                                                        Height="22"
+                                                        Background="{Binding AccentBrush}" />
+                                            </Grid>
+
+                                            <!-- 空状态文案 -->
+                                            <TextBlock Grid.Column="6"
+                                                       Text="{Binding EmptyHint}"
+                                                       FontSize="12"
+                                                       FontStyle="Italic"
+                                                       Opacity="0.5"
+                                                       VerticalAlignment="Center"
+                                                       IsVisible="{Binding IsEmpty}" />
+
+                                            <!-- + 添加 按钮（Flyout） -->
+                                            <Button Grid.Column="8"
+                                                    Padding="10,4"
+                                                    Background="Transparent"
+                                                    BorderBrush="{Binding AccentBrush}"
+                                                    BorderThickness="1"
+                                                    Foreground="{Binding AccentBrush}"
+                                                    CornerRadius="14"
+                                                    VerticalAlignment="Center"
+                                                    ToolTip.Tip="添加识别源到此分类">
+                                                <StackPanel Orientation="Horizontal" Spacing="3">
+                                                    <TextBlock Text="+" FontSize="14" FontWeight="Bold"
+                                                               VerticalAlignment="Center" />
+                                                    <TextBlock Text="添加" FontSize="12"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <Button.Flyout>
+                                                    <Flyout Placement="BottomEdgeAlignedRight">
+                                                        <StackPanel MinWidth="280" MaxWidth="340" Spacing="0">
+                                                            <!-- Header：添加识别源到「分类名」 -->
+                                                            <TextBlock Text="{Binding FlyoutHeader}"
+                                                                       FontSize="12" FontWeight="SemiBold"
+                                                                       Foreground="{Binding AccentBrush}"
+                                                                       Margin="4,2,4,8" />
+
+                                                            <!-- ============ 可添加 section ============ -->
+                                                            <StackPanel Spacing="4" IsVisible="{Binding HasAddable}">
+                                                                <TextBlock Text="可添加"
+                                                                           FontSize="10" FontWeight="SemiBold"
+                                                                           Opacity="0.55"
+                                                                           Margin="4,0,4,2"
+                                                                           Classes="section-label" />
+                                                                <ItemsControl ItemsSource="{Binding AddableSites}">
+                                                                    <ItemsControl.ItemsPanel>
+                                                                        <ItemsPanelTemplate>
+                                                                            <StackPanel Spacing="4" />
+                                                                        </ItemsPanelTemplate>
+                                                                    </ItemsControl.ItemsPanel>
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate x:DataType="vm:AddableSiteOption">
+                                                                            <Button Classes="addable-site"
+                                                                                    HorizontalAlignment="Stretch"
+                                                                                    HorizontalContentAlignment="Stretch"
+                                                                                    Padding="12,10"
+                                                                                    Command="{Binding $parent[ItemsControl].((vm:PriorityRowViewModel)DataContext).AddSiteCommand}"
+                                                                                    CommandParameter="{Binding Name}">
+                                                                                <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                                                                                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                                                                                        <TextBlock Text="{Binding Name}"
+                                                                                                   FontSize="14" FontWeight="SemiBold" />
+                                                                                        <TextBlock Text="{Binding UnavailableReason}"
+                                                                                                   FontSize="11"
+                                                                                                   Opacity="0.6" />
+                                                                                    </StackPanel>
+                                                                                    <TextBlock Grid.Column="1"
+                                                                                               Text="+"
+                                                                                               FontSize="20" FontWeight="Bold"
+                                                                                               Foreground="{Binding $parent[ItemsControl].((vm:PriorityRowViewModel)DataContext).AccentBrush}"
+                                                                                               HorizontalAlignment="Center"
+                                                                                               VerticalAlignment="Center"
+                                                                                               Margin="8,0,4,0" />
+                                                                                </Grid>
+                                                                            </Button>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+                                                            </StackPanel>
+
+                                                            <!-- ============ empty state（无可添加） ============ -->
+                                                            <Border IsVisible="{Binding !HasAddable}"
+                                                                    Padding="14,16"
+                                                                    Margin="0,4,0,4"
+                                                                    CornerRadius="6"
+                                                                    Background="{DynamicResource LayerFillColorAltBrush}">
+                                                                <StackPanel Orientation="Horizontal" Spacing="10"
+                                                                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                                    <TextBlock Text="✓"
+                                                                               FontSize="16" FontWeight="Bold"
+                                                                               Foreground="{DynamicResource SystemFillColorSuccessBrush}"
+                                                                               IsVisible="{Binding !EmptyFlyoutIsWarning}"
+                                                                               VerticalAlignment="Center" />
+                                                                    <TextBlock Text="⚠"
+                                                                               FontSize="16"
+                                                                               Foreground="{DynamicResource SystemFillColorCautionBrush}"
+                                                                               IsVisible="{Binding EmptyFlyoutIsWarning}"
+                                                                               VerticalAlignment="Center" />
+                                                                    <TextBlock Text="{Binding EmptyFlyoutMessage}"
+                                                                               FontSize="12"
+                                                                               Opacity="0.85"
+                                                                               TextWrapping="Wrap"
+                                                                               VerticalAlignment="Center" />
+                                                                </StackPanel>
+                                                            </Border>
+
+                                                            <!-- 分隔线（仅当两段都存在时显示） -->
+                                                            <Border Background="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                                                    Height="1" Margin="0,10,0,8"
+                                                                    IsVisible="{Binding HasOthers}" />
+
+                                                            <!-- ============ 其他 section（紧凑） ============ -->
+                                                            <StackPanel Spacing="2" IsVisible="{Binding HasOthers}">
+                                                                <TextBlock Text="其他"
+                                                                           FontSize="10" FontWeight="SemiBold"
+                                                                           Opacity="0.55"
+                                                                           Margin="4,0,4,2" />
+                                                                <ItemsControl ItemsSource="{Binding OtherSites}">
+                                                                    <ItemsControl.ItemsPanel>
+                                                                        <ItemsPanelTemplate>
+                                                                            <StackPanel Spacing="0" />
+                                                                        </ItemsPanelTemplate>
+                                                                    </ItemsControl.ItemsPanel>
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate x:DataType="vm:AddableSiteOption">
+                                                                            <Grid ColumnDefinitions="Auto,8,Auto,8,*"
+                                                                                  Margin="4,3"
+                                                                                  Opacity="0.55">
+                                                                                <!-- ✓ 已添加 / ⊘ 不兼容 -->
+                                                                                <TextBlock Grid.Column="0"
+                                                                                           Text="✓"
+                                                                                           FontSize="11"
+                                                                                           FontWeight="Bold"
+                                                                                           Foreground="{DynamicResource SystemFillColorSuccessBrush}"
+                                                                                           VerticalAlignment="Center"
+                                                                                           IsVisible="{Binding UnavailableReason, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                                                <TextBlock Grid.Column="2"
+                                                                                           Text="{Binding Name}"
+                                                                                           FontSize="12"
+                                                                                           FontWeight="SemiBold"
+                                                                                           VerticalAlignment="Center" />
+                                                                                <TextBlock Grid.Column="4"
+                                                                                           Text="{Binding UnavailableReason}"
+                                                                                           FontSize="11"
+                                                                                           Opacity="0.85"
+                                                                                           TextTrimming="CharacterEllipsis"
+                                                                                           TextAlignment="Right"
+                                                                                           VerticalAlignment="Center" />
+                                                                            </Grid>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </Flyout>
+                                                </Button.Flyout>
                                             </Button>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </Border>
 
