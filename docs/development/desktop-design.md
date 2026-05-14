@@ -1423,18 +1423,51 @@ SourcesPage 是监视文件夹**唯一**编辑入口——Settings 不再有"媒
 
 **主窗快捷键**：`Ctrl+1..9` 跳到 NavigationView 的第 N 个 MenuItem——直接通过 `NavView.SelectedItem = items[idx]` 触发原本的 `OnNavigationSelectionChanged`，复用导航逻辑，零特殊路径。
 
-### 首页（HomePage）状态卡
+### 首页（HomePage）—— 信息架构 5 区 + stagger 入场动画
 
-桌面端用户启动应用后**第一眼**应该看到"应用真在工作"——所以 HomePage 4 张状态卡都接 Phase 3 实时数据：
+桌面端首页按"看到 → 浏览 → 行动"3 阶段展开，纵向 5 区填满 ~870px 视口：
 
-| 卡片 | 数据源 | 用途 |
-|---|---|---|
-| 媒体总数 | `MediaDbContext.Medias.Count`（`OnEnter` 一次） | 库规模 |
-| 监视文件夹 | `Config.Source.WatchFolders.Count` + `MonitorService.IsMonitoring` | 配置 vs 实际运行（active/total） |
-| 运行中任务 | `TaskProgressService.GetAllRootTasks()` filter Running/Pending/Retrying | 桌面端关窗后台仍在跑的可视化 |
-| 失败任务 | 同上 filter Failed/Timeout | Critical 色突出，**HasFailedTasks** 控制副标题颜色 |
+1. **Hero 卡（信息锚点）**：左 = 问候 + `DisplayMediaCount` 大数字（56px Bold，count-up 动画驱动）+ "部作品"标签 + 总大小；右 = 5 类别 stacked horizontal bar（480px 固定宽，5 段 `Border.bar-seg`，Width 直接绑 VM `XxxBarWidth` 派生 + DoubleTransition 0 → final 触发"长出来"）+ 5 色 legend 行 + 「浏览媒体库 →」link。**右上角**浮一个 `pending-chip`（仅 `HasPending` 时出现）跳 PendingMedia 页。
+   - **仅 Hero / 空态大圆图标合法用 `BrandHeroGradient`**，外溢禁止
+   - Hero 上**不再**显示"添加媒体源"主 CTA——那是 SourcesPage 的真实落点，首页不重复"做事"的 UI
+2. **最近添加（库的温度）**：横向 mini gallery，VM `RecentMedias` 拉 top 8 by StoreDate desc / fallback Id desc；每张卡 128×172 `recent-card`（封面 LRU 加载 + hover translateY(-4) scale(1.02) + BoxShadow 抬起），点击 → `MediaDetailViewModel.RequestOpenDetail`。`HasRecentMedias` 控制整区显隐。
+3. **库的轮廓（双列）**：左 = `WrapPanel` 标签云，VM `TopTags` top 12 by `Medias.Count` desc，**sqrt 权重映射 12-22px 字号**避免头部一家独大；点击 → `TagsViewModel.RequestOpenDetail`。右 = `creator-row` list，VM `TopActiveCreators` top 5；点击 → `CreatorsViewModel.RequestOpenDetail`。两区都加「查看全部 →」link 跳列表页。`HasTopTags` 控制整 Grid 显隐。
+4. **现在（全宽紧凑）**：单 `flat-card`，3 列 `[监视 ▌ 任务 ▌ 失败]` 横向并排（之前是 3 行 stack；改横向是为了**配合 5 区垂直密度**，避免下半页太空）。1px 竖分隔条 `Border` 在列间。失败列后接一个 `→` 小箭头按钮跳任务页。
+5. **更多去处（4 nav-chip）**：创作者 / 社团 / 标签 / 收藏夹，hover translateY(-2) + accent border。语义 = "路口"（跳列表页），与轮廓区"具体跳详情"区分。
 
-**5s 轮询**：监视状态 / 任务计数高变化频率，进入页面起 timer，离开 stop。媒体总数变化频率低，仅在 `OnEnter` 拉一次。
+**空态分支**（`HasMedia = MediaCount > 0` 控制）：5 区全部隐藏，居中显示单列引导（140×140 圆 BrandHeroGradient + 64px IconLibrary + "你的库还是空的" + 主 CTA「+ 添加媒体源 →」+ 拖拽提示卡）。
+
+**stagger 入场动画**（HomePage.axaml.cs `OnAttached`）：
+- 5 个 root section 加 `home-section` class，初始 `Opacity=0` + `RenderTransform=translateY(14px)`；280ms cubic-ease-out fade + 360ms transform transition
+- 按 0 / 70 / 140 / 210 / 280 ms 错峰用 `DispatcherTimer.RunOnce` 加 `.shown` class 触发"上移到位 + fade in"
+- 不需要复杂 Storyboard / Animation 节点——Transitions + class 切换足够干净
+
+**其他动画**：
+- **Hero 数字 count-up**：`HomeViewModel.StartCountUpAnimation()` 用 16ms tick DispatcherTimer + ease-out-quart `1 - (1-t)^4` 在 700ms 内把 `DisplayMediaCount` 从 0 → `MediaCount`。库小于 30 时跳过动画直接显示 final（避免"翻几下就到的廉价感"）
+- **Stacked bar grow**：每段 `Border.bar-seg` 的 `Width` binding 到 VM 派生；OnEnter 拉数据前各派生为 0，拉完变 real，600ms cubic-ease-out DoubleTransition 触发"长出来"
+- **recent-card hover**：`translateY(-4) scale(1.02)` + BoxShadow（220ms cubic-ease-out）
+- **tag-cloud chip hover**：accent border + subtle bg + `translateY(-1)`
+- **creator-row hover**：subtle bg 高亮
+- **pending-chip hover**：`translateY(-1) scale(1.03)`
+- **nav-chip hover**：保留 `translateY(-2)` + accent border
+
+**ViewModel 数据增量**（`HomeViewModel`）：
+- `DisplayMediaCount: int` —— count-up 动画目标属性
+- `RecentMedias: ObservableCollection<RecentMediaItemVm>` —— top 8 最近，每项含 Title / TopCategory / Cover (LRU) / OpenCommand
+- `TopTags: ObservableCollection<TopTagItemVm>` —— top 12，FontSize 由 sqrt 权重预算好；项含 Name / Count / FontSize / OpenCommand
+- `TopActiveCreators: ObservableCollection<TopCreatorItemVm>` —— top 5，项含 Name / Count / CountText / OpenCommand
+- `HasRecentMedias` / `HasTopTags` / `HasTopCreators` —— section 显隐
+- 3 个 row VM 内联在 `HomeViewModel.cs` 末尾（只在首页用）
+
+**5s 轮询**：仅监视状态 / 任务计数 / 待处理计数；丰富度数据（最近 8 / Top 标签 / Top 创作者）和实体计数仅 `OnEnter` 拉一次。
+
+**反模式自查**：
+- ❌ identical card grid（5 区差异化 + recent gallery / tag cloud / creator list / status row 各自结构不同）
+- ❌ hero-metric SaaS 模板（Hero 数字旁是真实 5 类别 stacked bar 分布而非装饰小数字）
+- ❌ side-stripe border > 1px、gradient text、glassmorphism 默认（全无）
+- ❌ 嵌套 card-in-card（5 区都是独立 Border / StackPanel）
+- ❌ bounce / spring / elastic easing（全程 CubicEaseOut）
+- ❌ "添加媒体源" 主 CTA 重复（v3 已删除，仅空态保留作为唯一引导落点；富信息态用 NavigationView 侧栏「媒体源」承担）
 
 ### 子窗 📌 置顶按钮
 

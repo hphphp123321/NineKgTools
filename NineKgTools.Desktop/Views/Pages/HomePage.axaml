@@ -6,317 +6,730 @@
              x:DataType="vm:HomeViewModel">
 
     <UserControl.Styles>
-        <Style Selector="Border.stat-card">
+
+        <!-- ============================================================
+             flat-card 通用卡样式（Hero 外的所有内容卡）
+        ============================================================ -->
+        <Style Selector="Border.flat-card">
             <Setter Property="Background" Value="{DynamicResource LayerFillColorDefaultBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="{StaticResource OverlayCornerRadius}" />
-            <Setter Property="Padding" Value="20,18" />
+            <Setter Property="Padding" Value="22,20" />
+        </Style>
+
+        <!-- ============================================================
+             home-section: 各区入场动画基础态。
+             初始 Opacity=0 + translateY(14)；OnLoaded 通过 code-behind
+             stagger 触发到 Opacity=1 + translateY(0)。Transitions 用 280ms
+             cubic ease-out，符合 Section A 约束。
+        ============================================================ -->
+        <Style Selector=":is(Control).home-section">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="RenderTransform" Value="translateY(14px)" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.28" Easing="CubicEaseOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.36" Easing="CubicEaseOut" />
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Border.stat-card:pointerover">
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
-            <Setter Property="RenderTransform" Value="translateY(-2px)" />
+        <Style Selector=":is(Control).home-section.shown">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="RenderTransform" Value="translateY(0)" />
         </Style>
 
-        <Style Selector="Button.stat-card">
+        <!-- ============================================================
+             stacked-bar-seg: 5 类别 stacked bar 单段。
+             Width 直接 binding 到 VM 的 XxxBarWidth；OnEnter 拉数据前 VM 各 BarWidth=0，
+             拉完真实计数后变 real，Transition 触发 0 → final "长出来"动画。
+        ============================================================ -->
+        <Style Selector="Border.bar-seg">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Width" Duration="0:0:0.6" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+
+        <!-- ============================================================
+             status-row: 现在卡 3 行
+        ============================================================ -->
+        <Style Selector="Grid.status-row">
+            <Setter Property="Height" Value="34" />
+        </Style>
+        <Style Selector="Border.status-dot">
+            <Setter Property="Width" Value="8" />
+            <Setter Property="Height" Value="8" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!-- ============================================================
+             nav-chip: 底部 D 区 4 个导航 chip
+        ============================================================ -->
+        <Style Selector="Button.nav-chip">
             <Setter Property="Background" Value="{DynamicResource LayerFillColorDefaultBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="{StaticResource OverlayCornerRadius}" />
-            <Setter Property="Padding" Value="20,18" />
+            <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
+            <Setter Property="Padding" Value="16,12" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Button.stat-card:pointerover">
+        <Style Selector="Button.nav-chip:pointerover">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
             <Setter Property="RenderTransform" Value="translateY(-2px)" />
         </Style>
 
-        <Style Selector="Border.cat-card">
-            <Setter Property="BorderThickness" Value="2" />
-            <Setter Property="CornerRadius" Value="{StaticResource OverlayCornerRadius}" />
-            <Setter Property="Padding" Value="16,14" />
+        <!-- ============================================================
+             cta-primary: 空态 / Hero PendingChip 主按钮
+        ============================================================ -->
+        <Style Selector="Button.cta-primary">
+            <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="{StaticResource ControlCornerRadius}" />
+            <Setter Property="Padding" Value="18,12" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Border.cat-card:pointerover">
-            <Setter Property="RenderTransform" Value="translateY(-2px) scale(1.02)" />
+        <Style Selector="Button.cta-primary:pointerover">
+            <Setter Property="Background" Value="{DynamicResource AccentFillColorSecondaryBrush}" />
+            <Setter Property="RenderTransform" Value="translateY(-1px)" />
         </Style>
+
+        <!-- ============================================================
+             pending-chip: Hero 右上角紧凑 pending pill
+        ============================================================ -->
+        <Style Selector="Button.pending-chip">
+            <Setter Property="Background" Value="{DynamicResource SystemFillColorAttentionBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorAttentionBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Padding" Value="14,7" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.pending-chip:pointerover">
+            <Setter Property="RenderTransform" Value="translateY(-1px) scale(1.03)" />
+        </Style>
+
+        <!-- ============================================================
+             recent-card: 最近添加 mini poster 卡
+        ============================================================ -->
+        <Style Selector="Button.recent-card">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.recent-card:pointerover">
+            <Setter Property="RenderTransform" Value="translateY(-4px) scale(1.02)" />
+        </Style>
+        <Style Selector="Button.recent-card Border.recent-cover">
+            <Setter Property="Width" Value="112" />
+            <Setter Property="Height" Value="150" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="Background" Value="{DynamicResource LayerFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.22" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.recent-card:pointerover Border.recent-cover">
+            <Setter Property="BoxShadow" Value="0 8 20 -4 #40000000" />
+        </Style>
+
+        <!-- ============================================================
+             tag-cloud chip: 库的轮廓区 标签云 chip
+        ============================================================ -->
+        <Style Selector="Button.tag-cloud">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorSecondaryBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                    <BrushTransition Property="Background" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.tag-cloud:pointerover">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+            <Setter Property="RenderTransform" Value="translateY(-1px)" />
+        </Style>
+
+        <!-- ============================================================
+             creator-row: Top 创作者列表行
+        ============================================================ -->
+        <Style Selector="Button.creator-row">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.creator-row:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+        </Style>
+
+        <Style Selector="Border.legend-dot">
+            <Setter Property="Width" Value="10" />
+            <Setter Property="Height" Value="10" />
+            <Setter Property="CornerRadius" Value="5" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="Border.creator-avatar">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="CornerRadius" Value="14" />
+            <Setter Property="Background" Value="{DynamicResource AccentFillColorTertiaryBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
     </UserControl.Styles>
 
-    <ScrollViewer>
-        <StackPanel Margin="32,24,32,32" Spacing="28">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <Grid Margin="32,20,32,24" MinHeight="780">
 
-            <!-- ========== 标题区 ========== -->
-            <Border Padding="32,28"
-                    CornerRadius="{StaticResource BrandLargeCornerRadius}"
-                    Background="{DynamicResource BrandHeroGradient}">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="6">
-                        <TextBlock Text="首页"
-                                   Theme="{StaticResource TitleLargeTextBlockStyle}"
-                                   FontWeight="SemiBold" />
-                        <TextBlock Text="欢迎回来，下面是你的库概览。"
-                                   Theme="{StaticResource BodyTextBlockStyle}"
-                                   Opacity="0.75" />
-                    </StackPanel>
-                    <!-- 待处理快捷入口（如有） -->
-                    <Border Grid.Column="1"
-                            IsVisible="{Binding HasPending}"
-                            Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}"
-                            BorderBrush="{DynamicResource SystemFillColorAttentionBrush}"
-                            BorderThickness="1"
-                            CornerRadius="14"
-                            Padding="14,8"
-                            VerticalAlignment="Center">
-                        <Button Command="{Binding GoToPendingCommand}"
-                                Background="Transparent" BorderThickness="0"
-                                Padding="0">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="📥" FontSize="14" VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding PendingText}"
-                                           FontSize="12" FontWeight="SemiBold"
+            <!-- ============================================================
+                 富信息态：HasMedia = true
+                 5 区 Grid 布局（Auto,Auto,*,Auto,Auto）：Outline 区占 *
+                 行剩余空间，让首页**自适应窗口高度**——视口足够时 Outline
+                 stretch 填满，视口不够时 ScrollViewer 兜底滚动。
+                 RowSpacing 16 取代之前的 StackPanel Spacing 20，整体瘦 20px。
+            ============================================================ -->
+            <Grid IsVisible="{Binding HasMedia}"
+                  RowDefinitions="Auto,Auto,*,Auto,Auto"
+                  RowSpacing="16">
+
+                <!-- ========== Section 1: Hero 卡 ========== -->
+                <Border Grid.Row="0" x:Name="HeroSection" Classes="home-section"
+                        Padding="28,22"
+                        CornerRadius="{StaticResource BrandLargeCornerRadius}"
+                        Background="{DynamicResource BrandHeroGradient}">
+                    <Grid ColumnDefinitions="*,32,Auto">
+
+                        <!-- 左：问候 + 数字 + 总大小 + 右上角 PendingChip -->
+                        <Grid Grid.Column="0" RowDefinitions="Auto,*">
+                            <!-- 右上角 PendingChip 浮在 row 0 上方右侧 -->
+                            <Button Grid.Row="0" Grid.RowSpan="2"
+                                    Classes="pending-chip"
+                                    Command="{Binding GoToPendingCommand}"
+                                    IsVisible="{Binding HasPending}"
+                                    HorizontalAlignment="Right" VerticalAlignment="Top">
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <PathIcon Data="{StaticResource IconInbox}" Width="13" Height="13"
+                                              Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                                    <TextBlock Text="{Binding PendingActionText}"
+                                               FontSize="12" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" />
+                                    <PathIcon Data="{StaticResource IconArrowRight}" Width="11" Height="11"
+                                              Opacity="0.6"
+                                              VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <StackPanel Grid.Row="0" Spacing="6" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Greeting}"
+                                           Theme="{StaticResource BodyTextBlockStyle}"
+                                           FontSize="14" Opacity="0.75" />
+                                <TextBlock Text="你的收藏"
+                                           Theme="{StaticResource SubtitleTextBlockStyle}"
+                                           Opacity="0.85"
+                                           Margin="0,0,0,4" />
+                                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Bottom">
+                                    <TextBlock Text="{Binding DisplayMediaCount}"
+                                               FontSize="46"
+                                               FontWeight="Bold"
+                                               LineHeight="52" />
+                                    <StackPanel VerticalAlignment="Bottom" Spacing="2" Margin="0,0,0,8">
+                                        <TextBlock Text="部作品"
+                                                   FontSize="12"
+                                                   Opacity="0.6" />
+                                        <TextBlock Text="{Binding TotalSizeText}"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   Opacity="0.8" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- 右：5 类别 stacked bar + legend -->
+                        <StackPanel Grid.Column="2" Spacing="14" VerticalAlignment="Center" MinWidth="480">
+                            <TextBlock Text="类型分布"
+                                       FontSize="12"
+                                       Opacity="0.7"
+                                       FontWeight="SemiBold"
+                                       LetterSpacing="1.5" />
+                            <Border Width="480"
+                                    Height="14"
+                                    CornerRadius="7"
+                                    Background="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                    Opacity="0.7"
+                                    ClipToBounds="True">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border x:Name="BarVideo" Classes="bar-seg"
+                                            IsVisible="{Binding HasVideoBar}"
+                                            Width="{Binding VideoBarWidth}"
+                                            Background="{DynamicResource BrandCategoryVideoBrush}" />
+                                    <Border x:Name="BarAudio" Classes="bar-seg"
+                                            IsVisible="{Binding HasAudioBar}"
+                                            Width="{Binding AudioBarWidth}"
+                                            Background="{DynamicResource BrandCategoryAudioBrush}" />
+                                    <Border x:Name="BarGame" Classes="bar-seg"
+                                            IsVisible="{Binding HasGameBar}"
+                                            Width="{Binding GameBarWidth}"
+                                            Background="{DynamicResource BrandCategoryGameBrush}" />
+                                    <Border x:Name="BarPicture" Classes="bar-seg"
+                                            IsVisible="{Binding HasPictureBar}"
+                                            Width="{Binding PictureBarWidth}"
+                                            Background="{DynamicResource BrandCategoryPictureBrush}" />
+                                    <Border x:Name="BarText" Classes="bar-seg"
+                                            IsVisible="{Binding HasTextBar}"
+                                            Width="{Binding TextBarWidth}"
+                                            Background="{DynamicResource BrandCategoryTextBrush}" />
+                                </StackPanel>
+                            </Border>
+
+                            <Grid ColumnDefinitions="*,12,*,12,*,12,*,12,*">
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                                    <Border Classes="legend-dot" Background="{DynamicResource BrandCategoryVideoBrush}" />
+                                    <TextBlock Text="视频" FontSize="12" Opacity="0.75" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding VideoCount}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                                    <Border Classes="legend-dot" Background="{DynamicResource BrandCategoryAudioBrush}" />
+                                    <TextBlock Text="音频" FontSize="12" Opacity="0.75" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding AudioCount}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6">
+                                    <Border Classes="legend-dot" Background="{DynamicResource BrandCategoryGameBrush}" />
+                                    <TextBlock Text="游戏" FontSize="12" Opacity="0.75" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding GameCount}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="6">
+                                    <Border Classes="legend-dot" Background="{DynamicResource BrandCategoryPictureBrush}" />
+                                    <TextBlock Text="图片" FontSize="12" Opacity="0.75" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding PictureCount}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="8" Orientation="Horizontal" Spacing="6">
+                                    <Border Classes="legend-dot" Background="{DynamicResource BrandCategoryTextBrush}" />
+                                    <TextBlock Text="文本" FontSize="12" Opacity="0.75" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding TextCount}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Button Command="{Binding GoToMediaLibraryCommand}"
+                                    Background="Transparent" BorderThickness="0"
+                                    Padding="0" HorizontalAlignment="Right" Cursor="Hand">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="浏览媒体库"
+                                               FontSize="12" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+                                    <PathIcon Data="{StaticResource IconArrowRight}" Width="11" Height="11"
+                                              Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- ========== Section 2: 最近添加 mini gallery ========== -->
+                <StackPanel Grid.Row="1" x:Name="RecentSection" Classes="home-section"
+                            IsVisible="{Binding HasRecentMedias}" Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0"
+                                   Text="最近添加"
+                                   FontSize="13" FontWeight="SemiBold"
+                                   LetterSpacing="1.5"
+                                   Opacity="0.6" />
+                        <Button Grid.Column="1"
+                                Command="{Binding GoToMediaLibraryCommand}"
+                                Background="Transparent" BorderThickness="0" Padding="0"
+                                Cursor="Hand">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock Text="查看全部"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource AccentFillColorDefaultBrush}"
                                            VerticalAlignment="Center" />
-                                <TextBlock Text="→" FontSize="14" Opacity="0.6" VerticalAlignment="Center" />
+                                <PathIcon Data="{StaticResource IconArrowRight}" Width="11" Height="11"
+                                          Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                          VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
+                    </Grid>
+
+                    <!-- Responsive overflow=clip：容器 ClipToBounds=True；显示卡数量由 VM.VisibleRecentCount 控制（code-behind
+                         SizeChanged 监听容器宽度算出）。多余的卡不渲染，绝不出现横滚条。
+                         x:Name="RecentClip" 给 code-behind 拿宽度用。 -->
+                    <Border x:Name="RecentClip"
+                            ClipToBounds="True"
+                            HorizontalAlignment="Stretch">
+                        <ItemsControl ItemsSource="{Binding VisibleRecentMedias}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="12" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:RecentMediaItemVm">
+                                    <Button Classes="recent-card" Command="{Binding OpenCommand}">
+                                        <StackPanel Spacing="6" Width="112">
+                                            <Border Classes="recent-cover">
+                                                <Panel>
+                                                    <!-- 封面缺失时显示类别图标 + 类别色 -->
+                                                    <Panel IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNull}}"
+                                                           HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                                        <PathIcon Data="{Binding CategoryIcon}"
+                                                                  Foreground="{Binding CategoryBrush}"
+                                                                  Width="40" Height="40"
+                                                                  Opacity="0.55"
+                                                                  HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center" />
+                                                    </Panel>
+                                                    <Image Source="{Binding Cover}"
+                                                           Stretch="UniformToFill"
+                                                           IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                                                </Panel>
+                                            </Border>
+                                            <TextBlock Text="{Binding Title}"
+                                                       FontSize="11"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxLines="2"
+                                                       TextWrapping="Wrap"
+                                                       Width="112"
+                                                       Opacity="0.85" />
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </Border>
-                </Grid>
-            </Border>
-
-            <!-- ========== 统计卡片栏 1 行：4 项实体计数（可点击跳转对应页） ========== -->
-            <Grid ColumnDefinitions="*,12,*,12,*,12,*,12,*">
-                <Button Grid.Column="0" Classes="stat-card" Command="{Binding GoToMediaLibraryCommand}">
-                    <StackPanel Spacing="6">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconLibrary}" Width="16" Height="16"
-                                      Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
-                            <TextBlock Text="媒体" Opacity="0.7" FontSize="12" />
-                        </StackPanel>
-                        <TextBlock Text="{Binding MediaCount}"
-                                   Theme="{StaticResource TitleLargeTextBlockStyle}"
-                                   FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding TotalSizeText}"
-                                   Opacity="0.6" FontSize="11" />
-                    </StackPanel>
-                </Button>
-                <Button Grid.Column="2" Classes="stat-card" Command="{Binding GoToCreatorsCommand}">
-                    <StackPanel Spacing="6">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconCreators}" Width="16" Height="16"
-                                      Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
-                            <TextBlock Text="创作者" Opacity="0.7" FontSize="12" />
-                        </StackPanel>
-                        <TextBlock Text="{Binding CreatorCount}"
-                                   Theme="{StaticResource TitleLargeTextBlockStyle}"
-                                   FontWeight="SemiBold" />
-                        <TextBlock Text="点击进入" Opacity="0.45" FontSize="11" />
-                    </StackPanel>
-                </Button>
-                <Button Grid.Column="4" Classes="stat-card" Command="{Binding GoToCirclesCommand}">
-                    <StackPanel Spacing="6">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconCreators}" Width="16" Height="16"
-                                      Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
-                            <TextBlock Text="社团" Opacity="0.7" FontSize="12" />
-                        </StackPanel>
-                        <TextBlock Text="{Binding CircleCount}"
-                                   Theme="{StaticResource TitleLargeTextBlockStyle}"
-                                   FontWeight="SemiBold" />
-                        <TextBlock Text="点击进入" Opacity="0.45" FontSize="11" />
-                    </StackPanel>
-                </Button>
-                <Button Grid.Column="6" Classes="stat-card" Command="{Binding GoToTagsCommand}">
-                    <StackPanel Spacing="6">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconTags}" Width="16" Height="16"
-                                      Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
-                            <TextBlock Text="标签" Opacity="0.7" FontSize="12" />
-                        </StackPanel>
-                        <TextBlock Text="{Binding TagCount}"
-                                   Theme="{StaticResource TitleLargeTextBlockStyle}"
-                                   FontWeight="SemiBold" />
-                        <TextBlock Text="点击进入" Opacity="0.45" FontSize="11" />
-                    </StackPanel>
-                </Button>
-                <Button Grid.Column="8" Classes="stat-card" Command="{Binding GoToFavoritesCommand}">
-                    <StackPanel Spacing="6">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconStar}" Width="16" Height="16"
-                                      Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
-                            <TextBlock Text="收藏夹" Opacity="0.7" FontSize="12" />
-                        </StackPanel>
-                        <TextBlock Text="{Binding FavoriteCount}"
-                                   Theme="{StaticResource TitleLargeTextBlockStyle}"
-                                   FontWeight="SemiBold" />
-                        <TextBlock Text="点击进入" Opacity="0.45" FontSize="11" />
-                    </StackPanel>
-                </Button>
-            </Grid>
-
-            <!-- ========== 统计卡片栏 2 行：实时桌面状态 ========== -->
-            <Grid ColumnDefinitions="*,16,*,16,*">
-                <Border Grid.Column="0" Classes="stat-card">
-                    <StackPanel Spacing="8">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconFolderOpen}" Width="18" Height="18"
-                                      Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
-                            <TextBlock Text="监视文件夹" Opacity="0.7" />
-                        </StackPanel>
-                        <TextBlock Text="{Binding WatchFolderActive}"
-                                   Theme="{StaticResource DisplayTextBlockStyle}"
-                                   FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding WatchFolderText}" Opacity="0.5" FontSize="12" />
-                    </StackPanel>
-                </Border>
-                <Border Grid.Column="2" Classes="stat-card">
-                    <StackPanel Spacing="8">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconTasks}" Width="18" Height="18"
-                                      Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
-                            <TextBlock Text="运行中任务" Opacity="0.7" />
-                        </StackPanel>
-                        <TextBlock Text="{Binding RunningTaskCount}"
-                                   Theme="{StaticResource DisplayTextBlockStyle}"
-                                   FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding RunningTaskText}" Opacity="0.5" FontSize="12" />
-                    </StackPanel>
-                </Border>
-                <Border Grid.Column="4" Classes="stat-card">
-                    <StackPanel Spacing="8">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <PathIcon Data="{StaticResource IconInbox}" Width="18" Height="18"
-                                      Foreground="{DynamicResource SystemFillColorCriticalBrush}" />
-                            <TextBlock Text="失败任务" Opacity="0.7" />
-                        </StackPanel>
-                        <TextBlock Text="{Binding FailedTaskCount}"
-                                   Theme="{StaticResource DisplayTextBlockStyle}"
-                                   FontWeight="SemiBold" />
-                        <TextBlock Text="{Binding FailedTaskText}"
-                                   FontSize="12"
-                                   Foreground="{DynamicResource SystemFillColorCriticalBrush}"
-                                   IsVisible="{Binding HasFailedTasks}" />
-                        <TextBlock Text="{Binding FailedTaskText}"
-                                   FontSize="12" Opacity="0.5"
-                                   IsVisible="{Binding !HasFailedTasks}" />
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <!-- ========== 媒体类型分类排行（含计数） ========== -->
-            <StackPanel Spacing="12">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                    <TextBlock Text="媒体类型分布"
-                               Theme="{StaticResource SubtitleTextBlockStyle}"
-                               FontWeight="SemiBold" />
-                    <Button Command="{Binding GoToTasksCommand}"
-                            Padding="10,4"
-                            Background="Transparent"
-                            VerticalAlignment="Center">
-                        <TextBlock Text="任务监控 →" FontSize="12"
-                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
-                    </Button>
                 </StackPanel>
 
-                <Grid ColumnDefinitions="*,12,*,12,*,12,*,12,*">
+                <!-- ========== Section 3: 库的轮廓（双列：标签云 + 活跃创作者） ==========
+                     占 * 行，自适应吃掉剩余视口高度。Tag 卡 / Creator 卡内容用 VerticalAlignment=Top
+                     避免内容被强行拉伸；外卡 Stretch 是 OK 的。 -->
+                <Grid Grid.Row="2" x:Name="OutlineSection" Classes="home-section"
+                      VerticalAlignment="Stretch"
+                      IsVisible="{Binding HasTopTags}"
+                      ColumnDefinitions="*,16,1.1*">
 
-                    <Border Grid.Column="0" Classes="cat-card"
-                            Background="{DynamicResource BrandCategoryVideoFillBrush}"
-                            BorderBrush="{DynamicResource BrandCategoryVideoBrush}">
-                        <StackPanel Spacing="6" HorizontalAlignment="Center">
-                            <PathIcon Data="{StaticResource IconCategoryVideo}" Width="22" Height="22"
-                                      Foreground="{DynamicResource BrandCategoryVideoBrush}" />
-                            <TextBlock Text="视频" HorizontalAlignment="Center"
-                                       Foreground="{DynamicResource BrandCategoryVideoBrush}"
-                                       FontWeight="SemiBold" FontSize="13" />
-                            <TextBlock Text="{Binding VideoCount}"
-                                       HorizontalAlignment="Center"
-                                       Foreground="{DynamicResource BrandCategoryVideoBrush}"
-                                       FontSize="20" FontWeight="Bold" />
+                    <!-- 标签云 -->
+                    <Border Grid.Column="0" Classes="flat-card">
+                        <StackPanel Spacing="14">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Text="热门标签"
+                                           FontSize="13" FontWeight="SemiBold"
+                                           LetterSpacing="1.5"
+                                           Opacity="0.6" />
+                                <Button Grid.Column="1"
+                                        Command="{Binding GoToTagsCommand}"
+                                        Background="Transparent" BorderThickness="0" Padding="0"
+                                        Cursor="Hand">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="查看全部"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                   VerticalAlignment="Center" />
+                                        <PathIcon Data="{StaticResource IconArrowRight}" Width="11" Height="11"
+                                                  Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                  VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <ItemsControl ItemsSource="{Binding TopTags}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:TopTagItemVm">
+                                        <Button Classes="tag-cloud"
+                                                Command="{Binding OpenCommand}"
+                                                Margin="0,0,8,8">
+                                            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontSize="{Binding FontSize}"
+                                                           FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding Count}"
+                                                           FontSize="11"
+                                                           Opacity="0.55"
+                                                           VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
                     </Border>
 
-                    <Border Grid.Column="2" Classes="cat-card"
-                            Background="{DynamicResource BrandCategoryAudioFillBrush}"
-                            BorderBrush="{DynamicResource BrandCategoryAudioBrush}">
-                        <StackPanel Spacing="6" HorizontalAlignment="Center">
-                            <PathIcon Data="{StaticResource IconCategoryAudio}" Width="22" Height="22"
-                                      Foreground="{DynamicResource BrandCategoryAudioBrush}" />
-                            <TextBlock Text="音频" HorizontalAlignment="Center"
-                                       Foreground="{DynamicResource BrandCategoryAudioBrush}"
-                                       FontWeight="SemiBold" FontSize="13" />
-                            <TextBlock Text="{Binding AudioCount}"
-                                       HorizontalAlignment="Center"
-                                       Foreground="{DynamicResource BrandCategoryAudioBrush}"
-                                       FontSize="20" FontWeight="Bold" />
+                    <!-- 活跃创作者 -->
+                    <Border Grid.Column="2" Classes="flat-card"
+                            IsVisible="{Binding HasTopCreators}">
+                        <StackPanel Spacing="14">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Text="活跃创作者"
+                                           FontSize="13" FontWeight="SemiBold"
+                                           LetterSpacing="1.5"
+                                           Opacity="0.6" />
+                                <Button Grid.Column="1"
+                                        Command="{Binding GoToCreatorsCommand}"
+                                        Background="Transparent" BorderThickness="0" Padding="0"
+                                        Cursor="Hand">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="查看全部"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                   VerticalAlignment="Center" />
+                                        <PathIcon Data="{StaticResource IconArrowRight}" Width="11" Height="11"
+                                                  Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                                  VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <ItemsControl ItemsSource="{Binding TopActiveCreators}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:TopCreatorItemVm">
+                                        <Button Classes="creator-row" Command="{Binding OpenCommand}">
+                                            <Grid ColumnDefinitions="Auto,10,*,Auto" VerticalAlignment="Center">
+                                                <Border Grid.Column="0" Classes="creator-avatar">
+                                                    <PathIcon Data="{StaticResource IconCreators}"
+                                                              Width="14" Height="14"
+                                                              Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                                              HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center" />
+                                                </Border>
+                                                <TextBlock Grid.Column="2"
+                                                           Text="{Binding Name}"
+                                                           FontSize="12" FontWeight="SemiBold"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="3"
+                                                           Text="{Binding CountText}"
+                                                           FontSize="12" Opacity="0.55"
+                                                           VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
                     </Border>
-
-                    <Border Grid.Column="4" Classes="cat-card"
-                            Background="{DynamicResource BrandCategoryGameFillBrush}"
-                            BorderBrush="{DynamicResource BrandCategoryGameBrush}">
-                        <StackPanel Spacing="6" HorizontalAlignment="Center">
-                            <PathIcon Data="{StaticResource IconCategoryGame}" Width="22" Height="22"
-                                      Foreground="{DynamicResource BrandCategoryGameBrush}" />
-                            <TextBlock Text="游戏" HorizontalAlignment="Center"
-                                       Foreground="{DynamicResource BrandCategoryGameBrush}"
-                                       FontWeight="SemiBold" FontSize="13" />
-                            <TextBlock Text="{Binding GameCount}"
-                                       HorizontalAlignment="Center"
-                                       Foreground="{DynamicResource BrandCategoryGameBrush}"
-                                       FontSize="20" FontWeight="Bold" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border Grid.Column="6" Classes="cat-card"
-                            Background="{DynamicResource BrandCategoryPictureFillBrush}"
-                            BorderBrush="{DynamicResource BrandCategoryPictureBrush}">
-                        <StackPanel Spacing="6" HorizontalAlignment="Center">
-                            <PathIcon Data="{StaticResource IconCategoryPicture}" Width="22" Height="22"
-                                      Foreground="{DynamicResource BrandCategoryPictureBrush}" />
-                            <TextBlock Text="图片" HorizontalAlignment="Center"
-                                       Foreground="{DynamicResource BrandCategoryPictureBrush}"
-                                       FontWeight="SemiBold" FontSize="13" />
-                            <TextBlock Text="{Binding PictureCount}"
-                                       HorizontalAlignment="Center"
-                                       Foreground="{DynamicResource BrandCategoryPictureBrush}"
-                                       FontSize="20" FontWeight="Bold" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border Grid.Column="8" Classes="cat-card"
-                            Background="{DynamicResource BrandCategoryTextFillBrush}"
-                            BorderBrush="{DynamicResource BrandCategoryTextBrush}">
-                        <StackPanel Spacing="6" HorizontalAlignment="Center">
-                            <PathIcon Data="{StaticResource IconCategoryText}" Width="22" Height="22"
-                                      Foreground="{DynamicResource BrandCategoryTextBrush}" />
-                            <TextBlock Text="文本" HorizontalAlignment="Center"
-                                       Foreground="{DynamicResource BrandCategoryTextBrush}"
-                                       FontWeight="SemiBold" FontSize="13" />
-                            <TextBlock Text="{Binding TextCount}"
-                                       HorizontalAlignment="Center"
-                                       Foreground="{DynamicResource BrandCategoryTextBrush}"
-                                       FontSize="20" FontWeight="Bold" />
-                        </StackPanel>
-                    </Border>
-
                 </Grid>
+
+                <!-- ========== Section 4: 现在状态行（全宽，3 列 list-style） ========== -->
+                <Border Grid.Row="3" x:Name="StatusSection" Classes="home-section flat-card">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="0">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="5"
+                                   Text="现在"
+                                   FontSize="13" FontWeight="SemiBold"
+                                   LetterSpacing="1.5"
+                                   Opacity="0.6"
+                                   Margin="0,0,0,12" />
+
+                        <!-- 3 列状态：监控 / 后台任务 / 失败任务，并排紧凑 -->
+                        <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <Border Classes="status-dot" Background="{DynamicResource SystemFillColorSuccessBrush}" />
+                            <TextBlock Text="监视" FontSize="13" Opacity="0.85" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding WatchFolderText}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource ControlStrokeColorDefaultBrush}" Width="1" Height="18" Opacity="0.4" VerticalAlignment="Center" />
+
+                        <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <Border Classes="status-dot" Background="{DynamicResource SystemFillColorAttentionBrush}" />
+                            <TextBlock Text="任务" FontSize="13" Opacity="0.85" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding RunningTaskText}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <Border Grid.Row="1" Grid.Column="3" Background="{DynamicResource ControlStrokeColorDefaultBrush}" Width="1" Height="18" Opacity="0.4" VerticalAlignment="Center" Margin="14,0" />
+
+                        <StackPanel Grid.Row="1" Grid.Column="4" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                            <Border Classes="status-dot" Background="{DynamicResource SystemFillColorCriticalBrush}" IsVisible="{Binding HasFailedTasks}" />
+                            <Border Classes="status-dot" Background="{DynamicResource ControlStrokeColorDefaultBrush}" IsVisible="{Binding !HasFailedTasks}" Opacity="0.6" />
+                            <TextBlock Text="失败" FontSize="13" Opacity="0.85" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding FailedTaskText}" FontSize="13" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                       IsVisible="{Binding HasFailedTasks}"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding FailedTaskText}" FontSize="13" Opacity="0.55"
+                                       IsVisible="{Binding !HasFailedTasks}"
+                                       VerticalAlignment="Center" />
+                            <Button Command="{Binding GoToTasksCommand}"
+                                    Background="Transparent" BorderThickness="0" Padding="6,2"
+                                    Margin="6,0,0,0" Cursor="Hand">
+                                <PathIcon Data="{StaticResource IconArrowRight}" Width="11" Height="11"
+                                          Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- ========== Section 5: 更多去处 4 个 nav-chip ========== -->
+                <StackPanel Grid.Row="4" x:Name="NavChipSection" Classes="home-section" Spacing="10">
+                    <TextBlock Text="更多去处"
+                               FontSize="13" FontWeight="SemiBold"
+                               LetterSpacing="1.5"
+                               Opacity="0.6" />
+                    <Grid ColumnDefinitions="*,12,*,12,*,12,*">
+                        <Button Grid.Column="0" Classes="nav-chip" Command="{Binding GoToCreatorsCommand}">
+                            <Grid ColumnDefinitions="Auto,10,*,Auto">
+                                <PathIcon Grid.Column="0" Data="{StaticResource IconCreators}" Width="16" Height="16"
+                                          Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Text="创作者" FontSize="13" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="3" Text="{Binding CreatorCount}"
+                                           FontSize="13" FontWeight="SemiBold" Opacity="0.85" VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+                        <Button Grid.Column="2" Classes="nav-chip" Command="{Binding GoToCirclesCommand}">
+                            <Grid ColumnDefinitions="Auto,10,*,Auto">
+                                <PathIcon Grid.Column="0" Data="{StaticResource IconBusiness}" Width="16" Height="16"
+                                          Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Text="社团" FontSize="13" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="3" Text="{Binding CircleCount}"
+                                           FontSize="13" FontWeight="SemiBold" Opacity="0.85" VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+                        <Button Grid.Column="4" Classes="nav-chip" Command="{Binding GoToTagsCommand}">
+                            <Grid ColumnDefinitions="Auto,10,*,Auto">
+                                <PathIcon Grid.Column="0" Data="{StaticResource IconTags}" Width="16" Height="16"
+                                          Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Text="标签" FontSize="13" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="3" Text="{Binding TagCount}"
+                                           FontSize="13" FontWeight="SemiBold" Opacity="0.85" VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+                        <Button Grid.Column="6" Classes="nav-chip" Command="{Binding GoToFavoritesCommand}">
+                            <Grid ColumnDefinitions="Auto,10,*,Auto">
+                                <PathIcon Grid.Column="0" Data="{StaticResource IconStar}" Width="16" Height="16"
+                                          Foreground="{DynamicResource SystemFillColorAttentionBrush}"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Text="收藏夹" FontSize="13" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="3" Text="{Binding FavoriteCount}"
+                                           FontSize="13" FontWeight="SemiBold" Opacity="0.85" VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+
+            </Grid>
+
+            <!-- ============================================================
+                 空态：HasMedia = false（保留 v1 引导）
+            ============================================================ -->
+            <StackPanel IsVisible="{Binding !HasMedia}"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Spacing="22"
+                        MaxWidth="520"
+                        Margin="0,80,0,40">
+
+                <Border Width="140" Height="140"
+                        CornerRadius="70"
+                        Background="{DynamicResource BrandHeroGradient}"
+                        HorizontalAlignment="Center">
+                    <PathIcon Data="{StaticResource IconLibrary}"
+                              Width="64" Height="64"
+                              Foreground="White"
+                              Opacity="0.9"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center" />
+                </Border>
+
+                <StackPanel Spacing="10" HorizontalAlignment="Center">
+                    <TextBlock Text="你的库还是空的"
+                               Theme="{StaticResource TitleLargeTextBlockStyle}"
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="{Binding EmptyHint}"
+                               Theme="{StaticResource BodyTextBlockStyle}"
+                               Opacity="0.7"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               MaxWidth="420"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+
+                <Button Classes="cta-primary"
+                        Command="{Binding GoToSourcesCommand}"
+                        HorizontalAlignment="Center"
+                        MinWidth="220"
+                        Padding="24,14">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <PathIcon Data="{StaticResource IconPlus}" Width="16" Height="16" />
+                        <TextBlock Text="添加媒体源"
+                                   FontSize="14" FontWeight="SemiBold" />
+                        <PathIcon Data="{StaticResource IconArrowRight}" Width="13" Height="13"
+                                  Opacity="0.85" />
+                    </StackPanel>
+                </Button>
+
+                <Border Padding="14,10"
+                        CornerRadius="{StaticResource ControlCornerRadius}"
+                        Background="{DynamicResource LayerFillColorDefaultBrush}"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                        <TextBlock Text="💡" FontSize="14" VerticalAlignment="Center" />
+                        <TextBlock Text="也可以直接把文件夹或文件拖到这个窗口"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
             </StackPanel>
 
-        </StackPanel>
+        </Grid>
     </ScrollViewer>
 
 </UserControl>
