@@ -6,8 +6,18 @@
              x:DataType="vm:BackgroundTasksViewModel"
              x:Name="PageRoot">
 
+    <UserControl.Resources>
+        <!-- 中和 TreeView 自带的悬停 / 选中底色：任务行的视觉完全由 task-row 卡片承担，
+             避免 TreeViewItem 的系统底色和卡片 hover 边框打架。 -->
+        <SolidColorBrush x:Key="TreeViewItemBackgroundPointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="TreeViewItemBackgroundPressed" Color="Transparent" />
+        <SolidColorBrush x:Key="TreeViewItemBackgroundSelected" Color="Transparent" />
+        <SolidColorBrush x:Key="TreeViewItemBackgroundSelectedPointerOver" Color="Transparent" />
+        <SolidColorBrush x:Key="TreeViewItemBackgroundSelectedPressed" Color="Transparent" />
+    </UserControl.Resources>
+
     <UserControl.Styles>
-        <!-- 状态过滤按钮：默认透明 + 1px 边框；切换时 220ms 平滑过渡 -->
+        <!-- ===== 状态过滤 chip ===== -->
         <Style Selector="Button.filter-chip">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="1" />
@@ -64,13 +74,13 @@
             <Setter Property="RenderTransform" Value="scaleX(1.0)" />
         </Style>
 
-        <!-- 任务行 / 历史行 / 定时行 通用卡片 -->
+        <!-- ===== 任务行卡片（运行中 / 历史 / 定时 三 Tab 共用） ===== -->
         <Style Selector="Border.task-row">
             <Setter Property="Background" Value="{DynamicResource LayerFillColorDefaultBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Padding" Value="14,12" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="14,13" />
             <Setter Property="Transitions">
                 <Transitions>
                     <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
@@ -79,6 +89,112 @@
         </Style>
         <Style Selector="Border.task-row:pointerover">
             <Setter Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+        </Style>
+        <!-- 子任务行：更轻、内缩，配合 TreeView 缩进强化层级 -->
+        <Style Selector="Border.task-row.child">
+            <Setter Property="Background" Value="{DynamicResource LayerFillColorAltBrush}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="12,10" />
+        </Style>
+
+        <!-- ===== 状态圆徽 ===== -->
+        <Style Selector="Border.status-dot">
+            <Setter Property="Width" Value="38" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="CornerRadius" Value="19" />
+            <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+        <Style Selector="Border.status-dot.running">
+            <Setter Property="Background" Value="{DynamicResource BrandStatusRunningFillBrush}" />
+            <!-- 运行中：圆徽轻微"呼吸"，提示任务存活 -->
+            <Style.Animations>
+                <Animation Duration="0:0:1.7" IterationCount="INFINITE" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%"><Setter Property="Opacity" Value="1.0" /></KeyFrame>
+                    <KeyFrame Cue="50%"><Setter Property="Opacity" Value="0.62" /></KeyFrame>
+                    <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1.0" /></KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <Style Selector="Border.status-dot.done">
+            <Setter Property="Background" Value="{DynamicResource BrandStatusSuccessFillBrush}" />
+        </Style>
+        <Style Selector="Border.status-dot.failed">
+            <Setter Property="Background" Value="{DynamicResource BrandStatusFailedFillBrush}" />
+        </Style>
+        <!-- 子任务的圆徽缩小 -->
+        <Style Selector="Border.task-row.child Border.status-dot">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="CornerRadius" Value="15" />
+        </Style>
+        <Style Selector="TextBlock.status-glyph">
+            <Setter Property="FontSize" Value="17" />
+        </Style>
+        <Style Selector="Border.task-row.child TextBlock.status-glyph">
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+
+        <!-- ===== 任务标题 ===== -->
+        <Style Selector="TextBlock.task-title">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Border.task-row.child TextBlock.task-title">
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+
+        <!-- ===== 行操作图标按钮（32×32 ghost，任何宽度都放得下） ===== -->
+        <Style Selector="Button.icon-action">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="MinWidth" Value="32" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.icon-action PathIcon">
+            <Setter Property="Width" Value="15" />
+            <Setter Property="Height" Value="15" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Style>
+        <Style Selector="Button.icon-action:pointerover PathIcon">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        </Style>
+        <Style Selector="Button.icon-action.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+        </Style>
+        <Style Selector="Button.icon-action.danger:pointerover PathIcon">
+            <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+        </Style>
+
+        <!-- ===== 细进度条 ===== -->
+        <Style Selector="ProgressBar.slim">
+            <Setter Property="MinHeight" Value="5" />
+            <Setter Property="Height" Value="5" />
+        </Style>
+
+        <!-- ===== 类型角标 ===== -->
+        <Style Selector="Border.type-badge">
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.type-badge TextBlock">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Style>
+
+        <!-- ===== TreeViewItem 去系统内边距（行内容由 task-row 卡片 Stretch 铺满） ===== -->
+        <Style Selector="TreeViewItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
         </Style>
     </UserControl.Styles>
 
@@ -165,14 +281,14 @@
                                 Background="{DynamicResource LayerFillColorAltBrush}"
                                 BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                                 BorderThickness="1"
-                                CornerRadius="8"
+                                CornerRadius="10"
                                 Padding="48,40"
                                 Margin="0,16"
                                 MaxWidth="480"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center">
                             <StackPanel Spacing="16" HorizontalAlignment="Center">
-                                <PathIcon Data="{StaticResource IconTasks}" Width="64" Height="64"
+                                <PathIcon Data="{StaticResource IconTasks}" Width="60" Height="60"
                                           Foreground="{DynamicResource AccentFillColorDefaultBrush}"
                                           Opacity="0.5" HorizontalAlignment="Center" />
                                 <TextBlock Text="暂无任务"
@@ -187,94 +303,122 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- 列表（TreeView 支持父子任务展开/折叠 §10.5 P1 #9） -->
-                        <ScrollViewer IsVisible="{Binding !ShowEmpty}">
+                        <!-- 列表（TreeView 支持父子任务展开/折叠 §10.5 P1 #9）。
+                             HorizontalScrollBarVisibility=Disabled：行内容靠 Grid * 列 + 文本省略号自适应宽度，
+                             绝不横向滚动——避免长标题把右侧操作按钮顶出可视区。 -->
+                        <ScrollViewer IsVisible="{Binding !ShowEmpty}"
+                                      HorizontalScrollBarVisibility="Disabled">
                             <TreeView ItemsSource="{Binding Items}"
                                       Background="Transparent"
-                                      BorderThickness="0">
+                                      BorderThickness="0"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                                 <TreeView.ItemTemplate>
                                     <TreeDataTemplate ItemsSource="{Binding ChildItems}" DataType="vm:TaskItemViewModel">
-                                        <Border Classes="task-row" Margin="0,0,0,8">
-                                            <Grid ColumnDefinitions="Auto,16,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto">
-                                                <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="3"
-                                                        Width="40" Height="40"
-                                                        CornerRadius="20"
-                                                        Background="{DynamicResource SubtleFillColorTertiaryBrush}"
-                                                        VerticalAlignment="Top">
-                                                    <TextBlock Text="{Binding StatusIcon}"
-                                                               FontSize="18"
+                                        <Border Classes="task-row" Classes.child="{Binding IsChild}"
+                                                Margin="0,0,0,8">
+                                            <Grid ColumnDefinitions="Auto,14,*,Auto"
+                                                  RowDefinitions="Auto,Auto,Auto,Auto">
+
+                                                <!-- 状态圆徽 -->
+                                                <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="4"
+                                                        Classes="status-dot"
+                                                        Classes.running="{Binding IsRunning}"
+                                                        Classes.done="{Binding IsSucceeded}"
+                                                        Classes.failed="{Binding IsFailed}">
+                                                    <TextBlock Classes="status-glyph"
+                                                               Text="{Binding StatusIcon}"
                                                                Foreground="{Binding StatusBrush}"
                                                                HorizontalAlignment="Center"
                                                                VerticalAlignment="Center" />
                                                 </Border>
-                                                <StackPanel Grid.Column="2" Grid.Row="0" Orientation="Horizontal" Spacing="8">
-                                                    <TextBlock Text="{Binding DisplayName}"
-                                                               FontWeight="SemiBold"
+
+                                                <!-- 标题 + 子任务计数 -->
+                                                <Grid Grid.Column="2" Grid.Row="0" ColumnDefinitions="*,Auto">
+                                                    <TextBlock Grid.Column="0"
+                                                               Classes="task-title"
+                                                               Text="{Binding DisplayName}"
                                                                TextTrimming="CharacterEllipsis"
-                                                               ToolTip.Tip="{Binding TaskId}" />
-                                                    <TextBlock Text="{Binding ChildrenStatsText}"
-                                                               FontSize="11"
-                                                               Opacity="0.6"
-                                                               IsVisible="{Binding HasChildren}"
-                                                               VerticalAlignment="Center" />
-                                                </StackPanel>
+                                                               VerticalAlignment="Center"
+                                                               ToolTip.Tip="{Binding DisplayName}" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding ChildrenStatsText}"
+                                                               FontSize="11" Opacity="0.6"
+                                                               VerticalAlignment="Center"
+                                                               Margin="8,0,0,0"
+                                                               IsVisible="{Binding HasChildren}" />
+                                                </Grid>
+
+                                                <!-- 进度条 -->
                                                 <ProgressBar Grid.Column="2" Grid.Row="1"
-                                                             Margin="0,8,0,4"
+                                                             Classes="slim"
+                                                             Margin="0,9,0,0"
                                                              Minimum="0" Maximum="100"
                                                              Value="{Binding ProgressPercentage}"
                                                              Foreground="{Binding StatusBrush}"
                                                              IsVisible="{Binding ShowProgressBar}" />
-                                                <StackPanel Grid.Column="2" Grid.Row="2" Orientation="Horizontal" Spacing="10">
-                                                    <TextBlock Text="{Binding StatusText}"
-                                                               FontSize="11"
-                                                               Foreground="{Binding StatusBrush}"
-                                                               FontWeight="SemiBold" />
-                                                    <TextBlock Text="·" FontSize="11" Opacity="0.3" />
-                                                    <TextBlock Text="{Binding TimingText}"
-                                                               FontSize="11"
-                                                               Opacity="0.7" />
-                                                    <TextBlock Text="{Binding CurrentItem}"
-                                                               FontSize="11"
-                                                               Opacity="0.55"
+
+                                                <!-- 状态 / 计时 / 当前项 -->
+                                                <Grid Grid.Column="2" Grid.Row="2"
+                                                      Margin="0,7,0,0"
+                                                      ColumnDefinitions="Auto,*">
+                                                    <StackPanel Grid.Column="0" Orientation="Horizontal"
+                                                                Spacing="10" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding StatusText}"
+                                                                   FontSize="11"
+                                                                   FontWeight="SemiBold"
+                                                                   Foreground="{Binding StatusBrush}" />
+                                                        <TextBlock Text="{Binding TimingText}"
+                                                                   FontSize="11" Opacity="0.7"
+                                                                   IsVisible="{Binding TimingText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding CurrentItem}"
+                                                               FontSize="11" Opacity="0.5"
+                                                               Margin="10,0,0,0"
+                                                               VerticalAlignment="Center"
                                                                TextTrimming="CharacterEllipsis"
                                                                IsVisible="{Binding ShowProgressBar}" />
-                                                </StackPanel>
-                                                <StackPanel Grid.Column="3" Grid.Row="0" Grid.RowSpan="3"
-                                                            Orientation="Horizontal" Spacing="6"
-                                                            VerticalAlignment="Center">
-                                                    <Button Command="{Binding #PageRoot.((vm:BackgroundTasksViewModel)DataContext).OpenTaskDetailsCommand}"
-                                                            CommandParameter="{Binding TaskId}"
-                                                            ToolTip.Tip="查看任务详情">
-                                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                                            <TextBlock Text="📋" FontSize="12" />
-                                                            <TextBlock Text="详情" />
-                                                        </StackPanel>
-                                                    </Button>
-                                                    <Button Command="{Binding #PageRoot.((vm:BackgroundTasksViewModel)DataContext).OpenDiagnosticsCommand}"
-                                                            CommandParameter="{Binding}"
-                                                            IsVisible="{Binding HasDiagnostics}"
-                                                            ToolTip.Tip="查看本次识别的诊断面板">
-                                                        <StackPanel Orientation="Horizontal" Spacing="6">
-                                                            <TextBlock Text="🔍" FontSize="12" />
-                                                            <TextBlock Text="诊断" />
-                                                        </StackPanel>
-                                                    </Button>
-                                                    <Button Command="{Binding #PageRoot.((vm:BackgroundTasksViewModel)DataContext).CancelTaskCommand}"
-                                                            CommandParameter="{Binding}"
-                                                            Content="取消"
-                                                            IsVisible="{Binding CanCancel}" />
-                                                </StackPanel>
+                                                </Grid>
+
+                                                <!-- 错误信息 -->
                                                 <Border Grid.Column="2" Grid.Row="3"
                                                         IsVisible="{Binding HasErrorMessage}"
                                                         Margin="0,8,0,0"
-                                                        Padding="10,6"
-                                                        CornerRadius="4"
+                                                        Padding="10,7"
+                                                        CornerRadius="6"
                                                         Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}">
                                                     <TextBlock Text="{Binding ErrorMessage}"
                                                                FontSize="11"
                                                                Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                                                                TextWrapping="Wrap" />
                                                 </Border>
+
+                                                <!-- 行操作（图标按钮，常驻） -->
+                                                <StackPanel Grid.Column="3" Grid.Row="0" Grid.RowSpan="4"
+                                                            Orientation="Horizontal" Spacing="2"
+                                                            Margin="10,0,0,0"
+                                                            VerticalAlignment="Center">
+                                                    <Button Classes="icon-action"
+                                                            ToolTip.Tip="查看任务详情"
+                                                            Command="{Binding #PageRoot.((vm:BackgroundTasksViewModel)DataContext).OpenTaskDetailsCommand}"
+                                                            CommandParameter="{Binding TaskId}">
+                                                        <PathIcon Data="{StaticResource IconInfo}" />
+                                                    </Button>
+                                                    <Button Classes="icon-action"
+                                                            ToolTip.Tip="查看本次识别的诊断面板"
+                                                            IsVisible="{Binding HasDiagnostics}"
+                                                            Command="{Binding #PageRoot.((vm:BackgroundTasksViewModel)DataContext).OpenDiagnosticsCommand}"
+                                                            CommandParameter="{Binding}">
+                                                        <PathIcon Data="{StaticResource IconSearch}" />
+                                                    </Button>
+                                                    <Button Classes="icon-action danger"
+                                                            ToolTip.Tip="取消任务"
+                                                            IsVisible="{Binding CanCancel}"
+                                                            Command="{Binding #PageRoot.((vm:BackgroundTasksViewModel)DataContext).CancelTaskCommand}"
+                                                            CommandParameter="{Binding}">
+                                                        <PathIcon Data="{StaticResource IconClose}" />
+                                                    </Button>
+                                                </StackPanel>
                                             </Grid>
                                         </Border>
                                     </TreeDataTemplate>
@@ -293,15 +437,17 @@
                             Background="{DynamicResource LayerFillColorAltBrush}"
                             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                             BorderThickness="1"
-                            CornerRadius="8"
-                            Padding="40,32"
+                            CornerRadius="10"
+                            Padding="48,40"
                             MaxWidth="480"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center">
-                        <StackPanel Spacing="14" HorizontalAlignment="Center">
-                            <TextBlock Text="📜" FontSize="48" HorizontalAlignment="Center" Opacity="0.5" />
+                        <StackPanel Spacing="16" HorizontalAlignment="Center">
+                            <PathIcon Data="{StaticResource IconHistory}" Width="56" Height="56"
+                                      Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                      Opacity="0.5" HorizontalAlignment="Center" />
                             <TextBlock Text="暂无执行历史"
-                                       FontSize="16" FontWeight="SemiBold"
+                                       FontSize="18" FontWeight="SemiBold"
                                        HorizontalAlignment="Center" />
                             <TextBlock Text="任务执行完成后会归档到这里——进度页清理后这里仍保留。"
                                        Opacity="0.7"
@@ -310,71 +456,76 @@
                         </StackPanel>
                     </Border>
 
-                    <ScrollViewer IsVisible="{Binding !ShowHistoryEmpty}">
+                    <ScrollViewer IsVisible="{Binding !ShowHistoryEmpty}"
+                                  HorizontalScrollBarVisibility="Disabled">
                         <ItemsControl ItemsSource="{Binding HistoryItems}" Classes="fade-items">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:HistoryItemViewModel">
                                     <Border Classes="task-row" Margin="0,0,0,8">
-                                        <Grid ColumnDefinitions="Auto,16,*,Auto" RowDefinitions="Auto,Auto,Auto">
-                                            <!-- 右侧"详情"按钮（独占整行高度） -->
-                                            <Button Grid.Column="3" Grid.Row="0" Grid.RowSpan="3"
-                                                    Command="{Binding #PageRoot.((vm:BackgroundTasksViewModel)DataContext).OpenTaskDetailsCommand}"
-                                                    CommandParameter="{Binding TaskId}"
-                                                    VerticalAlignment="Center"
-                                                    ToolTip.Tip="查看任务详情（含日志）">
-                                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                                    <TextBlock Text="📋" FontSize="12" />
-                                                    <TextBlock Text="详情" />
-                                                </StackPanel>
-                                            </Button>
-                                            <!-- 状态图标 -->
+                                        <Grid ColumnDefinitions="Auto,14,*,Auto"
+                                              RowDefinitions="Auto,Auto,Auto">
+
+                                            <!-- 状态圆徽 -->
                                             <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="3"
-                                                    Width="36" Height="36"
-                                                    CornerRadius="18"
-                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
-                                                    VerticalAlignment="Top">
-                                                <TextBlock Text="{Binding StatusIcon}"
-                                                           FontSize="18"
+                                                    Classes="status-dot"
+                                                    Classes.done="{Binding Success}"
+                                                    Classes.failed="{Binding !Success}">
+                                                <TextBlock Classes="status-glyph"
+                                                           Text="{Binding StatusIcon}"
                                                            Foreground="{Binding StatusBrush}"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center" />
                                             </Border>
 
-                                            <!-- 名字 + 类型 -->
-                                            <StackPanel Grid.Column="2" Grid.Row="0" Orientation="Horizontal" Spacing="8">
-                                                <TextBlock Text="{Binding TaskName}"
-                                                           FontWeight="SemiBold"
+                                            <!-- 标题 + 类型角标 -->
+                                            <Grid Grid.Column="2" Grid.Row="0" ColumnDefinitions="*,Auto">
+                                                <TextBlock Grid.Column="0"
+                                                           Classes="task-title"
+                                                           Text="{Binding TaskName}"
                                                            TextTrimming="CharacterEllipsis"
-                                                           ToolTip.Tip="{Binding TaskId}" />
-                                                <Border Padding="6,1" CornerRadius="3"
-                                                        Background="{DynamicResource ControlFillColorSecondaryBrush}">
-                                                    <TextBlock Text="{Binding TaskTypeText}" FontSize="10" />
+                                                           VerticalAlignment="Center"
+                                                           ToolTip.Tip="{Binding TaskName}" />
+                                                <Border Grid.Column="1" Classes="type-badge" Margin="8,0,0,0">
+                                                    <TextBlock Text="{Binding TaskTypeText}" />
                                                 </Border>
-                                            </StackPanel>
+                                            </Grid>
 
-                                            <!-- 状态 + 时间 + 处理 / 失败 -->
-                                            <StackPanel Grid.Column="2" Grid.Row="1" Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
+                                            <!-- 状态 / 时间 / 耗时 / 处理量（窄宽度自动换行） -->
+                                            <WrapPanel Grid.Column="2" Grid.Row="1" Margin="0,6,0,0">
                                                 <TextBlock Text="{Binding StatusText}"
-                                                           FontSize="11"
+                                                           FontSize="11" FontWeight="SemiBold"
                                                            Foreground="{Binding StatusBrush}"
-                                                           FontWeight="SemiBold" />
-                                                <TextBlock Text="·" FontSize="11" Opacity="0.3" />
-                                                <TextBlock Text="{Binding StartTimeText}" FontSize="11" Opacity="0.7" />
-                                                <TextBlock Text="·" FontSize="11" Opacity="0.3" />
-                                                <TextBlock Text="{Binding DurationText}" FontSize="11" Opacity="0.7" />
-                                                <TextBlock Text="·" FontSize="11" Opacity="0.3" />
-                                                <TextBlock Text="{Binding StatsText}" FontSize="11" Opacity="0.7" />
-                                            </StackPanel>
+                                                           Margin="0,0,12,0" />
+                                                <TextBlock Text="{Binding StartTimeText}"
+                                                           FontSize="11" Opacity="0.7"
+                                                           Margin="0,0,12,0" />
+                                                <TextBlock Text="{Binding DurationText}"
+                                                           FontSize="11" Opacity="0.7"
+                                                           Margin="0,0,12,0" />
+                                                <TextBlock Text="{Binding StatsText}"
+                                                           FontSize="11" Opacity="0.7" />
+                                            </WrapPanel>
 
-                                            <!-- 路径（识别类任务） -->
+                                            <!-- 源路径（识别类任务） -->
                                             <TextBlock Grid.Column="2" Grid.Row="2"
                                                        Text="{Binding SourcePath}"
                                                        FontSize="11"
-                                                       Opacity="0.55"
+                                                       Opacity="0.5"
                                                        TextTrimming="CharacterEllipsis"
                                                        FontFamily="Consolas, Courier New, monospace"
-                                                       Margin="0,4,0,0"
+                                                       Margin="0,6,0,0"
+                                                       ToolTip.Tip="{Binding SourcePath}"
                                                        IsVisible="{Binding HasSourcePath}" />
+
+                                            <!-- 行操作 -->
+                                            <Button Grid.Column="3" Grid.Row="0" Grid.RowSpan="3"
+                                                    Classes="icon-action"
+                                                    Margin="10,0,0,0"
+                                                    ToolTip.Tip="查看任务详情（含日志）"
+                                                    Command="{Binding #PageRoot.((vm:BackgroundTasksViewModel)DataContext).OpenTaskDetailsCommand}"
+                                                    CommandParameter="{Binding TaskId}">
+                                                <PathIcon Data="{StaticResource IconInfo}" />
+                                            </Button>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
@@ -391,15 +542,17 @@
                             Background="{DynamicResource LayerFillColorAltBrush}"
                             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
                             BorderThickness="1"
-                            CornerRadius="8"
-                            Padding="40,32"
+                            CornerRadius="10"
+                            Padding="48,40"
                             MaxWidth="480"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center">
-                        <StackPanel Spacing="14" HorizontalAlignment="Center">
-                            <TextBlock Text="⏱" FontSize="48" HorizontalAlignment="Center" Opacity="0.5" />
+                        <StackPanel Spacing="16" HorizontalAlignment="Center">
+                            <PathIcon Data="{StaticResource IconClock}" Width="56" Height="56"
+                                      Foreground="{DynamicResource AccentFillColorDefaultBrush}"
+                                      Opacity="0.5" HorizontalAlignment="Center" />
                             <TextBlock Text="无定时任务"
-                                       FontSize="16" FontWeight="SemiBold"
+                                       FontSize="18" FontWeight="SemiBold"
                                        HorizontalAlignment="Center" />
                             <TextBlock Text="config.yaml 的 tasks.scheduled_tasks 列表为空。"
                                        Opacity="0.7"
@@ -408,56 +561,62 @@
                         </StackPanel>
                     </Border>
 
-                    <ScrollViewer IsVisible="{Binding !ShowScheduledEmpty}">
+                    <ScrollViewer IsVisible="{Binding !ShowScheduledEmpty}"
+                                  HorizontalScrollBarVisibility="Disabled">
                         <ItemsControl ItemsSource="{Binding ScheduledItems}" Classes="fade-items">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:ScheduledItemViewModel">
                                     <Border Classes="task-row" Margin="0,0,0,8">
-                                        <Grid ColumnDefinitions="Auto,16,*,Auto" RowDefinitions="Auto,Auto,Auto">
+                                        <Grid ColumnDefinitions="Auto,14,*,Auto"
+                                              RowDefinitions="Auto,Auto,Auto">
+
+                                            <!-- 时钟圆徽 -->
                                             <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="3"
-                                                    Width="36" Height="36"
-                                                    CornerRadius="18"
-                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
-                                                    VerticalAlignment="Top">
-                                                <TextBlock Text="⏱" FontSize="18"
-                                                           Foreground="{Binding StatusBrush}"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center" />
+                                                    Classes="status-dot"
+                                                    Classes.done="{Binding Enabled}">
+                                                <PathIcon Data="{StaticResource IconClock}"
+                                                          Width="18" Height="18"
+                                                          Foreground="{Binding StatusBrush}"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center" />
                                             </Border>
 
-                                            <!-- 名字 + 类型 -->
-                                            <StackPanel Grid.Column="2" Grid.Row="0" Orientation="Horizontal" Spacing="8">
-                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                                <Border Padding="6,1" CornerRadius="3"
-                                                        Background="{DynamicResource ControlFillColorSecondaryBrush}">
-                                                    <TextBlock Text="{Binding Type}" FontSize="10" />
+                                            <!-- 名称 + 类型角标 -->
+                                            <Grid Grid.Column="2" Grid.Row="0" ColumnDefinitions="*,Auto">
+                                                <TextBlock Grid.Column="0"
+                                                           Classes="task-title"
+                                                           Text="{Binding Name}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center"
+                                                           ToolTip.Tip="{Binding Name}" />
+                                                <Border Grid.Column="1" Classes="type-badge" Margin="8,0,0,0">
+                                                    <TextBlock Text="{Binding Type}" />
                                                 </Border>
-                                            </StackPanel>
+                                            </Grid>
 
                                             <!-- 描述 -->
                                             <TextBlock Grid.Column="2" Grid.Row="1"
                                                        Text="{Binding Description}"
                                                        FontSize="11" Opacity="0.7"
-                                                       Margin="0,4,0,0"
+                                                       Margin="0,6,0,0"
                                                        TextWrapping="Wrap" />
 
-                                            <!-- Cron + 超时 -->
-                                            <StackPanel Grid.Column="2" Grid.Row="2"
-                                                        Orientation="Horizontal" Spacing="10"
-                                                        Margin="0,4,0,0">
+                                            <!-- cron + 超时（窄宽度自动换行） -->
+                                            <WrapPanel Grid.Column="2" Grid.Row="2" Margin="0,6,0,0">
                                                 <TextBlock Text="{Binding CronExpression, StringFormat='cron: {0}'}"
                                                            FontSize="11"
                                                            FontFamily="Consolas, Courier New, monospace"
-                                                           Opacity="0.65" />
-                                                <TextBlock Text="·" FontSize="11" Opacity="0.3" />
+                                                           Opacity="0.65"
+                                                           Margin="0,0,12,0" />
                                                 <TextBlock Text="{Binding TimeoutText, StringFormat='超时: {0}'}"
                                                            FontSize="11" Opacity="0.65" />
-                                            </StackPanel>
+                                            </WrapPanel>
 
                                             <!-- 启用状态 chip -->
                                             <Border Grid.Column="3" Grid.Row="0" Grid.RowSpan="3"
                                                     Padding="10,4"
                                                     CornerRadius="12"
+                                                    Margin="10,0,0,0"
                                                     Background="{DynamicResource SubtleFillColorTertiaryBrush}"
                                                     VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding EnabledText}"

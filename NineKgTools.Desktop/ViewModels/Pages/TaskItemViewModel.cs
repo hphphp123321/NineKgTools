@@ -23,13 +23,17 @@ public partial class TaskItemViewModel : ObservableObject
 
     public bool HasChildItems => ChildItems.Count > 0;
 
-    public TaskItemViewModel(TaskProgress progress)
+    /// <summary>是否为子任务（批量识别父任务下的单项）。绑定到 .child 样式类做轻量化视觉降级。</summary>
+    public bool IsChild { get; }
+
+    public TaskItemViewModel(TaskProgress progress, bool isChild = false)
     {
         Progress = progress;
+        IsChild = isChild;
         // 初始构造时递归包装现有 ChildTasks（GetAllRootTasks 已经 LoadChildTasks 填充）
         foreach (var child in progress.ChildTasks)
         {
-            ChildItems.Add(new TaskItemViewModel(child));
+            ChildItems.Add(new TaskItemViewModel(child, isChild: true));
         }
     }
 
@@ -67,7 +71,7 @@ public partial class TaskItemViewModel : ObservableObject
 
     public string StatusIcon => Status switch
     {
-        TaskExecutionStatus.Pending => "⏳",
+        TaskExecutionStatus.Pending => "○",
         TaskExecutionStatus.Running or TaskExecutionStatus.Retrying => "▶",
         TaskExecutionStatus.Succeeded => "✓",
         TaskExecutionStatus.Failed or TaskExecutionStatus.Timeout => "✕",
@@ -199,7 +203,7 @@ public partial class TaskItemViewModel : ObservableObject
             }
             if (existingIdx == -1)
             {
-                ChildItems.Insert(i, new TaskItemViewModel(child));
+                ChildItems.Insert(i, new TaskItemViewModel(child, isChild: true));
             }
             else
             {
