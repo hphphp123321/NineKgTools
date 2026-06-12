@@ -1,8 +1,9 @@
 using System.Collections.ObjectModel;
-using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using NineKgTools.Core.Models.Tasks;
+using NineKgTools.Desktop.Services;
 
 namespace NineKgTools.Desktop.ViewModels.Pages;
 
@@ -10,30 +11,34 @@ namespace NineKgTools.Desktop.ViewModels.Pages;
 /// 后台任务页每一行 VM。包装 <see cref="TaskProgress"/> 引用，派生派生 UI 字段。
 /// 进度更新时由父 VM 调 <see cref="NotifyAll"/> 一次性 refresh 所有 binding。
 ///
-/// §10.5 P1 #9 父子任务树：ChildItems 递归从 progress.ChildTasks 包装；NotifyAll 内
-/// SyncChildItems 做差量更新，保证树展开时实时刷新子任务进度。
+/// §10.5 P1 #9 父子任务：ChildItems 从 progress.ChildTasks 包装，在父卡片内的
+/// "子任务"展开区显示（IsExpanded 控制）；NotifyAll 内 SyncChildItems 做差量更新，
+/// 保证展开时实时刷新子任务进度。
 /// </summary>
 public partial class TaskItemViewModel : ObservableObject
 {
     public TaskProgress Progress { get; }
 
-    /// <summary>子任务（递归构造）。TreeView 用 TreeDataTemplate.ItemsSource 引用。</summary>
+    /// <summary>子任务（递归构造）。父卡片内的子任务 ItemsControl 引用。</summary>
     [ObservableProperty]
     private ObservableCollection<TaskItemViewModel> _childItems = new();
 
+    /// <summary>父卡片内"子任务"区是否展开</summary>
+    [ObservableProperty]
+    private bool _isExpanded;
+
+    [RelayCommand]
+    private void ToggleExpand() => IsExpanded = !IsExpanded;
+
     public bool HasChildItems => ChildItems.Count > 0;
 
-    /// <summary>是否为子任务（批量识别父任务下的单项）。绑定到 .child 样式类做轻量化视觉降级。</summary>
-    public bool IsChild { get; }
-
-    public TaskItemViewModel(TaskProgress progress, bool isChild = false)
+    public TaskItemViewModel(TaskProgress progress)
     {
         Progress = progress;
-        IsChild = isChild;
         // 初始构造时递归包装现有 ChildTasks（GetAllRootTasks 已经 LoadChildTasks 填充）
         foreach (var child in progress.ChildTasks)
         {
-            ChildItems.Add(new TaskItemViewModel(child, isChild: true));
+            ChildItems.Add(new TaskItemViewModel(child));
         }
     }
 
@@ -80,6 +85,25 @@ public partial class TaskItemViewModel : ObservableObject
         _ => "·"
     };
 
+    /// <summary>状态徽用 PathIcon Geometry（BrandResources 的 StreamGeometry，比文字 glyph 渲染更稳）</summary>
+    public Geometry? StatusIconData
+    {
+        get
+        {
+            string key = Status switch
+            {
+                TaskExecutionStatus.Pending => "IconClock",
+                TaskExecutionStatus.Running or TaskExecutionStatus.Retrying => "IconPlay",
+                TaskExecutionStatus.Succeeded => "IconCheck",
+                TaskExecutionStatus.Failed or TaskExecutionStatus.Timeout => "IconClose",
+                TaskExecutionStatus.Cancelled => "IconCancel",
+                TaskExecutionStatus.Skipped => "IconSkipNext",
+                _ => "IconInfo"
+            };
+            return ResourceLookup.Geometry(key);
+        }
+    }
+
     public string StatusText => Status switch
     {
         TaskExecutionStatus.Pending => "排队中",
@@ -107,10 +131,7 @@ public partial class TaskItemViewModel : ObservableObject
                 TaskExecutionStatus.Cancelled or TaskExecutionStatus.Skipped => "TextFillColorTertiaryBrush",
                 _ => "TextFillColorPrimaryBrush"
             };
-            if (Application.Current?.Resources.TryGetResource(
-                    key, Application.Current.ActualThemeVariant, out var b) == true && b is IBrush br)
-                return br;
-            return null;
+            return ResourceLookup.Brush(key);
         }
     }
 
@@ -170,6 +191,7 @@ public partial class TaskItemViewModel : ObservableObject
         OnPropertyChanged(nameof(ChildrenStatsText));
         OnPropertyChanged(nameof(HasChildren));
         OnPropertyChanged(nameof(StatusIcon));
+        OnPropertyChanged(nameof(StatusIconData));
         OnPropertyChanged(nameof(StatusText));
         OnPropertyChanged(nameof(StatusBrush));
         OnPropertyChanged(nameof(TimingText));
@@ -180,7 +202,7 @@ public partial class TaskItemViewModel : ObservableObject
         SyncChildItems();
     }
 
-    /// <summary>差量同步 ChildItems 与 Progress.ChildTasks——保留 instance 触发 NotifyAll，避免 TreeView 重建展开状态丢失</summary>
+    /// <summary>差量同步 ChildItems 与 Progress.ChildTasks——保留 instance 触发 NotifyAll，避免容器重建导致展开状态 / 视觉闪烁</summary>
     private void SyncChildItems()
     {
         var freshIds = Progress.ChildTasks.Select(c => c.TaskId).ToHashSet();
@@ -203,7 +225,7 @@ public partial class TaskItemViewModel : ObservableObject
             }
             if (existingIdx == -1)
             {
-                ChildItems.Insert(i, new TaskItemViewModel(child, isChild: true));
+                ChildItems.Insert(i, new TaskItemViewModel(child));
             }
             else
             {

@@ -1,5 +1,6 @@
 using Avalonia.Media;
 using NineKgTools.Core.Services.Tasks;
+using NineKgTools.Desktop.Services;
 
 namespace NineKgTools.Desktop.ViewModels.Pages;
 
@@ -31,9 +32,10 @@ public sealed class HistoryItemViewModel
         SourcePath = info.SourcePath ?? "";
         HasSourcePath = !string.IsNullOrEmpty(SourcePath);
 
-        StatusBrush = info.Success
-            ? AppBrush("SystemFillColorSuccessBrush")
-            : AppBrush("SystemFillColorCriticalBrush");
+        StatusBrush = ResourceLookup.Brush(info.Success
+            ? "SystemFillColorSuccessBrush"
+            : "SystemFillColorCriticalBrush");
+        StatusIconData = ResourceLookup.Geometry(info.Success ? "IconCheck" : "IconClose");
     }
 
     public string TaskId { get; }
@@ -43,6 +45,7 @@ public sealed class HistoryItemViewModel
     public string StatusIcon { get; }
     public string StatusText { get; }
     public IBrush? StatusBrush { get; }
+    public Geometry? StatusIconData { get; }
 
     public string StartTimeText { get; }
     public string DurationText { get; }
@@ -63,14 +66,4 @@ public sealed class HistoryItemViewModel
         return $"{(int)d.TotalHours}h {d.Minutes}m";
     }
 
-    private static IBrush? AppBrush(string key)
-    {
-        if (Avalonia.Application.Current?.Resources.TryGetResource(
-                key, Avalonia.Application.Current.ActualThemeVariant, out var obj) == true
-            && obj is IBrush b)
-        {
-            return b;
-        }
-        return null;
-    }
 }

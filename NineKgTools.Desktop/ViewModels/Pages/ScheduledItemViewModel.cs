@@ -1,5 +1,6 @@
 using Avalonia.Media;
 using NineKgTools.Core.Services.Configs;
+using NineKgTools.Desktop.Services;
 
 namespace NineKgTools.Desktop.ViewModels.Pages;
 
@@ -21,9 +22,9 @@ public sealed class ScheduledItemViewModel
             ? $"{config.TimeoutOverride.Value} 分钟"
             : "默认";
 
-        StatusBrush = config.Enabled
-            ? AppBrush("SystemFillColorSuccessBrush")
-            : AppBrush("TextFillColorTertiaryBrush");
+        StatusBrush = ResourceLookup.Brush(config.Enabled
+            ? "SystemFillColorSuccessBrush"
+            : "TextFillColorTertiaryBrush");
     }
 
     public string Name { get; }
@@ -34,15 +35,4 @@ public sealed class ScheduledItemViewModel
     public string EnabledText { get; }
     public string TimeoutText { get; }
     public IBrush? StatusBrush { get; }
-
-    private static IBrush? AppBrush(string key)
-    {
-        if (Avalonia.Application.Current?.Resources.TryGetResource(
-                key, Avalonia.Application.Current.ActualThemeVariant, out var obj) == true
-            && obj is IBrush b)
-        {
-            return b;
-        }
-        return null;
-    }
 }

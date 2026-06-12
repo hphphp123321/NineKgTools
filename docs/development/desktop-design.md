@@ -123,7 +123,8 @@ NineKgTools.Desktop.ViewModels.Pages.XxxViewModel
 | 侧栏 | `IconHome` / `IconLibrary` / `IconInbox` / `IconFolderOpen` / `IconTasks` / `IconTags` / `IconCreators` / `IconStar` / `IconWeb` |
 | 类别 | `IconCategoryVideo` / `IconCategoryAudio` / `IconCategoryGame` / `IconCategoryPicture` / `IconCategoryText` |
 | 通用动作 | `IconRefresh`（圆形带箭头）/ `IconInboxArrowDown`（待入库语义）/ `IconPlus` / `IconArrowRight` / `IconEdit` |
-| 行操作 / 任务 | `IconInfo`（查看详情）/ `IconSearch`（识别诊断）/ `IconClose`（取消）/ `IconClock`（定时）/ `IconHistory`（执行历史） |
+| 行操作 / 任务 | `IconInfo`（查看详情）/ `IconSearch`（识别诊断）/ `IconClose`（取消）/ `IconClock`（定时）/ `IconHistory`（执行历史）/ `IconPlayCircle`（运行中 Tab 头）/ `IconBroom`（清理已完成）/ `IconChevronRight`（子任务展开） |
+| 任务状态徽 | `IconPlay` / `IconCheck` / `IconCancel` / `IconSkipNext`（+ 复用 `IconClock` / `IconClose`），由 `TaskItemViewModel.StatusIconData` 按状态解析 |
 
 **新增图标走这条路**：`https://materialdesignicons.com` 取 SVG path data → 写一个 `<StreamGeometry x:Key="IconXxx">{path data}</StreamGeometry>` → 在 AXAML `{StaticResource IconXxx}` 引用。Apache 2.0 许可，自由使用。
 
@@ -269,26 +270,30 @@ private void DebouncedSave()
 
 **SaveStatusText**：在左侧导航顶部紧贴"设置"标题下显示，给用户即时反馈"已保存 · 14:23:45"或"保存失败"。
 
-### 任务行卡片（Phase 1.4 · 2026-05 重做）
+### 任务行卡片（Phase 1.4 · 2026-06 重做）
 
 运行中 / 历史 / 定时三 Tab 共用 `Border.task-row` 卡片骨架。
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│ ╭──╮  任务名称（粗·省略号）   子任务 (5/10 完成)  ▤ ◎ ✕│  Row 0
-│ │▶ │  ████████████░░░░                                │  Row 1（仅运行中）
+│ ╭──╮  任务名称（粗·省略号）                     ▤ ◎ ✕ │  Row 0
+│ │▶ │  ████████████░░░░ 64%                            │  Row 1（仅运行中）
 │ ╰──╯  运行中 · 已用 12s / 预计还 7s   current.mp4      │  Row 2
 │       ┌─红底错误条──────────────┐                     │  Row 3（仅失败）
-│       │ DLsite 接口超时         │                     │
-│       └─────────────────────────┘                     │
+│  ▸ 子任务 (5/10 完成)                                  │  Row 4（仅批量任务）
+│  ┌─轻底色托盘────────────────────────────────────┐    │
+│  │ ▸ RJ0108…  运行中 ▓▓░          ▤ ◎ ✕         │    │
+│  │ ✓ RJ0109…  已完成 · 耗时 3s     ▤ ◎           │    │
+│  └───────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────┘
 ```
 
-- **宽度自适应（关键 bug 修复）**：标题、当前项等可省略文本**一律放进 `Grid` 的 `*` 列**——横向 `StackPanel` 会以无限宽度量子元素，`TextTrimming` 永不生效，长标题撑爆行宽 → 触发 TreeView 横向滚动 → 整行左移把右侧操作按钮顶出可视区。外层 `ScrollViewer` 与 TreeView 内层均 `HorizontalScrollBarVisibility=Disabled` 双保险。历史 / 定时行的多段元信息改用 `WrapPanel`，窄宽度自动换行不溢出。
-- **状态圆徽 `Border.status-dot`**：38×38（子任务 30×30），底色随状态 tint（运行=`BrandStatusRunningFill` / 完成=`BrandStatusSuccessFill` / 失败=`BrandStatusFailedFill` / 其他=中性）；运行中圆徽叠加 1.7s `SineEaseInOut` 透明度"呼吸"动画。字形用单色 glyph（▶✓✕○⊘↷），颜色取 `StatusBrush`。状态色映射：运行=`SystemFillColorAttention` / 完成=`SystemFillColorSuccess` / 失败=`SystemFillColorCritical` / 取消=`TextFillColorTertiary`。
-- **行操作 `Button.icon-action`**：32×32 纯图标 ghost 按钮（详情 `IconInfo` / 诊断 `IconSearch` / 取消 `IconClose`），常驻显示 + `ToolTip.Tip`，任何宽度都放得下；取消按钮 `.danger` 变体 hover 转红。
-- **子任务行 `.child`**：更轻底色 `LayerFillColorAltBrush` + 内缩 padding/圆角 + 圆徽与标题字号下调，配合 TreeView 缩进强化层级。`TaskItemViewModel.IsChild`（构造时传入 `isChild: true`）绑定到 `Classes.child`。
-- 进度条 `ProgressBar.slim`（5px）仅运行中显示（`IsVisible="{Binding ShowProgressBar}"`）；错误条独占末行红底红字。
+- **不用 TreeView（关键决策）**：`TreeViewItem` 模板自带层级缩进 + 沟槽内 expander chevron + 选中指示条，会让整列右移、与上方过滤 chip / Tab 头不对齐，且杂物画在卡片外很丑。改为 **`ItemsControl`（`fade-items`）+ 卡内"子任务"展开区**：toggle 按钮（`Button.subtask-toggle`，chevron `PathIcon.chevron` 在 `.expanded` 类下 0.2s 旋转 90°）+ `Border.subtask-tray` 轻底色内嵌托盘（`LayerFillColorAlt`、无边框——不算嵌套卡片）。展开状态 = `TaskItemViewModel.IsExpanded` + `ToggleExpandCommand`。
+- **宽度自适应**：标题、当前项等可省略文本**一律放进 `Grid` 的 `*` 列**——横向 `StackPanel` 会以无限宽度量子元素，`TextTrimming` 永不生效，长标题撑爆行宽把右侧操作按钮顶出可视区。外层 `ScrollViewer` `HorizontalScrollBarVisibility=Disabled` 兜底。历史 / 定时行的多段元信息用 `WrapPanel` 窄宽度自动换行。
+- **状态徽 `Border.status-dot`**：38×38 圆角方块（CornerRadius 9，同待处理页 40×40 分类 tile 语言；子任务 `.mini` 26×26/R7），底色随状态 tint（运行=`BrandStatusRunningFill` / 完成=`BrandStatusSuccessFill` / 失败=`BrandStatusFailedFill` / 其他=中性）；运行中徽标叠加 1.7s `SineEaseInOut` 透明度"呼吸"。**图形用 PathIcon 绑 `StatusIconData`**（IconPlay/IconCheck/IconClose/IconClock/IconCancel/IconSkipNext），不再用文字 glyph。状态色映射：运行=`SystemFillColorAttention` / 完成=`SystemFillColorSuccess` / 失败=`SystemFillColorCritical` / 取消=`TextFillColorTertiary`。
+- **VM 侧解析系统 brush / 图标 Geometry 必须走 `Services/ResourceLookup`**（`Brush(key)` / `Geometry(key)`）——内部用 `Application.TryGetResource`（IResourceHost 扩展，沿 Styles 链搜索）。直接 `Application.Current.Resources.TryGetResource` 搜不到 FluentAvalonia 主题 brush，返回 null 导致状态图标 / 状态文字隐形（历史 bug）。
+- **行操作 `Button.icon-action`**：32×32 纯图标 ghost 按钮（详情 `IconInfo` / 诊断 `IconSearch` / 取消 `IconClose`），常驻显示 + `ToolTip.Tip`；取消按钮 `.danger` 变体 hover 转红。子任务行复用同一组。
+- 进度条 `ProgressBar.slim`（5px）+ 右侧 10px 百分比，仅运行中显示；错误条独占红底行。
 
 ## 页面设计规范
 
@@ -322,15 +327,23 @@ Row 3 (Auto): 分页栏
 - 待入库 Tab 行：`预览 / 入库 / 重新识别 / 丢弃`
 - 删类 Action 走 `NineKgConfirmDialog Destructive intent`
 
-### 后台任务（BackgroundTasksPage，Phase 1.4）
+### 后台任务（BackgroundTasksPage，Phase 1.4 · 2026-06 视觉对齐）
 
 **结构**：
 
 ```
-Row 0 (Auto): 头部（标题 + "清理已完成"按钮）
-Row 1 (Auto): 状态过滤 chip group（4 chip 带 indicator）
-Row 2 (*):    任务列表 / 空状态
+Row 0 (Auto): 头部（标题 + live chip + "清理已完成"按钮带 IconBroom）
+Row 1 (*):    3-Tab（运行中 / 历史 / 定时，Tab 头 = PathIcon + 文字，运行中带计数）
+              运行中 Tab 内：状态过滤 chip group（4 chip 带 indicator）+ TreeView 列表
 ```
+
+**视觉对齐要点**（与 PendingMediaPage / TagsPage 同一语言）：
+- **Tab 头**：`PathIcon 14×14 + 文字`，运行中 Tab 用 `<Run>` 拼实时计数 `运行中 (N)`（同 PendingMediaPage 双 Tab 计数模式）；图标 `IconPlayCircle` / `IconHistory` / `IconClock`
+- **头部 live chip**（`Border.live-chip`）：`HasRunningTasks`（VM 派生 `RunningCount > 0`）时显示——`BrandStatusRunningFill` 圆角胶囊 + 7px 脉动圆点（`Ellipse.live-dot`，1.4s SineEaseInOut 透明度循环）+ "N 个运行中"
+- **过滤 chip**：弃用文字 glyph（▶✓✕）前缀和 `[N]` 方括号计数 → 8px 语义色圆点 + 文字 + `Border.count-badge` 圆角计数 badge
+- **列表入场**：TreeView 加 `Classes="fade-tree"`，页内样式 `TreeView.fade-tree TreeViewItem` 复刻全局 `fade-items` 的 attach 渐入（TreeView 默认不虚拟化所以安全）；展开父任务时子行同样渐入
+- **行 hover**：`task-row` 加 `translateY(-1px)` lift + accent 边框（同 toptag-card hover 抬起语言，0.18s CubicEaseOut）
+- **进度行**：进度条 + 右侧 10px 百分比读数（`ProgressText`）
 
 **实时刷新机制**：
 - `OnEnterAsync` 启动 `DispatcherTimer`（500ms 间隔）调 `Refresh()`

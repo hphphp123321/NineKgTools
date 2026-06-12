@@ -56,7 +56,11 @@ public partial class BackgroundTasksViewModel : PageViewModelBase
     private int _allCount;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasRunningTasks))]
     private int _runningCount;
+
+    /// <summary>头部"N 个任务运行中" live chip 的可见性</summary>
+    public bool HasRunningTasks => RunningCount > 0;
 
     [ObservableProperty]
     private int _succeededCount;
