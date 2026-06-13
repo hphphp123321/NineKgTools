@@ -224,19 +224,35 @@ public class TaskProgressService
     /// </summary>
     private void LoadChildTasks(TaskProgress task)
     {
-        // 查找所有父任务ID等于当前任务的子任务
-        var children = _taskProgressMap.Values
-            .Where(p => p.ParentTaskId == task.TaskId)
-            .OrderBy(p => p.StartTime)
-            .ToList();
+        // 单棵树加载：一次性建 ParentTaskId 分组表，再 O(子树) 挂载
+        // （避免原来每个节点都全量扫描 _taskProgressMap 的 O(N²)）
+        var byParent = BuildChildLookup();
+        AssignChildren(task, byParent);
+    }
+
+    /// <summary>
+    /// 按 ParentTaskId 把全部任务分组一次（O(N)），供建树时 O(1) 取某节点的直接子任务。
+    /// </summary>
+    private ILookup<string, TaskProgress> BuildChildLookup()
+    {
+        return _taskProgressMap.Values
+            .Where(p => !string.IsNullOrEmpty(p.ParentTaskId))
+            .ToLookup(p => p.ParentTaskId!);
+    }
+
+    /// <summary>
+    /// 用分组表递归挂载子任务。每个节点只访问一次——整棵树 O(N)。
+    /// </summary>
+    private static void AssignChildren(TaskProgress task, ILookup<string, TaskProgress> byParent)
+    {
+        var children = byParent[task.TaskId].OrderBy(p => p.StartTime).ToList();
 
         task.ChildTasks.Clear();
         task.ChildTasks.AddRange(children);
 
-        // 递归加载孙任务
         foreach (var child in children)
         {
-            LoadChildTasks(child);
+            AssignChildren(child, byParent);
         }
     }
 
@@ -246,21 +262,21 @@ public class TaskProgressService
     /// <returns>根任务列表</returns>
     public IEnumerable<TaskProgress> GetAllRootTasks()
     {
-        return _taskProgressMap.Values
+        // 分组表只建一次，所有根任务共用——整体 O(N)（原实现是每个根任务全量扫描的 O(N²)，
+        // 批量识别带数百子任务时每 500ms 轮询会炸）
+        var byParent = BuildChildLookup();
+
+        var roots = _taskProgressMap.Values
             .Where(p => string.IsNullOrEmpty(p.ParentTaskId))
             .OrderBy(p => p.StartTime)
-            .Select(p =>
-            {
-                var root = GetProgress(p.TaskId);
-                if (root != null)
-                {
-                    LoadChildTasks(root);
-                }
-                return root;
-            })
-            .Where(p => p != null)
-            .Cast<TaskProgress>()
             .ToList();
+
+        foreach (var root in roots)
+        {
+            AssignChildren(root, byParent);
+        }
+
+        return roots;
     }
 
     /// <summary>
