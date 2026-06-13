@@ -791,7 +791,7 @@
                                                        Margin="0,6,0,0"
                                                        TextWrapping="Wrap" />
 
-                                            <!-- cron + 超时（窄宽度自动换行） -->
+                                            <!-- cron + 超时 + 下次/上次执行（窄宽度自动换行） -->
                                             <WrapPanel Grid.Column="2" Grid.Row="2" Margin="0,6,0,0">
                                                 <TextBlock Text="{Binding CronExpression, StringFormat='cron: {0}'}"
                                                            FontSize="11"
@@ -799,21 +799,56 @@
                                                            Opacity="0.65"
                                                            Margin="0,0,12,0" />
                                                 <TextBlock Text="{Binding TimeoutText, StringFormat='超时: {0}'}"
-                                                           FontSize="11" Opacity="0.65" />
+                                                           FontSize="11" Opacity="0.65"
+                                                           Margin="0,0,12,0" />
+                                                <!-- 下次执行：启用时高亮 accent，禁用时灰 -->
+                                                <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,0,12,0">
+                                                    <PathIcon Data="{StaticResource IconClock}"
+                                                              Width="11" Height="11"
+                                                              Foreground="{DynamicResource SystemFillColorAttentionBrush}"
+                                                              VerticalAlignment="Center"
+                                                              IsVisible="{Binding CanTrigger}" />
+                                                    <TextBlock FontSize="11" VerticalAlignment="Center">
+                                                        <Run Text="下次 " Foreground="{DynamicResource TextFillColorTertiaryBrush}" /><Run Text="{Binding NextRunText}"
+                                                             Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                                                    </TextBlock>
+                                                </StackPanel>
+                                                <TextBlock FontSize="11" Opacity="0.55" VerticalAlignment="Center"
+                                                           Text="{Binding LastRunText, StringFormat='上次 {0}'}" />
                                             </WrapPanel>
 
-                                            <!-- 启用状态 chip -->
-                                            <Border Grid.Column="3" Grid.Row="0" Grid.RowSpan="3"
-                                                    Padding="10,4"
-                                                    CornerRadius="12"
-                                                    Margin="10,0,0,0"
-                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
-                                                    VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding EnabledText}"
-                                                           Foreground="{Binding StatusBrush}"
-                                                           FontSize="11"
-                                                           FontWeight="SemiBold" />
-                                            </Border>
+                                            <!-- 右侧：启用 chip + 立即执行按钮 -->
+                                            <StackPanel Grid.Column="3" Grid.Row="0" Grid.RowSpan="3"
+                                                        Spacing="8" Margin="12,0,0,0"
+                                                        VerticalAlignment="Center"
+                                                        HorizontalAlignment="Right">
+                                                <Border Padding="10,4"
+                                                        CornerRadius="12"
+                                                        HorizontalAlignment="Right"
+                                                        Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                                                    <TextBlock Text="{Binding EnabledText}"
+                                                               Foreground="{Binding StatusBrush}"
+                                                               FontSize="11"
+                                                               FontWeight="SemiBold" />
+                                                </Border>
+                                                <!-- 立即执行：仅启用任务可点；执行中置灰 + 文案切换 -->
+                                                <Button IsVisible="{Binding CanTrigger}"
+                                                        IsEnabled="{Binding !IsTriggering}"
+                                                        Padding="12,6"
+                                                        HorizontalAlignment="Right"
+                                                        Command="{Binding #PageRoot.((vm:BackgroundTasksViewModel)DataContext).TriggerScheduledCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip.Tip="不等下次 cron，立即执行一次">
+                                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                                        <PathIcon Data="{StaticResource IconPlay}" Width="12" Height="12"
+                                                                  IsVisible="{Binding !IsTriggering}" />
+                                                        <TextBlock Text="立即执行" FontSize="12"
+                                                                   IsVisible="{Binding !IsTriggering}" />
+                                                        <TextBlock Text="执行中…" FontSize="12"
+                                                                   IsVisible="{Binding IsTriggering}" />
+                                                    </StackPanel>
+                                                </Button>
+                                            </StackPanel>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

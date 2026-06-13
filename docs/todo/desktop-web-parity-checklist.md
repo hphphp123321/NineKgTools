@@ -300,11 +300,12 @@
 
 > §12 已决策：作为 **BackgroundTasksPage 的"定时" Tab** 实现，不另建独立页。
 
-- [ ] **P2** "定时" Tab 内容：定时任务列表 + 启用 / 禁用开关（绑定 `Config.Tasks.ScheduledTasks`）
-- [ ] **P2** Cron 表达式编辑 + 运行时校验 + 下次执行时间预览
-- [ ] **P2** 上次执行时间 / 上次状态显示
-- [ ] **P3** "立即执行"按钮（手动触发不等下次 cron）
+- [x] **P2** "定时" Tab 内容：定时任务列表（绑定 `Config.Tasks.ScheduledTasks`，启用 chip 展示）— 启用 / 禁用开关待后续
+- [x] **P2** 下次执行时间预览（用 Hangfire `GetRecurringJobs().NextExecution`，比 Web 的 cron 启发式更准）+ Cron 描述回退；Cron 编辑 + 校验待后续
+- [x] **P2** 上次执行时间显示（Hangfire `RecurringJobDto.LastExecution`）
+- [x] **P3** "立即执行"按钮（`TriggerScheduledCommand` → `UnifiedTaskService.ExecuteScheduledTaskAsync`，后台线程跑，进度进"运行中" Tab）
 - [ ] **P3** Cron 帮助 dialog（语法速查 + 5-10 个常用模板）
+- [ ] 启用 / 禁用开关 + Cron 编辑（需写回 yaml + 重新 AddOrUpdate/RemoveIfExists recurring job）
 
 ---
 

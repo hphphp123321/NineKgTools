@@ -3,6 +3,8 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Hangfire;
+using Hangfire.Storage;
 using NineKgTools.Core.Models.Tasks;
 using NineKgTools.Core.Services.Configs;
 using NineKgTools.Core.Services.Progress;
@@ -20,6 +22,7 @@ public partial class BackgroundTasksViewModel : PageViewModelBase
     private readonly TaskProgressService _progressService;
     private readonly UnifiedTaskService _taskService;
     private readonly Config _config;
+    private readonly JobStorage _jobStorage;
     private DispatcherTimer? _refreshTimer;
 
     public override string Title => "任务";
@@ -79,11 +82,13 @@ public partial class BackgroundTasksViewModel : PageViewModelBase
     public BackgroundTasksViewModel(
         TaskProgressService progressService,
         UnifiedTaskService taskService,
-        Config config)
+        Config config,
+        JobStorage jobStorage)
     {
         _progressService = progressService;
         _taskService = taskService;
         _config = config;
+        _jobStorage = jobStorage;
     }
 
     public override Task OnEnterAsync()
@@ -134,8 +139,26 @@ public partial class BackgroundTasksViewModel : PageViewModelBase
     {
         try
         {
+            // Hangfire 自己按 cron + 时区算出的下次/上次执行时间（仅 enabled 且注册了 RecurringJob 的有）
+            // recurring job 的 id = config.Name（见 UnifiedTaskService.RegisterScheduledTask）
+            var recurring = new Dictionary<string, RecurringJobDto>(StringComparer.Ordinal);
+            try
+            {
+                using var conn = _jobStorage.GetConnection();
+                foreach (var dto in conn.GetRecurringJobs())
+                    recurring[dto.Id] = dto;
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "读取 Hangfire recurring jobs 失败，下次执行时间回退到 cron 描述");
+            }
+
             var scheduled = _config.Tasks?.ScheduledTasks?
-                .Select(c => new ScheduledItemViewModel(c))
+                .Select(c =>
+                {
+                    recurring.TryGetValue(c.Name, out var dto);
+                    return new ScheduledItemViewModel(c, dto?.NextExecution, dto?.LastExecution);
+                })
                 .ToList() ?? new List<ScheduledItemViewModel>();
             ScheduledItems = new ObservableCollection<ScheduledItemViewModel>(scheduled);
             ShowScheduledEmpty = scheduled.Count == 0;
@@ -143,6 +166,33 @@ public partial class BackgroundTasksViewModel : PageViewModelBase
         catch (Exception ex)
         {
             Log.Error(ex, "BackgroundTasks LoadScheduled 失败");
+        }
+    }
+
+    /// <summary>
+    /// 手动触发定时任务（"立即执行"）——不等下次 cron。
+    /// 在后台线程跑（ExecuteScheduledTaskAsync 内部用工厂自建 DI 作用域，线程安全），
+    /// 任务进度会出现在"运行中" Tab；完成后刷新定时列表更新上次/下次执行时间。
+    /// </summary>
+    [RelayCommand]
+    private async Task TriggerScheduledAsync(ScheduledItemViewModel? item)
+    {
+        if (item is null || item.IsTriggering || !item.CanTrigger) return;
+
+        item.IsTriggering = true;
+        try
+        {
+            await Task.Run(() => _taskService.ExecuteScheduledTaskAsync(item.Type, CancellationToken.None));
+            // 刷新"上次执行""下次执行"
+            if (SelectedTabIndex == 2) LoadScheduled();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "手动触发定时任务失败：{Type}", item.Type);
+        }
+        finally
+        {
+            item.IsTriggering = false;
         }
     }
 
