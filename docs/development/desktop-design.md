@@ -294,6 +294,7 @@ private void DebouncedSave()
 - **VM 侧解析系统 brush / 图标 Geometry 必须走 `Services/ResourceLookup`**（`Brush(key)` / `Geometry(key)`）——内部用 `Application.TryGetResource`（IResourceHost 扩展，沿 Styles 链搜索）。直接 `Application.Current.Resources.TryGetResource` 搜不到 FluentAvalonia 主题 brush，返回 null 导致状态图标 / 状态文字隐形（历史 bug）。
 - **行操作 `Button.icon-action`**：32×32 纯图标 ghost 按钮（详情 `IconInfo` / 诊断 `IconSearch` / 取消 `IconClose`），常驻显示 + `ToolTip.Tip`；取消按钮 `.danger` 变体 hover 转红。子任务行复用同一组。
 - 进度条 `ProgressBar.slim`（5px）+ 右侧 10px 百分比，仅运行中显示；错误条独占红底行。
+- **hover lift 不被裁顶 + 右边框不压滚动条**：卡片 `:pointerover` 有 `translateY(-1px)` + 1px accent 边框。两个坑：①首张卡顶边紧贴视口裁剪边界，抬起时顶部边框被裁；②卡片 stretch 占满视口宽，Fluent 浮动滚动条悬浮在右边缘把卡片右边框压住。**修法是给内容 `ItemsControl` 加 `Padding="2,3,14,0"`，不是给 `ScrollViewer` 加 Padding**——`ScrollContentPresenter` 按视口边缘裁剪，ScrollViewer 自身 Padding 不 inset 裁剪区（试过，无效）；内容 padding 才能把首卡顶边下移 3px 留出 lift 余量、右侧让出 14px 滚动条 gutter。动 hover lift / 卡片 margin 时别删这个 padding。
 
 ## 页面设计规范
 

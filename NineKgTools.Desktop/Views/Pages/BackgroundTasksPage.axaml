@@ -386,7 +386,10 @@
                              绝不横向滚动——避免长标题把右侧操作按钮顶出可视区。 -->
                         <ScrollViewer IsVisible="{Binding !ShowEmpty}"
                                       HorizontalScrollBarVisibility="Disabled">
-                            <ItemsControl ItemsSource="{Binding Items}" Classes="fade-items">
+                            <!-- Padding 在内容上而非 ScrollViewer：top 3 给 hover lift(-1px)+边框 留余量
+                                 不被视口裁顶；right 14 让出浮动滚动条 gutter，避免卡片右边框被滚动条压住 -->
+                            <ItemsControl ItemsSource="{Binding Items}" Classes="fade-items"
+                                          Padding="2,3,14,0">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="vm:TaskItemViewModel">
                                         <Border Classes="task-row" Margin="0,0,0,8">
@@ -637,7 +640,8 @@
 
                     <ScrollViewer IsVisible="{Binding !ShowHistoryEmpty}"
                                   HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl ItemsSource="{Binding HistoryItems}" Classes="fade-items">
+                        <ItemsControl ItemsSource="{Binding HistoryItems}" Classes="fade-items"
+                                      Padding="2,3,14,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:HistoryItemViewModel">
                                     <Border Classes="task-row" Margin="0,0,0,8">
@@ -748,7 +752,8 @@
 
                     <ScrollViewer IsVisible="{Binding !ShowScheduledEmpty}"
                                   HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl ItemsSource="{Binding ScheduledItems}" Classes="fade-items">
+                        <ItemsControl ItemsSource="{Binding ScheduledItems}" Classes="fade-items"
+                                      Padding="2,3,14,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:ScheduledItemViewModel">
                                     <Border Classes="task-row" Margin="0,0,0,8">
