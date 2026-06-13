@@ -172,6 +172,44 @@ public partial class TaskItemViewModel : ObservableObject
         return $"{(int)ts.TotalHours}h {ts.Minutes}m";
     }
 
+    private string? _lastFingerprint;
+
+    /// <summary>
+    /// 脏检查刷新：只在进度真正变化时才 NotifyAll。
+    /// - 运行 / 排队 / 重试态：计时和进度实时在动，每次都刷新（指纹也更新）
+    /// - 完成态（成功/失败/取消/跳过）：指纹稳定 → 只在刚转入完成那次刷新一次，之后每 tick 跳过
+    /// 大列表里绝大多数是完成态，省掉成片的 binding 重算 + 资源查找（StatusBrush/StatusIconData）。
+    /// </summary>
+    public void NotifyIfChanged()
+    {
+        if (IsRunning || IsPending)
+        {
+            _lastFingerprint = Fingerprint();
+            NotifyAll();
+            return;
+        }
+
+        var fp = Fingerprint();
+        if (fp != _lastFingerprint)
+        {
+            _lastFingerprint = fp;
+            NotifyAll();
+        }
+        // 指纹未变 = 整棵子树稳定（完成态父任务的子任务也都完成了），跳过——这正是优化点
+    }
+
+    /// <summary>影响显示的字段快照。完成态下保持稳定，运行态本来就每 tick 走 NotifyAll 不依赖它。</summary>
+    private string Fingerprint()
+    {
+        var s = Progress.ChildrenStats;
+        var done = s.SucceededCount + s.FailedCount + s.CancelledCount + s.SkippedCount;
+        return string.Concat(
+            ((int)Status).ToString(), "|",
+            ProgressPercentage.ToString("F1"), "|",
+            CurrentItem, "|", CurrentMessage, "|", ErrorMessage, "|",
+            s.TotalCount.ToString(), "/", done.ToString());
+    }
+
     /// <summary>父 VM 在 progress 字段刷新后调用，触发所有派生 binding 重新拉值 + 同步子任务列表</summary>
     public void NotifyAll()
     {
@@ -230,7 +268,7 @@ public partial class TaskItemViewModel : ObservableObject
             else
             {
                 if (existingIdx != i) ChildItems.Move(existingIdx, i);
-                ChildItems[i].NotifyAll();
+                ChildItems[i].NotifyIfChanged();
             }
         }
 

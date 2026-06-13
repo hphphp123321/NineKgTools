@@ -91,15 +91,23 @@ public partial class BackgroundTasksViewModel : PageViewModelBase
         _jobStorage = jobStorage;
     }
 
+    private static readonly TimeSpan PollActive = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan PollIdle = TimeSpan.FromMilliseconds(1500);
+
     public override Task OnEnterAsync()
     {
         Refresh();
-        // 500ms 轮询足够实时，开销远小于 Subscribe + 跨 task 注销/订阅
+        // 自适应轮询：有任务在跑用 500ms（够实时），空闲降到 1500ms 省 CPU
         // 注：定时器只刷新 Tab 0「运行中」；历史 / 定时 Tab 在切换时 lazy-load
-        _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        _refreshTimer = new DispatcherTimer { Interval = PollActive };
         _refreshTimer.Tick += (_, _) =>
         {
             if (SelectedTabIndex == 0) Refresh();
+
+            // RunningCount 在 Refresh 内更新；据此调轮询频率（设 Interval 会重启计时器，仅在变化时设）
+            var desired = RunningCount > 0 ? PollActive : PollIdle;
+            if (_refreshTimer is not null && _refreshTimer.Interval != desired)
+                _refreshTimer.Interval = desired;
         };
         _refreshTimer.Start();
         return Task.CompletedTask;
@@ -110,6 +118,11 @@ public partial class BackgroundTasksViewModel : PageViewModelBase
     {
         switch (value)
         {
+            case 0:
+                // 切回运行中：立即刷新一次 + 恢复 500ms，避免从空闲 1500ms 进来时首屏滞后
+                Refresh();
+                if (_refreshTimer is not null) _refreshTimer.Interval = PollActive;
+                break;
             case 1:
                 LoadHistory();
                 break;
@@ -360,7 +373,8 @@ public partial class BackgroundTasksViewModel : PageViewModelBase
                 else
                 {
                     if (existingIdx != i) Items.Move(existingIdx, i);
-                    Items[i].NotifyAll();
+                    // 脏检查：只刷新进度真正变化的行（完成态行每 tick 跳过 binding 重算）
+                    Items[i].NotifyIfChanged();
                 }
             }
 
