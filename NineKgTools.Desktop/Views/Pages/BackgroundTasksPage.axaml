@@ -229,6 +229,43 @@
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
         </Style>
 
+        <!-- ===== 虚拟化任务列表（ListBox 默认 VirtualizingStackPanel，只渲染可见区）=====
+             ListBox 是 ItemsControl 子类，#PageRoot ElementName 绑定与原 ItemsControl 一致。
+             选中 / 悬停 / 按下的系统底色全部压平——行视觉完全由 task-row 卡片承担。 -->
+        <Style Selector="ListBox.task-list">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <!-- top 3 给 hover lift(-1px)+边框留余量不被裁顶；right 14 让出滚动条 gutter -->
+            <Setter Property="Padding" Value="2,3,14,0" />
+        </Style>
+        <Style Selector="ListBox.task-list ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="ListBox.task-list ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="ListBox.task-list ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.task-list ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.task-list ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.task-list ListBoxItem:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <!-- 子任务托盘里的嵌套 ListBox：去掉外层 gutter padding（托盘自带 padding） -->
+        <Style Selector="ListBox.subtask-list">
+            <Setter Property="Padding" Value="0" />
+        </Style>
+
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,*">
@@ -384,13 +421,12 @@
                              会让整列右移、与上方 chip/Tab 不对齐）。
                              HorizontalScrollBarVisibility=Disabled：行内容靠 Grid * 列 + 文本省略号自适应宽度，
                              绝不横向滚动——避免长标题把右侧操作按钮顶出可视区。 -->
-                        <ScrollViewer IsVisible="{Binding !ShowEmpty}"
-                                      HorizontalScrollBarVisibility="Disabled">
-                            <!-- Padding 在内容上而非 ScrollViewer：top 3 给 hover lift(-1px)+边框 留余量
-                                 不被视口裁顶；right 14 让出浮动滚动条 gutter，避免卡片右边框被滚动条压住 -->
-                            <ItemsControl ItemsSource="{Binding Items}" Classes="fade-items"
-                                          Padding="2,3,14,0">
-                                <ItemsControl.ItemTemplate>
+                        <!-- 虚拟化：根任务可能数百个（如拖入大量单文件），ListBox 只渲染可见区 -->
+                        <ListBox Classes="task-list"
+                                 IsVisible="{Binding !ShowEmpty}"
+                                 ItemsSource="{Binding Items}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
                                     <DataTemplate DataType="vm:TaskItemViewModel">
                                         <Border Classes="task-row" Margin="0,0,0,8">
                                             <Grid ColumnDefinitions="Auto,14,*,Auto"
@@ -516,8 +552,12 @@
                                                     </Button>
                                                     <Border Classes="subtask-tray"
                                                             IsVisible="{Binding IsExpanded}">
-                                                        <ItemsControl ItemsSource="{Binding ChildItems}">
-                                                            <ItemsControl.ItemTemplate>
+                                                        <!-- MaxHeight 限高 + ListBox 虚拟化：批量识别数百子任务展开也只渲染可见区 -->
+                                                        <ListBox Classes="task-list subtask-list"
+                                                                 ItemsSource="{Binding ChildItems}"
+                                                                 MaxHeight="320"
+                                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                                            <ListBox.ItemTemplate>
                                                                 <DataTemplate DataType="vm:TaskItemViewModel">
                                                                     <Grid ColumnDefinitions="Auto,10,*,10,Auto"
                                                                           RowDefinitions="Auto,Auto"
@@ -591,16 +631,15 @@
                                                                         </StackPanel>
                                                                     </Grid>
                                                                 </DataTemplate>
-                                                            </ItemsControl.ItemTemplate>
-                                                        </ItemsControl>
+                                                            </ListBox.ItemTemplate>
+                                                        </ListBox>
                                                     </Border>
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                     </Grid>
                 </Grid>
             </TabItem>
@@ -638,11 +677,12 @@
                         </StackPanel>
                     </Border>
 
-                    <ScrollViewer IsVisible="{Binding !ShowHistoryEmpty}"
-                                  HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl ItemsSource="{Binding HistoryItems}" Classes="fade-items"
-                                      Padding="2,3,14,0">
-                            <ItemsControl.ItemTemplate>
+                    <!-- 虚拟化：历史最多 1000 条（UnifiedTaskService 上限），ListBox 只渲染可见区 -->
+                    <ListBox Classes="task-list"
+                             IsVisible="{Binding !ShowHistoryEmpty}"
+                             ItemsSource="{Binding HistoryItems}"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="vm:HistoryItemViewModel">
                                     <Border Classes="task-row" Margin="0,0,0,8">
                                         <Grid ColumnDefinitions="Auto,14,*,Auto"
@@ -712,9 +752,8 @@
                                         </Grid>
                                     </Border>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                 </Grid>
             </TabItem>
 
