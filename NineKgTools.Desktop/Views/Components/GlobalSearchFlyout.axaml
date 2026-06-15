@@ -188,12 +188,12 @@
                                             <Border Grid.Column="0"
                                                     Width="20" Height="20"
                                                     CornerRadius="10"
-                                                    Background="{Binding FillBrush, FallbackValue={DynamicResource SubtleFillColorTertiaryBrush}, TargetNullValue={DynamicResource SubtleFillColorTertiaryBrush}}"
-                                                    BorderBrush="{Binding AccentBrush, FallbackValue={DynamicResource ControlStrokeColorDefaultBrush}, TargetNullValue={DynamicResource ControlStrokeColorDefaultBrush}}"
+                                                    Background="{Binding ChipFillBrush}"
+                                                    BorderBrush="{Binding ChipBorderBrush}"
                                                     BorderThickness="1"
                                                     VerticalAlignment="Center">
                                                 <TextBlock Text="#" FontSize="11" FontWeight="Bold"
-                                                           Foreground="{Binding AccentBrush, FallbackValue={DynamicResource TextFillColorPrimaryBrush}, TargetNullValue={DynamicResource TextFillColorPrimaryBrush}}"
+                                                           Foreground="{Binding ChipGlyphBrush}"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center" />
                                             </Border>

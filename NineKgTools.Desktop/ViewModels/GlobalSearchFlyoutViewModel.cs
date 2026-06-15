@@ -361,8 +361,10 @@ public partial class GlobalSearchFlyoutViewModel : ObservableObject
             Subtitle = it.Entity.TopTag?.Name ?? it.MatchDetails,
             MatchTypeText = MapMatchType(it.MatchType),
             RelevancePercent = $"{(int)Math.Round(it.RelevanceScore * 100)}%",
-            AccentBrush = accent,
-            FillBrush = fill,
+            // chip 专用非空 brush——XAML 不再用非法的 FallbackValue={DynamicResource}
+            ChipFillBrush = fill ?? ResolveBrush("SubtleFillColorTertiaryBrush"),
+            ChipBorderBrush = accent ?? ResolveBrush("ControlStrokeColorDefaultBrush"),
+            ChipGlyphBrush = accent ?? ResolveBrush("TextFillColorPrimaryBrush"),
         };
     }
 
@@ -384,16 +386,8 @@ public partial class GlobalSearchFlyoutViewModel : ObservableObject
         "BrandCategoryTextFillBrush",
     };
 
-    private static IBrush? ResolveBrush(string key)
-    {
-        if (Application.Current?.Resources.TryGetResource(
-                key, Application.Current.ActualThemeVariant, out var obj) == true
-            && obj is IBrush b)
-        {
-            return b;
-        }
-        return null;
-    }
+    // ResourceLookup 沿 Styles 链搜索，FluentAvalonia 主题 brush 才命中（见 CLAUDE.md §4.8）
+    private static IBrush? ResolveBrush(string key) => ResourceLookup.Brush(key);
 
     private static FlyoutSearchItem BuildCreatorEntry(SearchResultItem<Core.Models.Media.Creator> it)
     {
@@ -446,11 +440,14 @@ public partial class FlyoutSearchItem : ObservableObject
     public string RelevancePercent { get; init; } = "";
     /// <summary>媒体特有：用于渲染类别图标颜色（其他类型为 Unknown）</summary>
     public TopCategory CategoryKind { get; init; } = TopCategory.Unknown;
-    /// <summary>标签特有：TopTag 色系 accent brush——chip 边框 / 字色。null 时 fallback 中性色。
-    /// 与 TagItemViewModel.TopTagAccentBrush 算法一致（TopTag.Id % 5），保证视觉延续。</summary>
-    public IBrush? AccentBrush { get; init; }
-    /// <summary>标签特有：TopTag 色系 fill brush——chip 背景填充。</summary>
-    public IBrush? FillBrush { get; init; }
+    // 标签 chip 专用非空 brush（与 TagItemViewModel 同算法 TopTag.Id % 5；孤儿标签退化中性）。
+    // 非空 → XAML 直接绑定，不用非法的 {Binding ..., FallbackValue={DynamicResource}}。
+    /// <summary>chip 背景填充：有 TopTag 色用色系 fill，否则中性 Subtle。</summary>
+    public IBrush? ChipFillBrush { get; init; }
+    /// <summary>chip 边框：有 TopTag 色用 accent，否则中性 ControlStroke。</summary>
+    public IBrush? ChipBorderBrush { get; init; }
+    /// <summary>chip "#" 字形：有色用 accent，否则正文主色 TextPrimary。</summary>
+    public IBrush? ChipGlyphBrush { get; init; }
 
     /// <summary>键盘导航 / 鼠标 hover 的高亮态——driven by GlobalSearchFlyoutViewModel.SetHighlightedIndex。</summary>
     [ObservableProperty]

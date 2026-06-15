@@ -292,19 +292,19 @@
                                             CommandParameter="{Binding Id}"
                                             ToolTip.Tip="{Binding TopTagName, TargetNullValue='孤儿标签', FallbackValue='孤儿标签'}">
                                         <!-- 内嵌 Border 持 TopTag 色 fill + accent 边框（与 TagsPage 子标签 chip 同款） -->
-                                        <Border Background="{Binding TopTagFillBrush, FallbackValue={DynamicResource SubtleFillColorTertiaryBrush}, TargetNullValue={DynamicResource SubtleFillColorTertiaryBrush}}"
-                                                BorderBrush="{Binding TopTagAccentBrush, FallbackValue={DynamicResource ControlStrokeColorDefaultBrush}, TargetNullValue={DynamicResource ControlStrokeColorDefaultBrush}}"
+                                        <Border Background="{Binding ChipFillBrush}"
+                                                BorderBrush="{Binding ChipBorderBrush}"
                                                 BorderThickness="1"
                                                 CornerRadius="14"
                                                 Padding="14,8">
                                             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Name}"
                                                            FontSize="13" FontWeight="SemiBold"
-                                                           Foreground="{Binding TopTagAccentBrush, FallbackValue={DynamicResource TextFillColorPrimaryBrush}, TargetNullValue={DynamicResource TextFillColorPrimaryBrush}}"
+                                                           Foreground="{Binding ChipNameBrush}"
                                                            VerticalAlignment="Center" />
                                                 <TextBlock Text="{Binding MediaCountText}"
                                                            FontSize="11"
-                                                           Foreground="{Binding TopTagAccentBrush, FallbackValue={DynamicResource TextFillColorSecondaryBrush}, TargetNullValue={DynamicResource TextFillColorSecondaryBrush}}"
+                                                           Foreground="{Binding ChipCountBrush}"
                                                            Opacity="0.7"
                                                            VerticalAlignment="Center" />
                                             </StackPanel>
