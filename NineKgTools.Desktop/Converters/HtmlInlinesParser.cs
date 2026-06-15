@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using HtmlAgilityPack;
+using NineKgTools.Desktop.Services;
 using Serilog;
 
 namespace NineKgTools.Desktop.Converters;
@@ -449,14 +450,5 @@ public static class HtmlInlinesParser
     }
 
     private static IBrush GetAccentBrush()
-    {
-        if (Application.Current?.Resources.TryGetResource(
-                "AccentFillColorDefaultBrush",
-                Application.Current.ActualThemeVariant,
-                out var b) == true && b is IBrush brush)
-        {
-            return brush;
-        }
-        return Brushes.SteelBlue;
-    }
+        => ResourceLookup.Brush("AccentFillColorDefaultBrush") ?? Brushes.SteelBlue;
 }

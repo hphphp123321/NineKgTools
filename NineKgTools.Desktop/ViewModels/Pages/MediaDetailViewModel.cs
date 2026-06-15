@@ -327,13 +327,7 @@ public partial class MediaDetailViewModel : NineKgTools.Desktop.ViewModels.PageV
     private Geometry? StarGeometryFor(int idx)
     {
         var key = (int)Math.Round(Rating) >= idx ? "IconStarFilled" : "IconStarOutline";
-        if (Avalonia.Application.Current?.Resources.TryGetResource(
-                key, Avalonia.Application.Current.ActualThemeVariant, out var obj) == true
-            && obj is Geometry g)
-        {
-            return g;
-        }
-        return null;
+        return ResourceLookup.Geometry(key);
     }
 
     [ObservableProperty]

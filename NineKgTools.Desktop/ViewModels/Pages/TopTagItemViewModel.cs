@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using NineKgTools.Core.Models.Tags;
+using NineKgTools.Desktop.Services;
 
 namespace NineKgTools.Desktop.ViewModels.Pages;
 
@@ -48,14 +49,5 @@ public partial class TopTagItemViewModel : ObservableObject
         FillBrush = ResolveBrush(FillKeys[idx]);
     }
 
-    private static IBrush? ResolveBrush(string key)
-    {
-        if (Application.Current?.Resources.TryGetResource(
-                key, Application.Current.ActualThemeVariant, out var obj) == true
-            && obj is IBrush b)
-        {
-            return b;
-        }
-        return null;
-    }
+    private static IBrush? ResolveBrush(string key) => ResourceLookup.Brush(key);
 }

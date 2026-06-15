@@ -6,6 +6,7 @@ using Avalonia.Threading;
 using FluentAvalonia.UI.Controls;
 using NineKgTools.Core.Models.Favorites;
 using NineKgTools.Core.Services.Favorites;
+using NineKgTools.Desktop.Services;
 using NineKgTools.Desktop.ViewModels.Dialogs;
 using Serilog;
 
@@ -81,13 +82,7 @@ public partial class FavoriteSelectorDialog : UserControl
 
     private static Control BuildTitleVisual(bool allowMultiSelect)
     {
-        IBrush iconBrush = Brushes.Gray;
-        if (Application.Current?.Resources.TryGetResource(
-                "SystemFillColorAttentionBrush", Application.Current.ActualThemeVariant, out var b) == true
-            && b is IBrush br)
-        {
-            iconBrush = br;
-        }
+        IBrush iconBrush = ResourceLookup.Brush("SystemFillColorAttentionBrush") ?? Brushes.Gray;
 
         return new StackPanel
         {

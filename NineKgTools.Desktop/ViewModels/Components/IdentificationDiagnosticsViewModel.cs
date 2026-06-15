@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using NineKgTools.Core.Models.Tasks.Diagnostics;
+using NineKgTools.Desktop.Services;
 
 namespace NineKgTools.Desktop.ViewModels.Components;
 
@@ -78,14 +79,7 @@ public partial class IdentificationDiagnosticsViewModel : ObservableObject
     public string AttemptsCountText => $"网站尝试（共 {AttemptCount} 次）";
     public bool ShowEmptyAttempts => AttemptCount == 0;
 
-    private static IBrush? ResolveBrush(string key)
-    {
-        if (Application.Current?.Resources.TryGetResource(
-                key, Application.Current.ActualThemeVariant, out var obj) == true
-            && obj is IBrush b)
-            return b;
-        return null;
-    }
+    private static IBrush? ResolveBrush(string key) => ResourceLookup.Brush(key);
 
     private static string TruncateMid(string s, int max)
     {
@@ -169,14 +163,7 @@ public partial class WebsiteAttemptItemViewModel : ObservableObject
     public string StatsText => $"扫描 {Source.TotalCandidatesScanned} · 过滤 {Source.FilteredByMinSimilarityCount} · 展示 Top {Source.TopCandidates.Count}";
     public bool ShowStats => Source.TotalCandidatesScanned > 0 || Source.FilteredByMinSimilarityCount > 0 || HasCandidates;
 
-    private static IBrush? ResolveBrush(string key)
-    {
-        if (Application.Current?.Resources.TryGetResource(
-                key, Application.Current.ActualThemeVariant, out var obj) == true
-            && obj is IBrush b)
-            return b;
-        return null;
-    }
+    private static IBrush? ResolveBrush(string key) => ResourceLookup.Brush(key);
 }
 
 /// <summary>

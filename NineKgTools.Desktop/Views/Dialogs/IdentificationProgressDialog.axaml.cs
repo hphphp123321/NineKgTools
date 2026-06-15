@@ -6,6 +6,7 @@ using FluentAvalonia.UI.Controls;
 using NineKgTools.Core.Models.Tasks;
 using NineKgTools.Core.Models.Tasks.Diagnostics;
 using NineKgTools.Core.Services.Tasks.Progress;
+using NineKgTools.Desktop.Services;
 using NineKgTools.Desktop.ViewModels.Dialogs;
 
 namespace NineKgTools.Desktop.Views.Dialogs;
@@ -54,15 +55,7 @@ public partial class IdentificationProgressDialog : UserControl
 
     private static Control BuildTitleVisual()
     {
-        IBrush iconBrush = Brushes.SteelBlue;
-        if (Application.Current?.Resources.TryGetResource(
-                "SystemFillColorAttentionBrush",
-                Application.Current.ActualThemeVariant,
-                out var brushObj) == true
-            && brushObj is IBrush b)
-        {
-            iconBrush = b;
-        }
+        IBrush iconBrush = ResourceLookup.Brush("SystemFillColorAttentionBrush") ?? Brushes.SteelBlue;
 
         return new StackPanel
         {

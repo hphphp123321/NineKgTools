@@ -5,6 +5,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using FluentAvalonia.UI.Controls;
 using NineKgTools.Core.Models.Media;
+using NineKgTools.Desktop.Services;
 using NineKgTools.Desktop.ViewModels.Pages;
 
 namespace NineKgTools.Desktop.Views.Dialogs;
@@ -105,13 +106,7 @@ public partial class CreatorEditorDialog : UserControl
 
     private static Control BuildTitleVisual(string title, bool isEdit)
     {
-        IBrush iconBrush = Brushes.Gray;
-        if (Application.Current?.Resources.TryGetResource(
-                "SystemFillColorAttentionBrush", Application.Current.ActualThemeVariant, out var b) == true
-            && b is IBrush br)
-        {
-            iconBrush = br;
-        }
+        IBrush iconBrush = ResourceLookup.Brush("SystemFillColorAttentionBrush") ?? Brushes.Gray;
 
         return new StackPanel
         {

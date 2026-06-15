@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Media;
 using NineKgTools.Core.Models.Tasks;
 using NineKgTools.Core.Services.Tasks;
+using NineKgTools.Desktop.Services;
 
 namespace NineKgTools.Desktop.ViewModels.Dialogs;
 
@@ -173,14 +174,5 @@ public sealed class TaskDetailsDialogContext
         return $"{(int)d.TotalHours}h {d.Minutes}m";
     }
 
-    private static IBrush? ResolveBrush(string key)
-    {
-        if (Application.Current?.Resources.TryGetResource(
-                key, Application.Current.ActualThemeVariant, out var obj) == true
-            && obj is IBrush b)
-        {
-            return b;
-        }
-        return null;
-    }
+    private static IBrush? ResolveBrush(string key) => ResourceLookup.Brush(key);
 }

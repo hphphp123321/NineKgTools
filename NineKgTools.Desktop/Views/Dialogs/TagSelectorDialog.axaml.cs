@@ -5,6 +5,7 @@ using Avalonia.Media;
 using FluentAvalonia.UI.Controls;
 using NineKgTools.Core.Models.Tags;
 using NineKgTools.Core.Services.Tags;
+using NineKgTools.Desktop.Services;
 using NineKgTools.Desktop.ViewModels.Dialogs;
 using Serilog;
 
@@ -85,15 +86,7 @@ public partial class TagSelectorDialog : UserControl
 
     private static Control BuildTitleVisual(bool allowMultiSelect)
     {
-        IBrush iconBrush = Brushes.Gray;
-        if (Application.Current?.Resources.TryGetResource(
-                "SystemFillColorAttentionBrush",
-                Application.Current.ActualThemeVariant,
-                out var brushObj) == true
-            && brushObj is IBrush b)
-        {
-            iconBrush = b;
-        }
+        IBrush iconBrush = ResourceLookup.Brush("SystemFillColorAttentionBrush") ?? Brushes.Gray;
 
         return new StackPanel
         {

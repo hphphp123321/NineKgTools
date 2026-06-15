@@ -285,20 +285,10 @@ public class TrayService : IDisposable
             TrayState.Running => "SystemFillColorAttentionBrush",
             _ => "AccentFillColorDefaultBrush",
         };
-        IBrush brush = Brushes.SteelBlue;
-        if (Application.Current?.Resources.TryGetResource(
-                brushKey, Application.Current.ActualThemeVariant, out var b) == true && b is IBrush br)
-        {
-            brush = br;
-        }
+        IBrush brush = ResourceLookup.Brush(brushKey) ?? Brushes.SteelBlue;
 
-        Geometry geometry = StreamGeometry.Parse(
+        Geometry geometry = ResourceLookup.Geometry("IconLibrary") ?? StreamGeometry.Parse(
             "M9,3V18H12V3H9M14,5V18H17V5H14M5,5V18H7V5H5M3,20V22H21V20H3Z");
-        if (Application.Current?.Resources.TryGetResource(
-                "IconLibrary", Application.Current.ActualThemeVariant, out var g) == true && g is Geometry gg)
-        {
-            geometry = gg;
-        }
 
         var path = new AvaloniaPath
         {

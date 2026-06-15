@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using FluentAvalonia.UI.Controls;
+using NineKgTools.Desktop.Services;
 using NineKgTools.Desktop.ViewModels.Dialogs;
 
 namespace NineKgTools.Desktop.Views.Dialogs;
@@ -67,13 +68,7 @@ public partial class NineKgConfirmDialog : UserControl
     private static Control BuildTitleVisual(NineKgConfirmDialogContext ctx)
     {
         // 取系统语义 brush 给图标着色（Info=蓝/Affirmative=绿/Destructive=红）
-        IBrush iconBrush = Brushes.Gray;
-        if (Application.Current?.Resources.TryGetResource(
-                ctx.AccentBrushKey, Application.Current.ActualThemeVariant, out var brushObj) == true
-            && brushObj is IBrush b)
-        {
-            iconBrush = b;
-        }
+        IBrush iconBrush = ResourceLookup.Brush(ctx.AccentBrushKey) ?? Brushes.Gray;
 
         return new StackPanel
         {

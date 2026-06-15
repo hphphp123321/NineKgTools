@@ -12,6 +12,7 @@ using NineKgTools.Core.Models.Media.Source;
 using NineKgTools.Core.Models.Media.Text;
 using NineKgTools.Core.Models.Media.Video;
 using NineKgTools.Core.Services.Files;
+using NineKgTools.Desktop.Services;
 using NineKgTools.Desktop.ViewModels.Dialogs;
 using Serilog;
 
@@ -149,15 +150,7 @@ public partial class ManualAddMediaDialog : UserControl
     /// <summary>对齐 NineKgConfirmDialog / TagEditorDialog 的 Title slot 自渲染样式。</summary>
     private static Control BuildTitleVisual(MediaSource source)
     {
-        IBrush iconBrush = Brushes.Gray;
-        if (Application.Current?.Resources.TryGetResource(
-                "SystemFillColorAttentionBrush",
-                Application.Current.ActualThemeVariant,
-                out var brushObj) == true
-            && brushObj is IBrush b)
-        {
-            iconBrush = b;
-        }
+        IBrush iconBrush = ResourceLookup.Brush("SystemFillColorAttentionBrush") ?? Brushes.Gray;
 
         return new StackPanel
         {

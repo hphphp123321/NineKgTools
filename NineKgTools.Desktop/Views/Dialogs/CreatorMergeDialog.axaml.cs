@@ -5,6 +5,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using FluentAvalonia.UI.Controls;
 using NineKgTools.Core.Models.Media;
+using NineKgTools.Desktop.Services;
 
 namespace NineKgTools.Desktop.Views.Dialogs;
 
@@ -92,13 +93,7 @@ public partial class CreatorMergeDialog : UserControl
 
     private static Control BuildTitleVisual()
     {
-        IBrush iconBrush = Brushes.Crimson;
-        if (Application.Current?.Resources.TryGetResource(
-                "SystemFillColorCriticalBrush", Application.Current.ActualThemeVariant, out var b) == true
-            && b is IBrush br)
-        {
-            iconBrush = br;
-        }
+        IBrush iconBrush = ResourceLookup.Brush("SystemFillColorCriticalBrush") ?? Brushes.Crimson;
 
         return new StackPanel
         {

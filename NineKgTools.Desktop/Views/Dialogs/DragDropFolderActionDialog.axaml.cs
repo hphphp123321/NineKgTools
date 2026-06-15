@@ -82,13 +82,7 @@ public partial class DragDropFolderActionDialog : UserControl
 
     private static Control BuildTitle()
     {
-        IBrush iconBrush = Brushes.SteelBlue;
-        if (Application.Current?.Resources.TryGetResource(
-                "AccentFillColorDefaultBrush", Application.Current.ActualThemeVariant, out var b) == true
-            && b is IBrush br)
-        {
-            iconBrush = br;
-        }
+        IBrush iconBrush = ResourceLookup.Brush("AccentFillColorDefaultBrush") ?? Brushes.SteelBlue;
 
         return new StackPanel
         {

@@ -2,6 +2,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
+using NineKgTools.Desktop.Services;
 
 namespace NineKgTools.Desktop.ViewModels.Dialogs;
 
@@ -19,16 +20,7 @@ public sealed class BrushKeyConverter : IValueConverter
         if (value is not string key || string.IsNullOrEmpty(key))
             return Brushes.Gray;
 
-        if (Application.Current?.Resources.TryGetResource(
-                key,
-                Application.Current.ActualThemeVariant,
-                out var resource) == true
-            && resource is IBrush brush)
-        {
-            return brush;
-        }
-
-        return Brushes.Gray;
+        return ResourceLookup.Brush(key) ?? Brushes.Gray;
     }
 
     public object? ConvertBack(object? value, System.Type targetType, object? parameter, CultureInfo culture)

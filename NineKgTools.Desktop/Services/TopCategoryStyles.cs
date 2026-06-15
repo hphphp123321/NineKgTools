@@ -61,25 +61,7 @@ public static class TopCategoryStyles
         => ResolveBrush(FillBrushKey(cat));
 
     public static Geometry? ResolveIconGeometry(TopCategory cat)
-    {
-        var key = IconResourceKey(cat);
-        if (Application.Current?.Resources.TryGetResource(
-                key, Application.Current.ActualThemeVariant, out var obj) == true
-            && obj is Geometry g)
-        {
-            return g;
-        }
-        return null;
-    }
+        => ResourceLookup.Geometry(IconResourceKey(cat));
 
-    private static IBrush? ResolveBrush(string key)
-    {
-        if (Application.Current?.Resources.TryGetResource(
-                key, Application.Current.ActualThemeVariant, out var obj) == true
-            && obj is IBrush b)
-        {
-            return b;
-        }
-        return null;
-    }
+    private static IBrush? ResolveBrush(string key) => ResourceLookup.Brush(key);
 }

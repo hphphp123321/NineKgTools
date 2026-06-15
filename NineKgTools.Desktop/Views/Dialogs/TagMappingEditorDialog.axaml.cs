@@ -6,6 +6,7 @@ using Avalonia.Media;
 using FluentAvalonia.UI.Controls;
 using NineKgTools.Core.Models.Tags;
 using NineKgTools.Core.Services.Tags;
+using NineKgTools.Desktop.Services;
 
 namespace NineKgTools.Desktop.Views.Dialogs;
 
@@ -219,13 +220,7 @@ public partial class TagMappingEditorDialog : UserControl
 
     private static Control BuildTitleVisual(string title)
     {
-        IBrush iconBrush = Brushes.Gray;
-        if (Application.Current?.Resources.TryGetResource(
-                "SystemFillColorAttentionBrush", Application.Current.ActualThemeVariant, out var b) == true
-            && b is IBrush br)
-        {
-            iconBrush = br;
-        }
+        IBrush iconBrush = ResourceLookup.Brush("SystemFillColorAttentionBrush") ?? Brushes.Gray;
 
         return new StackPanel
         {
