@@ -242,7 +242,8 @@
                             <Binding Path="!ShowEmptySearchedTags" />
                         </MultiBinding>
                     </ScrollViewer.IsVisible>
-                    <ItemsControl ItemsSource="{Binding SearchedTags}" Classes="fade-items">
+                    <ItemsControl ItemsSource="{Binding SearchedTags}" Classes="fade-items"
+                                  Padding="0,0,14,0">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:TagItemViewModel">
                                 <Border Classes="tag-row">
@@ -400,8 +401,10 @@
                 </Border>
 
                 <!-- 子标签行表（fade-items：进入顶级详情态时 200ms 渐入） -->
+                <!-- Padding 右 14：让出 Fluent 浮动滚动条 gutter，避免行右侧操作按钮被滚动条压住 -->
                 <ScrollViewer IsVisible="{Binding !ShowEmptyTagList}">
-                    <ItemsControl ItemsSource="{Binding Tags}" Classes="fade-items">
+                    <ItemsControl ItemsSource="{Binding Tags}" Classes="fade-items"
+                                  Padding="0,0,14,0">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:TagItemViewModel">
                                 <Border Classes="tag-row">
