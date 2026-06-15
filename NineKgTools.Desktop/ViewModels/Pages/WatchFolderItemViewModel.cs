@@ -1,7 +1,7 @@
-using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using NineKgTools.Core.Services.Files;
+using NineKgTools.Desktop.Services;
 
 namespace NineKgTools.Desktop.ViewModels.Pages;
 
@@ -71,10 +71,10 @@ public partial class WatchFolderItemViewModel : ObservableObject
                 MonitorState.Stopped => "TextFillColorTertiaryBrush",
                 _ => "SystemFillColorAttentionBrush",
             };
-            if (Application.Current?.Resources.TryGetResource(
-                    key, Application.Current.ActualThemeVariant, out var b) == true && b is IBrush br)
-                return br;
-            return null;
+            // ResourceLookup 沿 Styles 链搜索，FluentAvalonia 主题 brush 才命中；
+            // 旧的 Application.Current.Resources.TryGetResource 只搜 App 字典会 miss → 返回 null
+            // → 状态徽文字 / 状态点变透明（"test 右边空灰框" bug）。见 CLAUDE.md §4.8。
+            return ResourceLookup.Brush(key);
         }
     }
 
