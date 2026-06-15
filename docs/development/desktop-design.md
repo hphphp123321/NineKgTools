@@ -299,6 +299,8 @@ private void DebouncedSave()
 
 ## 页面设计规范
 
+> **通用约定 · 行列表滚动条 gutter**：凡是"整行 stretch 占满 + 右侧有操作按钮"的纵向列表（`ItemsControl`/`ListBox` 在 `ScrollViewer` 内），**必须**给内容加右侧 `Padding`（约定值 14）让出 Fluent 浮动滚动条的 gutter——否则滚动条悬在视口右缘会把行右侧按钮压住。落在**内容**（`ItemsControl.Padding` / `ListBox.task-list` 样式 Padding）上，不要落在 `ScrollViewer.Padding`（它不 inset 裁剪区，且对 hover-lift 顶边裁切无效，见 §4.8 / 任务行卡片）。**卡片网格**（`WrapPanel`/`UniformGrid`，卡片自带 margin/spacing）不受影响，无需 gutter。已应用：任务 / 标签 / 标签映射 / 待处理 / 监视文件夹页。
+
 ### 媒体库（MediaOverviewPage，Phase 1.2）
 
 **结构**（4 行 Grid）：

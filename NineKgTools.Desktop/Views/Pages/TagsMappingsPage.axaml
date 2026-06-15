@@ -158,7 +158,8 @@
             </Border>
 
             <ScrollViewer IsVisible="{Binding !ShowEmpty}">
-                <ItemsControl ItemsSource="{Binding Items}" Classes="fade-items">
+                <!-- Padding 右 14：让出浮动滚动条 gutter，避免行右侧操作按钮被压 -->
+                <ItemsControl ItemsSource="{Binding Items}" Classes="fade-items" Padding="0,0,14,0">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:TagMappingItemViewModel">
                             <Border Classes="mapping-row">

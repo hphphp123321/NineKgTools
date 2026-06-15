@@ -94,7 +94,8 @@
             </Border>
 
             <ScrollViewer IsVisible="{Binding !ShowEmpty}">
-                <ItemsControl ItemsSource="{Binding Folders}">
+                <!-- Padding 右 14：让出浮动滚动条 gutter，避免行右侧操作按钮被压 -->
+                <ItemsControl ItemsSource="{Binding Folders}" Padding="0,0,14,0">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:WatchFolderItemViewModel">
                             <Border Classes="folder-row">
