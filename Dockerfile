@@ -2,8 +2,9 @@
 #
 # NineKgTools.Web 多阶段 Dockerfile
 #
-# - build:   .NET 9 SDK，restore + publish
-# - runtime: ASP.NET Core 9 Runtime（slim），只带最小运行时依赖
+# - build:   .NET 10 SDK，restore + publish
+# - runtime: ASP.NET Core 10 Runtime，只带最小运行时依赖
+#   （10.0 浮动 tag = 最新 GA 补丁，默认 Debian trixie；.NET 10 暂无稳定 *-slim Debian tag）
 #
 # 注意：本镜像 **不包含 Chromium**——DLsite 评分抓取（use_selenium_for_rating）
 # 在容器内不可用，但默认配置已禁用该特性，主流程不受影响。
@@ -13,7 +14,7 @@
 # 推荐：  docker compose up -d  （见仓库根 docker-compose.yml）
 
 # ---------- Stage 1: build ----------
-FROM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # 利用 Docker 层缓存：先复制 csproj + Directory.Build.props 做 restore，再复制源码做 build
@@ -42,7 +43,7 @@ RUN dotnet publish "NineKgTools.Web/NineKgTools.Web.csproj" \
     /p:PublishReadyToRun=true
 
 # ---------- Stage 2: runtime ----------
-FROM mcr.microsoft.com/dotnet/aspnet:9.0-bookworm-slim AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 # 装 curl（供 healthcheck / 运维诊断用，~5MB 增量）
