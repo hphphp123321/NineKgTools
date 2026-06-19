@@ -13,7 +13,7 @@ using Serilog.Events;
 
 namespace NineKgTools.Desktop.ViewModels.Pages;
 
-public enum SettingsGroup { Appearance, Tasks, Identification, Files, AI, TagMatching, Search, Log }
+public enum SettingsGroup { Appearance, Tasks, Identification, Files, AI, TagMatching, Search, Log, Application }
 
 public enum ThemeChoice { System, Light, Dark }
 
@@ -37,6 +37,7 @@ public partial class SettingsViewModel : PageViewModelBase
     [NotifyPropertyChangedFor(nameof(IsGroupTagMatching))]
     [NotifyPropertyChangedFor(nameof(IsGroupSearch))]
     [NotifyPropertyChangedFor(nameof(IsGroupLog))]
+    [NotifyPropertyChangedFor(nameof(IsGroupApplication))]
     private SettingsGroup _selectedGroup = SettingsGroup.Appearance;
 
     public bool IsGroupAppearance => SelectedGroup == SettingsGroup.Appearance;
@@ -47,6 +48,7 @@ public partial class SettingsViewModel : PageViewModelBase
     public bool IsGroupTagMatching => SelectedGroup == SettingsGroup.TagMatching;
     public bool IsGroupSearch => SelectedGroup == SettingsGroup.Search;
     public bool IsGroupLog => SelectedGroup == SettingsGroup.Log;
+    public bool IsGroupApplication => SelectedGroup == SettingsGroup.Application;
 
     // ========== 通用 - 主题 ==========
     [ObservableProperty]
@@ -86,6 +88,24 @@ public partial class SettingsViewModel : PageViewModelBase
     private bool _autoStartEnabled;
 
     public bool AutoStartSupported => AutoStartService.IsSupported;
+
+    // ========== 应用 / 更新 ==========
+    /// <summary>当前版本号（Velopack 安装版取其版本，否则回退程序集版本）。</summary>
+    public string CurrentVersionText => _updateService.CurrentVersionText;
+
+    /// <summary>是否 Velopack 安装版——dev / portable 下为 false，"检查更新"提示不可用。</summary>
+    public bool UpdateSupported => _updateService.IsSupported;
+
+    /// <summary>启动时静默检查更新（镜像 <see cref="DesktopPreferences.AutoCheckUpdates"/>）。</summary>
+    [ObservableProperty]
+    private bool _autoCheckUpdates = true;
+
+    /// <summary>"立即检查更新"按钮旁的状态文案。</summary>
+    [ObservableProperty]
+    private string _updateCheckStatus = "";
+
+    [ObservableProperty]
+    private bool _isCheckingUpdate;
 
     // ========== 任务 ==========
     [ObservableProperty] private int _maxConcurrentIdentificationTasks;
@@ -147,15 +167,17 @@ public partial class SettingsViewModel : PageViewModelBase
 
     private readonly ShellIntegrationService _shellIntegration;
     private readonly AutoStartService _autoStart;
+    private readonly UpdateService _updateService;
 
     public SettingsViewModel(Config config, ImageCacheService imageCache, DesktopPreferences preferences,
-        ShellIntegrationService shellIntegration, AutoStartService autoStart)
+        ShellIntegrationService shellIntegration, AutoStartService autoStart, UpdateService updateService)
     {
         _config = config;
         _imageCache = imageCache;
         _preferences = preferences;
         _shellIntegration = shellIntegration;
         _autoStart = autoStart;
+        _updateService = updateService;
 
         IgnoredFilesEditor = new StringListEditorViewModel(
             placeholder: "如 Thumbs.db（精确文件名，回车添加）",
@@ -276,10 +298,73 @@ public partial class SettingsViewModel : PageViewModelBase
             // 开机自启状态：以 AutoStartService 实际检测为准（HKCU Run 可能被外部修改）
             AutoStartEnabled = _autoStart.IsEnabled();
             _preferences.AutoStartEnabled = AutoStartEnabled;
+
+            // 应用 / 更新
+            AutoCheckUpdates = _preferences.AutoCheckUpdates;
+            OnPropertyChanged(nameof(CurrentVersionText));
+            OnPropertyChanged(nameof(UpdateSupported));
+            UpdateCheckStatus = _preferences.LastUpdateCheck is { } lastCheck
+                ? $"上次检查：{lastCheck.ToLocalTime():yyyy-MM-dd HH:mm}"
+                : "";
         }
         finally
         {
             _suppressSave = false;
+        }
+    }
+
+    /// <summary>"启动时自动检查更新"开关 → 镜像到 DesktopPreferences 并落盘。</summary>
+    partial void OnAutoCheckUpdatesChanged(bool value)
+    {
+        if (_suppressSave) return;
+        _preferences.AutoCheckUpdates = value;
+        _preferences.RequestSave();
+    }
+
+    /// <summary>"立即检查更新"：仅 Velopack 安装版有效；有新版直接走下载+应用流程，否则提示已最新。</summary>
+    [RelayCommand]
+    private async Task CheckUpdatesNowAsync()
+    {
+        if (IsCheckingUpdate) return;
+        if (!_updateService.IsSupported)
+        {
+            UpdateCheckStatus = "当前为开发 / 便携版，自动更新不可用。";
+            return;
+        }
+
+        IsCheckingUpdate = true;
+        UpdateCheckStatus = "正在检查…";
+        try
+        {
+            var info = await _updateService.CheckAsync();
+            _preferences.LastUpdateCheck = DateTime.UtcNow;
+            _preferences.RequestSave();
+
+            if (info?.TargetFullRelease is { } rel)
+            {
+                var version = rel.Version?.ToString() ?? "";
+                UpdateCheckStatus = $"发现新版本 {version}";
+                var ok = await NineKgConfirmDialog.ShowAsync(null,
+                    title: "发现新版本",
+                    message: $"版本 {version} 可用，是否立即下载并更新？更新完成后应用会自动重启。",
+                    intent: DialogIntent.Affirmative,
+                    confirmText: "立即更新");
+                if (ok)
+                    await Views.Dialogs.UpdateProgressDialog.RunAsync(null, _updateService, info);
+            }
+            else
+            {
+                UpdateCheckStatus = $"已是最新版本（{CurrentVersionText}）";
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Settings 检查更新失败");
+            UpdateCheckStatus = "检查失败，请稍后重试。";
+        }
+        finally
+        {
+            IsCheckingUpdate = false;
         }
     }
 

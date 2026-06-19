@@ -45,6 +45,10 @@
         <!-- MVVM 源生成器 ([ObservableProperty] / [RelayCommand]) -->
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
 
+        <!-- 跨平台安装/自动更新框架（Phase 4）：Main 首行 VelopackApp.Build().Run() 拦截
+             安装/卸载/更新 hook；UpdateManager + GithubSource 做增量更新。打包由 vpk CLI 在 CI 完成。 -->
+        <PackageReference Include="Velopack" Version="1.2.0" />
+
         <!-- Hangfire DI 注册需要的扩展（Hangfire.Core 在 NineKgTools.Core 已经引入） -->
         <PackageReference Include="Hangfire.NetCore" Version="1.8.20" />
         <!-- SQLite 持久化存储：让识别 / 监控等任务跨重启续跑（取代 Phase 0 的 MemoryStorage） -->

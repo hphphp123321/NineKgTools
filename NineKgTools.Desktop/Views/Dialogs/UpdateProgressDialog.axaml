@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Dialogs"
+             x:Class="NineKgTools.Desktop.Views.Dialogs.UpdateProgressDialog"
+             x:DataType="vm:UpdateProgressDialogContext"
+             MinWidth="420" MaxWidth="520">
+
+    <StackPanel Spacing="14">
+
+        <StackPanel Spacing="6">
+            <ProgressBar Value="{Binding Progress}"
+                         Minimum="0" Maximum="100"
+                         Height="6" CornerRadius="3" />
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding Message}"
+                           FontSize="13" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding ProgressPercentText}"
+                           FontSize="13" FontWeight="SemiBold"
+                           Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                           VerticalAlignment="Center" />
+            </Grid>
+        </StackPanel>
+
+        <TextBlock Text="下载完成后将自动重启应用。"
+                   FontSize="12" Opacity="0.65" />
+
+    </StackPanel>
+
+</UserControl>

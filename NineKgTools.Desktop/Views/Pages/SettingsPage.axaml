@@ -153,6 +153,14 @@
                             <TextBlock Grid.Column="1" Classes="nav-label" Text="日志" />
                         </Grid>
                     </Button>
+                    <Button Classes="nav-item"
+                            Classes.active="{Binding IsGroupApplication}"
+                            Command="{Binding SelectGroupCommand}" CommandParameter="Application">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Grid.Column="0" Classes="nav-indicator" />
+                            <TextBlock Grid.Column="1" Classes="nav-label" Text="应用" />
+                        </Grid>
+                    </Button>
                 </StackPanel>
             </ScrollViewer>
 
@@ -598,6 +606,47 @@
                 <ui:FAInfoBar Severity="Warning" IsOpen="True" IsClosable="False"
                             Title="部分字段需重启"
                             Message="日志级别只在 Serilog 初始化时读取，修改后需要重启应用才能完全生效（已记录的日志保持原级别）。日志路径 / Server / 模板等高级字段请直接编辑 config.yaml。" />
+            </StackPanel>
+
+            <!-- 应用：版本 / 自动更新 / 重新运行引导（引导按钮在增量 3 接入） -->
+            <StackPanel IsVisible="{Binding IsGroupApplication}" Spacing="0">
+                <TextBlock Text="应用" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="版本与自动更新"
+                           FontSize="13" Opacity="0.65" Margin="0,0,0,28" />
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="当前版本" />
+                    <TextBlock Text="{Binding CurrentVersionText}"
+                               FontSize="14" FontFamily="Consolas, monospace" Margin="0,4,0,0" />
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="启动时自动检查更新" />
+                    <TextBlock Classes="help" Text="开启后每次启动静默检查 GitHub Releases；发现新版会在主窗顶部提示，不打断使用。仅安装版生效。" />
+                    <ToggleSwitch IsChecked="{Binding AutoCheckUpdates, Mode=TwoWay}"
+                                  Margin="0,8,0,0"
+                                  OnContent="已开启"
+                                  OffContent="已关闭"
+                                  HorizontalAlignment="Left" />
+                </StackPanel>
+
+                <StackPanel Classes="field">
+                    <TextBlock Classes="label" Text="检查更新" />
+                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0" VerticalAlignment="Center">
+                        <Button Content="立即检查更新"
+                                Command="{Binding CheckUpdatesNowCommand}"
+                                IsEnabled="{Binding !IsCheckingUpdate}" />
+                        <TextBlock Text="{Binding UpdateCheckStatus}"
+                                   FontSize="12" Opacity="0.7"
+                                   VerticalAlignment="Center"
+                                   IsVisible="{Binding UpdateCheckStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <ui:FAInfoBar Severity="Informational" IsOpen="True" IsClosable="False"
+                            IsVisible="{Binding !UpdateSupported}"
+                            Title="当前不是安装版"
+                            Message="开发运行 / 便携（portable）版不走自动更新。安装版（Setup.exe）才能检查并应用更新。" />
             </StackPanel>
 
         </Grid>

@@ -64,6 +64,15 @@ public class DesktopPreferences
     /// 与 SearchResultPage 共享同一字段（保持入口 / 结果页一致体验）。需要 AI / Embedding 已配置才有效。</summary>
     public bool EnableVectorSearch { get; set; } = false;
 
+    /// <summary>启动时是否静默检查更新（Velopack 安装版才实际生效）。默认开。</summary>
+    public bool AutoCheckUpdates { get; set; } = true;
+
+    /// <summary>上次检查更新的时间（UTC）。仅展示用，null = 从未检查。</summary>
+    public DateTime? LastUpdateCheck { get; set; }
+
+    /// <summary>首次启动引导是否已完成。false（默认）→ 下次启动弹 3 步向导；走完 / 跳过后置 true。</summary>
+    public bool FirstRunCompleted { get; set; }
+
     /// <summary>UseGlassBackground 变化广播——MediaDetailViewModel 订阅实时切换 UI。
     /// event 默认不被 System.Text.Json 序列化，无需 JsonIgnore（特性不适用于 event 声明）</summary>
     public event EventHandler? UseGlassBackgroundChanged;

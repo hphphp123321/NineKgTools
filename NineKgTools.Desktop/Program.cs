@@ -28,6 +28,11 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // Velopack 必须在最前：安装/卸载/更新阶段它会拦截 --veloapp-* hook 参数、执行后直接退出进程，
+        // 绝不能晚于单实例 Mutex / IPC / Avalonia（否则 hook 期会误触发我们的启动逻辑）。
+        // 普通运行下它快速返回，无副作用。
+        Velopack.VelopackApp.Build().Run();
+
         // 解析命令行命令（--identify <path> / --quit / --show-main）
         var pendingCommand = ParseCliCommand(args);
         // --autostart：开机自启拉起，要求静默隐藏到托盘启动（不弹主窗）。不是 IPC 转发命令，是本进程启动模式。
@@ -310,6 +315,8 @@ internal static class Program
         services.AddSingleton<IpcService>();
         services.AddSingleton<ShellIntegrationService>();
         services.AddSingleton<AutoStartService>();
+        // 自动更新（Velopack）——仅 Velopack 安装版生效，dev/portable 下 IsSupported=false 全 no-op
+        services.AddSingleton<UpdateService>();
         // 共享交互式识别流程（选项 / 进度+诊断 / 预览三步链；MediaDetailVM、PendingMediaVM 都会用）
         services.AddSingleton<IdentificationFlowService>();
 

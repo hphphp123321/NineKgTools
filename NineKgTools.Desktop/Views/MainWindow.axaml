@@ -16,9 +16,23 @@
         TransparencyLevelHint="Mica,AcrylicBlur,Blur"
         Background="Transparent">
 
-    <Grid>
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- 自动更新提示条（Velopack 安装版静默检查命中后弹出）。
+             IsClosable 的 X = "稍后"（本次会话隐藏，下次启动重查）；ActionButton = "立即更新"。 -->
+        <ui:FAInfoBar Grid.Row="0"
+                      IsOpen="{Binding UpdateAvailable, Mode=TwoWay}"
+                      Severity="Informational"
+                      IsClosable="True"
+                      Title="发现新版本"
+                      Message="{Binding UpdateVersionText, StringFormat='版本 {0} 可用，建议更新。'}">
+            <ui:FAInfoBar.ActionButton>
+                <Button Content="立即更新" Command="{Binding ApplyUpdateCommand}" />
+            </ui:FAInfoBar.ActionButton>
+        </ui:FAInfoBar>
 
         <ui:FANavigationView x:Name="NavView"
+                       Grid.Row="1"
                        PaneDisplayMode="Auto"
                        CompactModeThresholdWidth="640"
                        ExpandedModeThresholdWidth="1008"
@@ -129,8 +143,9 @@
 
     </ui:FANavigationView>
 
-    <!-- 拖拽 Overlay：默认隐藏，DragEnter（停留 200ms 后）显示 -->
+    <!-- 拖拽 Overlay：默认隐藏，DragEnter（停留 200ms 后）显示；跨两行覆盖整窗 -->
     <Border x:Name="DragOverlay"
+            Grid.Row="0" Grid.RowSpan="2"
             IsVisible="False"
             IsHitTestVisible="False"
             Background="#80000000"
