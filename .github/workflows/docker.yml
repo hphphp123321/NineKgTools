@@ -91,6 +91,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # 不用 type=gha 缓存：GitHub 下线旧 Actions Cache 服务后该后端会报
+          # "error writing layer blob: not_found"。发布构建不频繁，每次全量构建可接受。
           provenance: false  # 关掉 attestation 减少 GHCR 上的 unknown/unknown 条目
