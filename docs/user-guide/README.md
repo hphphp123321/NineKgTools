@@ -25,6 +25,7 @@
 11. [12 系统设置](12-settings.md) — 7 个 tab 全字段
 12. [09 创作者 & 社团](09-creators-circles.md)
 13. [10 收藏夹](10-favorites.md)
+14. [14 桌面端安装](14-desktop-install.md) — Win/Mac/Linux 原生客户端怎么装（与 Docker 区别 / 自动更新 / 便携版）
 
 ### ❓ 卡住了？
 

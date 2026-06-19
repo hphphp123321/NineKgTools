@@ -57,6 +57,8 @@ docker run -d -p 23333:23333 \
 # 打开 http://localhost:23333
 ```
 
+> 🖥 **想要原生桌面端？** 除了上面的 Docker/Web 服务端，还有 Win/Mac/Linux 原生客户端（托盘 / 右键识别 / 拖拽 / 开机自启 / 自动更新），从 [Releases](https://github.com/hphphp123321/NineKgTools/releases) 下 `desktop-v*` 的 Setup.exe 双击即装——安装指引见 [桌面端安装](docs/user-guide/14-desktop-install.md)。桌面端与 Docker 数据独立、可并存。
+
 ---
 
 ## ✨ 核心特性

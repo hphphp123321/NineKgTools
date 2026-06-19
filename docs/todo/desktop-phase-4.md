@@ -10,6 +10,33 @@
 
 ---
 
+## 0. 实施状态（⚠ 实际采用 Velopack，下方原计划部分作废）
+
+经评审，**放弃 MSIX/DMG/tarball 各自手搓 + 单独自动更新**，改为 **Velopack 统一方案**：一套 `vpk` 流水线在各 OS 产出安装包 + 便携 + 跨平台增量自动更新。**Windows 优先**端到端跑通，Mac/Linux best-effort。下面 §1（MSIX）/§3（DMG）/§4（tarball）/§6（自动更新）/§7（CI）的具体做法**已被 Velopack 取代**，保留仅作历史参考。
+
+**关键决策（已落地）**：
+- **packId = `NineKgToolsDesktop`**（无点号，≠ 数据目录 `NineKgTools.Desktop`，否则更新清数据）。
+- **OutputType = `WinExe`**（修了"启动弹 console 窗、关窗杀进程"）。
+- 不签名（SmartScreen/Gatekeeper 用户放行）、不上 Store。
+- 仓库 `hphphp123321/NineKgTools`（无 `-public`）。
+- 发布 tag `desktop-v*.*.*`（与 Web `v*` 隔离）。
+
+**进度**：
+- [x] 发布基础：csproj RID + `WinExe` + `build-desktop.sh/.ps1` + `build-icons.ps1` + `app-icon.png`
+- [x] Portable：`.portable` 标记 → 数据落 exe 同目录
+- [x] Velopack 集成：`VelopackApp.Build().Run()` + `UpdateService` + `NINEKG_UPDATE_FEED` 本地调试旁路
+- [x] 自动更新 UI：主窗 `FAInfoBar` + Settings「应用」分组 + `UpdateProgressDialog`
+- [x] 首次启动引导：`FirstRunWizardDialog`（3 步）+ `FirstRunCompleted` + Settings 重新运行
+- [x] CI：`.github/workflows/desktop-release.yml`（OS 矩阵 vpk pack/upload）
+- [x] 文档：`docs/user-guide/14-desktop-install.md` + README/deployment/CLAUDE §4.10
+- [x] 本地验证：build/publish/`vpk pack`（0.1.0→0.1.1→0.1.2 delta）/安装/更新检查全链路
+- [ ] 真·CI 实跑：推 `desktop-v*` tag 触发（待执行）
+- [ ] 三平台 smoke test（需对应设备）
+
+**未决项**：EV 证书（暂不买）；MS Store（暂不上）；macOS arm64 自动更新（独立 channel `osx-arm64`，客户端 channel 未接通，best-effort）；AppImage 之外的 Flatpak/Snap（不做）。
+
+---
+
 ## 1. Windows MSIX 打包（重点）
 
 MSIX 是 Win10/11 推荐的现代应用包格式，自动支持 Mica + 安装/卸载/更新生命周期。
