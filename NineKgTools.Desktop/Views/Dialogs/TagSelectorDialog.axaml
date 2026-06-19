@@ -3,13 +3,13 @@
              xmlns:vm="using:NineKgTools.Desktop.ViewModels.Dialogs"
              x:Class="NineKgTools.Desktop.Views.Dialogs.TagSelectorDialog"
              x:DataType="vm:TagSelectorDialogContext"
-             MinWidth="520" MaxWidth="700">
+             MinWidth="680" MaxWidth="760">
 
     <StackPanel Spacing="12">
 
-        <!-- 搜索框 -->
+        <!-- 搜索框（跨全部分组直查） -->
         <TextBox Text="{Binding SearchText, Mode=TwoWay}"
-                 PlaceholderText="搜索标签名 / 顶级分组..." />
+                 PlaceholderText="搜索标签名 / 顶级分组（跨全部）..." />
 
         <!-- 已选预览 + 计数 -->
         <Border Padding="10,6"
@@ -21,7 +21,7 @@
         <!-- 加载中 -->
         <ProgressBar IsVisible="{Binding IsLoading}" IsIndeterminate="True" />
 
-        <!-- 空结果 -->
+        <!-- 空结果（仅搜索无命中时） -->
         <Border IsVisible="{Binding ShowEmpty}"
                 Padding="14,10"
                 CornerRadius="{DynamicResource ControlCornerRadius}"
@@ -29,32 +29,84 @@
             <TextBlock Text="没有匹配的标签" FontSize="12" />
         </Border>
 
-        <!-- chip 列表 -->
-        <ScrollViewer MaxHeight="380" HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding FilteredChoices}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel Orientation="Horizontal" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:TagChoiceVm">
-                        <ToggleButton IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                      Margin="0,0,8,8"
-                                      Padding="12,5"
-                                      CornerRadius="14">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Text="{Binding DisplayName}" FontSize="12" />
-                                <TextBlock IsVisible="{Binding HasGroupHint}"
-                                           Text="{Binding GroupHint, StringFormat='/{0}'}"
-                                           FontSize="11"
-                                           Opacity="0.55" />
-                            </StackPanel>
-                        </ToggleButton>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
+        <!-- 主体：左分组列（搜索态隐藏）+ 右标签 chip（单一 chip 区，不重复渲染） -->
+        <Grid ColumnDefinitions="Auto,*" Height="380">
+
+            <!-- 左：顶层分组列表（仅浏览态显示；搜索态 IsVisible=false → Auto 列收为 0 宽） -->
+            <Border Grid.Column="0"
+                    Width="180"
+                    Margin="0,0,12,0"
+                    IsVisible="{Binding ShowGroups}"
+                    CornerRadius="{DynamicResource ControlCornerRadius}"
+                    Background="{DynamicResource LayerFillColorDefaultBrush}"
+                    Padding="4">
+                <ListBox ItemsSource="{Binding Groups}"
+                         SelectedItem="{Binding SelectedGroup, Mode=TwoWay}"
+                         Background="Transparent"
+                         BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TagGroupVm">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding Name}"
+                                           FontSize="13"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" />
+                                <StackPanel Grid.Column="1"
+                                            Orientation="Horizontal"
+                                            Spacing="6"
+                                            VerticalAlignment="Center">
+                                    <!-- 组内已选 accent 徽标 -->
+                                    <Border IsVisible="{Binding HasSelectedInGroup}"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                            CornerRadius="9"
+                                            MinWidth="18" Height="18"
+                                            Padding="5,0">
+                                        <TextBlock Text="{Binding SelectedInGroup}"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                    <!-- 标签总数（淡色） -->
+                                    <TextBlock Text="{Binding TagCount}"
+                                               FontSize="11"
+                                               Opacity="0.45"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+
+            <!-- 右：当前组 / 搜索命中的标签 chip（VisibleChoices 切态换子集；搜索态 chip 带 /分组 提示） -->
+            <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding VisibleChoices}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TagChoiceVm">
+                            <ToggleButton IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                          Margin="0,0,8,8"
+                                          Padding="12,5"
+                                          CornerRadius="14">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="{Binding DisplayName}" FontSize="12" />
+                                    <TextBlock IsVisible="{Binding ShowGroupHint}"
+                                               Text="{Binding GroupHint, StringFormat='/{0}'}"
+                                               FontSize="11"
+                                               Opacity="0.55" />
+                                </StackPanel>
+                            </ToggleButton>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
 
     </StackPanel>
 

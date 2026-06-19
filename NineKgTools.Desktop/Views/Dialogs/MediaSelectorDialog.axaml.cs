@@ -51,6 +51,9 @@ public partial class MediaSelectorDialog : UserControl
             CloseButtonText = "取消",
             DefaultButton = FAContentDialogButton.Primary,
         };
+        // FluentAvalonia 默认 ContentDialogMaxWidth≈548，比卡片网格内容（MinWidth 700）窄，
+        // 外框卡死导致内容左右溢出裁切（搜索框 placeholder 被切左半）。撑大外框消除裁切。
+        dialog.Resources["ContentDialogMaxWidth"] = 900d;
 
         // 同步 ctx → dialog 主按钮文字（数量变化时刷新）
         ctx.PropertyChanged += (_, e) =>

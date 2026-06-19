@@ -53,6 +53,8 @@ public partial class CreatorSelectorDialog : UserControl
             DefaultButton = FAContentDialogButton.Primary,
             IsPrimaryButtonEnabled = ctx.CanSubmit,
         };
+        // 撑大外框：默认 ContentDialogMaxWidth≈548 < 内容 MaxWidth(720)，否则左右溢出裁切。
+        dialog.Resources["ContentDialogMaxWidth"] = 800d;
 
         ctx.PropertyChanged += (_, e) =>
         {

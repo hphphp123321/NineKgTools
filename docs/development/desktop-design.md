@@ -921,12 +921,21 @@ Views/Windows/MediaDetailWindow                Views/Pages/MediaDetailPage
   - 编辑模式卡片右上 `×` → `NineKgConfirmDialog Destructive` 确认 → `RemoveRelatedMediaAsync` → 即时从 UI collection 移除（无需 reload）
 - **MediaSelectorDialog**（`Views/Dialogs/MediaSelectorDialog.axaml`）：
   - 搜索式（不预加载全部媒体），300ms debounce → `MediaService.SearchMediaByTitleAsync(query, 50, excludeMediaId)`
+  - **大小写不敏感**：`SearchMediaByTitleAsync` 两侧 `ToLower()`（SQL 端 `instr(lower(Title), lower(@term))`），英文标题搜索不再区分大小写；Web 端共用同一 Core 方法，一并受益
   - `ExcludeMediaId` 由 caller 传当前媒体 Id——避免媒体跟自己关联
   - 卡片 124w × 自适应 h：120×160 封面 + 12px 标题 2 行截断 + 10px 分类 chip + 选中态右上 22px 圆 ✓ 徽章 + 2px accent 描边覆盖
   - "已选" HashSet 跨搜索保留——切关键词后旧选还在（与 Web 同语义）
   - 主按钮文案动态：0 选 = "清空并确定"（提示用户）；>0 选 = "确定（N 项）"
 - **关联媒体卡片**（详情页 section 里展示）：与 Selector 卡同款 124w 布局，整张卡 = Button → `OpenRelatedMediaCommand` → `WindowManager.OpenMediaDetail(id)` 打开关联媒体的独立详情窗（WindowManager 已内置同 id 去重 Activate）
 - **嵌套 Button 不冒泡**（Avalonia 12 已保障）—— × 删除按钮在卡片内部，点 × 只触发 RemoveRelated，不触发 OpenRelated
+
+**三个选择器对话框的共享约定（标签 / 创作者 / 相关媒体）**：
+- **外框宽度**：FluentAvalonia 默认 `ContentDialogMaxWidth≈548`，比这几个选择器内容窄 → 内容左右溢出**被裁切**（典型症状：搜索框 placeholder 左半被切）。修法是在各自 `ShowAsync` 里 `dialog.Resources["ContentDialogMaxWidth"] = <double>`（标签 820 / 创作者 800 / 相关媒体 900）撑大外框。**新建任何内容宽度 > ~520 的 FAContentDialog 都要同步覆盖此资源**，否则会裁切
+- **标签选择器（TagSelectorDialog）= 两级浏览**：标签可能数百个，旧版全量铺成一墙 chip 会卡。现在 `TagSelectorDialogContext` 一次 `GetAllTagsAsync()`（含 TopTag、不含 Medias）后按 `TopTag` 客户端分组（null → "未分组"置末）：
+  - **单一 chip 区**：`Grid ColumnDefinitions="Auto,*"`，左列是 180px 分组 `Border`（`IsVisible="{Binding ShowGroups}"`，搜索态隐藏→Auto 列收为 0 宽 + Margin 失效），右列恒为同一个 chip `ItemsControl`（绑 `VisibleChoices`）。**不开两套 ItemsControl**——避免搜索命中多时双倍渲染
+  - **浏览态**（搜索框空）：左 `ListBox` 列顶层分组（名称 + 标签总数淡色 + 组内已选 accent 徽标），右侧只渲染当前组的几十个 chip。`SelectedGroup` 双向绑 ListBox.SelectedItem，切组只换 `VisibleChoices` 引用的子集
+  - **搜索态**（`IsSearching = 搜索框非空`）：左侧分组列隐藏，`VisibleChoices` 换成跨全部命中。chip 上的 `/分组` 提示用 `ShowGroupHint = HasGroupHint && owner.IsSearching` 控制——浏览态同组重复提示是噪音故隐；切态时 VisibleChoices 清空重填→容器重建→`ShowGroupHint` 重新求值，无需 PropertyChanged
+  - **选中态跨组 / 跨搜索保留**：`TagChoiceVm` 实例全局唯一（`AllChoices`），分组 / 搜索只是过滤视图。每次 toggle 后 `OnChoiceToggled` 全量刷新各 `TagGroupVm.RefreshSelected()` 徽标（分组数少，廉价）
 
 **新增 Service 依赖**：`MediaDetailViewModel` 注入 `WindowManager`（之前未注入）—— 让 OpenRelatedMedia 命令能打开新窗口。
 

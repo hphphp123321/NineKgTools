@@ -539,11 +539,16 @@ public class MediaService
         if (string.IsNullOrWhiteSpace(searchTerm))
             return new List<MediaBase>();
 
+        // 大小写不敏感：SQLite 的 instr（string.Contains 默认翻译目标）区分大小写，
+        // 这里两侧 ToLower 让 EF 翻译成 instr(lower(Title), lower(@term))，在 SQL 端解决，
+        // 不必把整表载入内存。lower() 仅影响 ASCII 字母，正好覆盖英文标题大小写需求。
+        var lowered = searchTerm.ToLower();
+
         var query = _dbContext.Medias
             .Include(m => m.Poster)
             .Include(m => m.Category)
             .AsNoTracking()
-            .Where(m => m.Title.Contains(searchTerm));
+            .Where(m => m.Title.ToLower().Contains(lowered));
 
         if (excludeMediaId.HasValue)
             query = query.Where(m => m.Id != excludeMediaId.Value);

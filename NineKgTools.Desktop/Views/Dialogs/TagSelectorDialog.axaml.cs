@@ -41,6 +41,8 @@ public partial class TagSelectorDialog : UserControl
             DefaultButton = FAContentDialogButton.Primary,
             IsPrimaryButtonEnabled = false,
         };
+        // 撑大外框：默认 ContentDialogMaxWidth≈548，容不下左右双栏（内容 MaxWidth 760）会裁切。
+        dialog.Resources["ContentDialogMaxWidth"] = 820d;
 
         // 同步 context → dialog 主按钮文字 / 可用态
         ctx.PropertyChanged += (_, e) =>
