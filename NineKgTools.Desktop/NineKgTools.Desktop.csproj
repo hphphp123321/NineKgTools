@@ -1,7 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <OutputType>Exe</OutputType>
+        <!-- WinExe = Windows GUI 子系统：不附带 console 窗口。
+             若用 Exe，Win 会给进程分配一个控制台窗口，关掉它会直接终止整个应用。
+             非 Windows 平台忽略该差异。命令行转发（identify / show-main 等）仍正常，只是无 stdout 回显。 -->
+        <OutputType>WinExe</OutputType>
         <TargetFramework>net10.0</TargetFramework>
         <RootNamespace>NineKgTools.Desktop</RootNamespace>
         <Nullable>enable</Nullable>
