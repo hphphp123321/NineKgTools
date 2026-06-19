@@ -1,15 +1,15 @@
 name: Docker
 
 # 触发：
-#   - tag 形如 v* 时自动推
+#   - tag 形如 web-v* 时自动推（与桌面端 desktop-v* 隔离）
 #   - 手动从 Actions 页面触发（紧急修复或 staging 测试）
 #
 # 镜像名约定：ghcr.io/hphphp123321/nine-kg-tools
-# tag：latest（仅 default branch）+ semver（v1.2.3 → 1.2.3 / 1.2 / 1）+ sha-<7>
+# tag：latest（tag 推送时）+ semver（web-v1.2.3 → 1.2.3 / 1.2 / 1）+ sha-<7>
 
 on:
   push:
-    tags: ['v*']
+    tags: ['web-v*']
   workflow_dispatch:
     inputs:
       tag:
@@ -57,19 +57,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Resolve version from tag
+        # metadata-action 的 semver 只认 v* / 裸 semver，认不出 web-v 前缀，
+        # 这里显式剥前缀后用 value= 喂给它（workflow_dispatch 无 tag 时为空，semver 自动跳过）
+        id: ver
+        if: startsWith(github.ref, 'refs/tags/web-v')
+        run: echo "version=${GITHUB_REF_NAME#web-v}" >> "$GITHUB_OUTPUT"
+
       - name: Extract metadata (tags & labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ steps.lower.outputs.name }}
           tags: |
-            # 语义化版本：v1.2.3 → 1.2.3, 1.2, 1
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            # 仅 main 分支或 tag 时打 latest
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            # 语义化版本：web-v1.2.3 → 1.2.3, 1.2, 1（value 来自上一步剥前缀）
+            type=semver,pattern={{version}},value=${{ steps.ver.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.ver.outputs.version }}
+            type=semver,pattern={{major}},value=${{ steps.ver.outputs.version }}
+            # tag 推送时打 latest
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/web-v') }}
             # 工作流手动触发时用输入
             type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
             # commit sha 短版（便于追溯具体来源）

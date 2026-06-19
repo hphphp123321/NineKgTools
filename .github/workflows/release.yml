@@ -1,8 +1,9 @@
 name: Release
 
-# 触发：tag v* push 时自动产 GitHub Release，附 Windows 便携版 zip
+# 触发：tag web-v* push 时自动产 GitHub Release，附 Windows 便携版 zip
 #
-# 与 docker.yml 并行：tag 推送时两个 workflow 同时跑——Release 拿 zip，Docker 推镜像
+# 与 docker.yml 并行：web-v* tag 推送时两个 workflow 同时跑——Release 拿 zip，Docker 推镜像
+# （桌面端走独立的 desktop-v* tag + desktop-release.yml，互不干扰）
 #
 # Release body 组成（08 号 todo 落地）：
 #   1. 头部：下载表（Windows zip + GHCR 镜像）+ 快速开始
@@ -12,7 +13,7 @@ name: Release
 
 on:
   push:
-    tags: ['v*']
+    tags: ['web-v*']
 
 permissions:
   contents: write  # 创建 Release 需要写权限
@@ -81,7 +82,7 @@ jobs:
         run: |
           set -euo pipefail
           REF="${{ github.ref_name }}"
-          VER="${REF#v}"   # 去掉 v 前缀: v1.2.3 -> 1.2.3
+          VER="${REF#web-v}"   # 去掉 web-v 前缀: web-v1.2.3 -> 1.2.3
           OWNER="${{ github.repository_owner }}"
           REPO="${{ github.repository }}"
 
@@ -91,7 +92,7 @@ jobs:
             echo "| 平台 | 文件 / 镜像 | 说明 |"
             echo "|---|---|---|"
             echo "| 🪟 Windows x64 | \`NineKgTools-win-x64.zip\` | 解压双击即用，无需 .NET SDK |"
-            echo "| 🐳 Docker | \`ghcr.io/${OWNER}/nine-kg-tools:${REF}\` | \`docker compose up -d\` |"
+            echo "| 🐳 Docker | \`ghcr.io/${OWNER}/nine-kg-tools:${VER}\` | \`docker compose up -d\` |"
             echo
             echo "## 快速开始"
             echo

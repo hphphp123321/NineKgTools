@@ -2,13 +2,17 @@
 
   <!--
     所有项目共享的 MSBuild 属性（Core / Web / Desktop / Tests 自动继承）。
-    发版流程：手动改 <Version> -> 提交 -> git tag vX.Y.Z -> push -> Actions 自动产物
+    发版流程：手动改 <Version> -> 提交 -> 打 tag -> push -> Actions 自动产物。
+    Tag 约定（对称双前缀）：
+      web-vX.Y.Z     -> Web/Docker 发布（release.yml + docker.yml）
+      desktop-vX.Y.Z -> 桌面端 Velopack 多平台发布（desktop-release.yml）
+    改 Core（两端共享）时两个 tag 一起升、号对齐；只改单端时单独打该端 tag。
   -->
 
   <PropertyGroup Label="Version">
-    <Version>0.1.0</Version>
-    <AssemblyVersion>0.1.0.0</AssemblyVersion>
-    <FileVersion>0.1.0.0</FileVersion>
+    <Version>0.2.0</Version>
+    <AssemblyVersion>0.2.0.0</AssemblyVersion>
+    <FileVersion>0.2.0.0</FileVersion>
     <InformationalVersion>$(Version)</InformationalVersion>
   </PropertyGroup>
 

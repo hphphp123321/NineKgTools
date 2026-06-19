@@ -105,6 +105,19 @@ refactor: 重构缓存配置并移除媒体配置
 
 每个 PR 合入时在 [`CHANGELOG.md`](CHANGELOG.md) 的 `[Unreleased]` 小节追加对应条目，**不要**在 PR 里手动改版本号。
 
+### 发版 tag 约定（对称双前缀）
+
+两端独立发布、版本号在协同发布时对齐：
+
+| Tag | 触发 | 产物 |
+|---|---|---|
+| `web-vX.Y.Z` | `release.yml` + `docker.yml` | Web 便携 zip + GHCR 镜像 |
+| `desktop-vX.Y.Z` | `desktop-release.yml` | 桌面端 Velopack 多平台包（Win Setup.exe / 便携 / mac / linux） |
+
+- **改了 Core（两端共享）→ 两个 tag 一起升、号对齐**（同一 commit 打 `web-vX.Y.Z` + `desktop-vX.Y.Z`）。
+- 只改单端 → 单独打该端 tag（如桌面端热修 `desktop-v0.2.1`，不动 Web）。
+- 维护者发版：改 `Directory.Build.props` 的 `<Version>` → 提交 → 打对应 tag(s) → push。
+
 ## 项目文档索引
 
 - 架构与功能：[`docs/README.md`](docs/README.md)
