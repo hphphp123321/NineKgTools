@@ -1,0 +1,137 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels.Dialogs"
+             x:Class="NineKgTools.Desktop.Views.Dialogs.FirstRunWizardDialog"
+             x:DataType="vm:FirstRunWizardContext"
+             MinWidth="540" MaxWidth="560">
+
+    <StackPanel Spacing="16" MinHeight="360">
+
+        <!-- 步骤指示 -->
+        <TextBlock Text="{Binding StepIndicatorText}"
+                   FontSize="12" Opacity="0.55"
+                   HorizontalAlignment="Right" />
+
+        <!-- ========== Step 1：欢迎 + 数据目录 ========== -->
+        <StackPanel IsVisible="{Binding IsStep1}" Spacing="14" HorizontalAlignment="Center">
+            <Image Source="avares://NineKgTools.Desktop/Assets/Logos/logo-9-icon.png"
+                   Width="96" Height="96" HorizontalAlignment="Center" />
+            <TextBlock Text="欢迎使用 NineKgTools 桌面端"
+                       FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
+            <TextBlock Text="你的本地媒体库管理器。我们将在 3 步内帮你启动。"
+                       FontSize="13" Opacity="0.7" HorizontalAlignment="Center"
+                       TextWrapping="Wrap" TextAlignment="Center" />
+            <Border Padding="14,10" Margin="0,4,0,0"
+                    CornerRadius="{DynamicResource ControlCornerRadius}"
+                    Background="{DynamicResource LayerFillColorDefaultBrush}">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="数据目录" FontSize="11" Opacity="0.6" />
+                    <TextBlock Text="{Binding DataDirectory}"
+                               FontSize="12" FontFamily="Consolas, monospace"
+                               TextWrapping="Wrap" />
+                    <Button Content="打开数据目录"
+                            Command="{Binding OpenDataDirectoryCommand}"
+                            Margin="0,4,0,0" HorizontalAlignment="Left" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- ========== Step 2：监视文件夹 ========== -->
+        <StackPanel IsVisible="{Binding IsStep2}" Spacing="12">
+            <TextBlock Text="添加你的媒体文件夹" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="桌面端会监控这些文件夹，自动识别新增的媒体。你随时可以在「媒体源」页面增删。"
+                       FontSize="13" Opacity="0.7" TextWrapping="Wrap" />
+
+            <Button x:Name="AddFolderButton"
+                    Click="OnAddFolderClick"
+                    HorizontalAlignment="Left">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="+" FontSize="14" FontWeight="Bold"
+                               Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                    <TextBlock Text="添加文件夹" />
+                </StackPanel>
+            </Button>
+
+            <Border Padding="12,10" MinHeight="96"
+                    CornerRadius="{DynamicResource ControlCornerRadius}"
+                    Background="{DynamicResource LayerFillColorDefaultBrush}">
+                <Panel>
+                    <TextBlock Text="当前未添加文件夹"
+                               FontSize="12" Opacity="0.5"
+                               IsVisible="{Binding !HasWatchFolders}"
+                               VerticalAlignment="Center" HorizontalAlignment="Center" />
+                    <ItemsControl ItemsSource="{Binding WatchFolders}"
+                                  IsVisible="{Binding HasWatchFolders}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <TextBlock Text="{Binding}"
+                                           FontSize="12" FontFamily="Consolas, monospace"
+                                           Margin="0,0,0,4"
+                                           TextTrimming="CharacterEllipsis" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Panel>
+            </Border>
+
+            <TextBlock Text="ⓘ 不知道选什么？可以先跳过，之后再添加。"
+                       FontSize="12" Opacity="0.6" />
+        </StackPanel>
+
+        <!-- ========== Step 3：识别源 ========== -->
+        <StackPanel IsVisible="{Binding IsStep3}" Spacing="12">
+            <TextBlock Text="识别源" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="桌面端通过这些网站识别媒体元数据："
+                       FontSize="13" Opacity="0.7" TextWrapping="Wrap" />
+
+            <Border Padding="14,12"
+                    CornerRadius="{DynamicResource ControlCornerRadius}"
+                    Background="{DynamicResource LayerFillColorDefaultBrush}">
+                <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <TextBlock Grid.Column="0" Text="DLsite" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="无需配置 · 已启用" FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <TextBlock Grid.Column="0" Text="Steam" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="默认 us 区 · 已启用" FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
+                    </Grid>
+                    <StackPanel Spacing="6">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <TextBlock Grid.Column="0" Text="Bangumi" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="需要 ApiKey" FontSize="12" Opacity="0.6"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                        <TextBox Text="{Binding BangumiApiKey, Mode=TwoWay}"
+                                 PlaceholderText="粘贴 Bangumi ApiKey（可留空，之后在「网站」页配）" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="ⓘ Bangumi 需要 ApiKey 才能用，可先用 DLsite + Steam 跑起来，之后再配。填入并完成会自动启用 Bangumi。"
+                       FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <!-- ========== 底部导航 ========== -->
+        <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,8,0,0">
+            <Button Grid.Column="0" Content="← 上一步"
+                    Command="{Binding PrevCommand}"
+                    IsVisible="{Binding CanGoPrev}" />
+            <Button Grid.Column="2" Content="跳过"
+                    Command="{Binding SkipCommand}"
+                    IsVisible="{Binding !IsLastStep}"
+                    Background="Transparent" BorderThickness="0"
+                    Margin="0,0,8,0" />
+            <Button Grid.Column="3" Content="下一步 →"
+                    Command="{Binding NextCommand}"
+                    IsVisible="{Binding CanGoNext}"
+                    Classes="accent" />
+            <Button Grid.Column="3" Content="完成 ✓"
+                    Command="{Binding FinishCommand}"
+                    IsVisible="{Binding IsLastStep}"
+                    Classes="accent" />
+        </Grid>
+
+    </StackPanel>
+
+</UserControl>

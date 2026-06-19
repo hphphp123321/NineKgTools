@@ -368,6 +368,15 @@ public partial class SettingsViewModel : PageViewModelBase
         }
     }
 
+    /// <summary>"重新运行引导"：清 FirstRunCompleted，下次启动重弹 3 步向导。</summary>
+    [RelayCommand]
+    private async Task RerunOnboardingAsync()
+    {
+        _preferences.FirstRunCompleted = false;
+        await _preferences.SaveAsync();
+        UpdateCheckStatus = "已重置 · 下次启动重新引导";
+    }
+
     [RelayCommand]
     private void SelectGroup(string? groupName)
     {

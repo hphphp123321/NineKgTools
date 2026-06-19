@@ -647,6 +647,14 @@
                             IsVisible="{Binding !UpdateSupported}"
                             Title="当前不是安装版"
                             Message="开发运行 / 便携（portable）版不走自动更新。安装版（Setup.exe）才能检查并应用更新。" />
+
+                <StackPanel Classes="field" Margin="0,12,0,0">
+                    <TextBlock Classes="label" Text="首次启动引导" />
+                    <TextBlock Classes="help" Text="重新运行 3 步引导（数据目录 / 监视文件夹 / 识别源）。点击后下次启动生效。" />
+                    <Button Content="重新运行引导"
+                            Command="{Binding RerunOnboardingCommand}"
+                            Margin="0,8,0,0" HorizontalAlignment="Left" />
+                </StackPanel>
             </StackPanel>
 
         </Grid>

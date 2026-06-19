@@ -96,6 +96,28 @@ public partial class App : Application
 
                     // 处理启动时携带的命令行命令（如 --identify <path>）
                     await ConsumePendingCliCommandAsync();
+
+                    // 首次启动引导：非 autostart 静默启动时，未完成过引导则弹 3 步向导。
+                    // 走完 / 跳过都置 FirstRunCompleted=true；失败不置（下次重走）。
+                    if (!Program.StartHidden)
+                    {
+                        var prefs = Program.Services.GetRequiredService<DesktopPreferences>();
+                        if (!prefs.FirstRunCompleted)
+                        {
+                            try
+                            {
+                                var cfg = Program.Services.GetRequiredService<NineKgTools.Core.Services.Configs.Config>();
+                                var files = Program.Services.GetRequiredService<NineKgTools.Core.Services.Files.FilesService>();
+                                await FirstRunWizardDialog.ShowAsync(cfg, files, Environment.CurrentDirectory);
+                                prefs.FirstRunCompleted = true;
+                                await prefs.SaveAsync();
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Error(ex, "首次启动引导失败");
+                            }
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
