@@ -44,6 +44,12 @@ public class DesktopPreferences
     public bool ShellIntegrationRegistered { get; set; }
 
     /// <summary>
+    /// 是否开机自启（HKCU Run）。真实状态以 <see cref="AutoStartService.IsEnabled"/> 注册表为准，
+    /// 此字段仅作镜像（与 <see cref="ShellIntegrationRegistered"/> 同模式）。仅 Windows 有效。
+    /// </summary>
+    public bool AutoStartEnabled { get; set; }
+
+    /// <summary>
     /// 各窗口的 size + position 记忆。key 形如 "main" / "media:42" / "diagnostics"。
     /// </summary>
     public Dictionary<string, WindowState> WindowStates { get; set; } = new();

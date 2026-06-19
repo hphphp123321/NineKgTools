@@ -48,7 +48,7 @@ public partial class SettingsViewModel : PageViewModelBase
     public bool IsGroupSearch => SelectedGroup == SettingsGroup.Search;
     public bool IsGroupLog => SelectedGroup == SettingsGroup.Log;
 
-    // ========== 外观 ==========
+    // ========== 通用 - 主题 ==========
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsThemeSystem))]
     [NotifyPropertyChangedFor(nameof(IsThemeLight))]
@@ -80,6 +80,12 @@ public partial class SettingsViewModel : PageViewModelBase
     private bool _shellIntegrationRegistered;
 
     public bool ShellIntegrationSupported => ShellIntegrationService.IsSupported;
+
+    // ========== 开机自启（仅 Win） ==========
+    [ObservableProperty]
+    private bool _autoStartEnabled;
+
+    public bool AutoStartSupported => AutoStartService.IsSupported;
 
     // ========== 任务 ==========
     [ObservableProperty] private int _maxConcurrentIdentificationTasks;
@@ -134,14 +140,16 @@ public partial class SettingsViewModel : PageViewModelBase
     [ObservableProperty] private string? _saveStatusText;
 
     private readonly ShellIntegrationService _shellIntegration;
+    private readonly AutoStartService _autoStart;
 
     public SettingsViewModel(Config config, ImageCacheService imageCache, DesktopPreferences preferences,
-        ShellIntegrationService shellIntegration)
+        ShellIntegrationService shellIntegration, AutoStartService autoStart)
     {
         _config = config;
         _imageCache = imageCache;
         _preferences = preferences;
         _shellIntegration = shellIntegration;
+        _autoStart = autoStart;
         LoadFromConfig();
     }
 
@@ -215,6 +223,10 @@ public partial class SettingsViewModel : PageViewModelBase
             // Shell 集成状态：以 ShellIntegrationService 实际检测为准（注册表可能被外部修改）
             ShellIntegrationRegistered = _shellIntegration.IsRegistered();
             _preferences.ShellIntegrationRegistered = ShellIntegrationRegistered;
+
+            // 开机自启状态：以 AutoStartService 实际检测为准（HKCU Run 可能被外部修改）
+            AutoStartEnabled = _autoStart.IsEnabled();
+            _preferences.AutoStartEnabled = AutoStartEnabled;
         }
         finally
         {
@@ -351,6 +363,45 @@ public partial class SettingsViewModel : PageViewModelBase
             else
             {
                 SaveStatusText = "注册失败，请稍后重试";
+            }
+        }
+    }
+
+    /// <summary>切换开机自启（注册 / 卸载 HKCU Run 值）</summary>
+    [RelayCommand]
+    private void ToggleAutoStart()
+    {
+        if (!AutoStartSupported) return;
+
+        bool ok;
+        if (AutoStartEnabled)
+        {
+            ok = _autoStart.Disable();
+            if (ok)
+            {
+                AutoStartEnabled = false;
+                _preferences.AutoStartEnabled = false;
+                _preferences.RequestSave();
+                SaveStatusText = "开机自启已关闭";
+            }
+            else
+            {
+                SaveStatusText = "操作失败，请稍后重试。";
+            }
+        }
+        else
+        {
+            ok = _autoStart.Enable();
+            if (ok)
+            {
+                AutoStartEnabled = true;
+                _preferences.AutoStartEnabled = true;
+                _preferences.RequestSave();
+                SaveStatusText = "开机自启已开启 · 登录时静默到托盘启动";
+            }
+            else
+            {
+                SaveStatusText = "操作失败，请稍后重试。";
             }
         }
     }

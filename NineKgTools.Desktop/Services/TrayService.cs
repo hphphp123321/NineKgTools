@@ -113,6 +113,8 @@ public class TrayService : IDisposable
         var main = lifetime.MainWindow;
         try
         {
+            // --autostart 静默启动时主窗被设为不进任务栏，还原时恢复，避免开窗后任务栏没有按钮
+            if (!main.ShowInTaskbar) main.ShowInTaskbar = true;
             if (!main.IsVisible) main.Show();
             if (main.WindowState == Avalonia.Controls.WindowState.Minimized)
                 main.WindowState = Avalonia.Controls.WindowState.Normal;

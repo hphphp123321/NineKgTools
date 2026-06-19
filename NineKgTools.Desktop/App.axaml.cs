@@ -55,6 +55,16 @@ public partial class App : Application
             var vm = Program.Services.GetRequiredService<MainWindowViewModel>();
             var window = new MainWindow { DataContext = vm };
 
+            // --autostart 静默启动：lifetime 仍会自动 Show 主窗，无法跳过。这里先让它以
+            // Minimized + 不进任务栏的方式打开（屏幕上不可见、无任务栏闪烁），待 Opened 里
+            // 跑完启动任务 + 托盘初始化后再 Hide() 彻底隐藏。托盘单击经 TrayService.ShowMainWindow
+            // 还原（会重置 WindowState=Normal + ShowInTaskbar=true）。
+            if (Program.StartHidden)
+            {
+                window.WindowState = Avalonia.Controls.WindowState.Minimized;
+                window.ShowInTaskbar = false;
+            }
+
             // 主窗显示后再触发 AfterStartup（拉起文件夹监控、定时任务），避免阻塞 UI 初始化。
             //
             // **once-only guard**：close-to-tray 后用户从托盘单击恢复主窗会再调 main.Show()，
@@ -76,6 +86,13 @@ public partial class App : Application
                     // Tray 必须在 MainWindow.Opened 之后初始化——某些平台（macOS）
                     // TrayIcon 注册需要 Application 已经显示过窗口
                     Program.Services.GetService<TrayService>()?.Initialize();
+
+                    // --autostart：托盘已就绪，把启动期那个 Minimized 隐形窗彻底隐藏到托盘
+                    if (Program.StartHidden)
+                    {
+                        window.Hide();
+                        Log.Information("--autostart：启动完成，主窗已隐藏到托盘");
+                    }
 
                     // 处理启动时携带的命令行命令（如 --identify <path>）
                     await ConsumePendingCliCommandAsync();
@@ -155,7 +172,7 @@ public partial class App : Application
                 message: "主窗已最小化到系统托盘。文件夹监控、识别队列继续在后台运行。\n\n" +
                          "· 单击托盘图标 → 重新打开主窗\n" +
                          "· 托盘菜单「退出 NineKgTools」→ 真正终止进程\n" +
-                         "· 在「设置 / 外观」可改成「关闭主窗时直接退出」",
+                         "· 在「设置 / 通用」可改成「关闭主窗时直接退出」",
                 intent: DialogIntent.Info,
                 confirmText: "知道了");
         }

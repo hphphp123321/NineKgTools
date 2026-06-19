@@ -30,6 +30,8 @@ internal static class Program
     {
         // 解析命令行命令（--identify <path> / --quit / --show-main）
         var pendingCommand = ParseCliCommand(args);
+        // --autostart：开机自启拉起，要求静默隐藏到托盘启动（不弹主窗）。不是 IPC 转发命令，是本进程启动模式。
+        var startHidden = args.Contains("--autostart", StringComparer.OrdinalIgnoreCase);
 
         // 单实例守门：如果已有进程在跑 → 把命令转发给它，自己退出
         var mutex = new Mutex(initiallyOwned: true, name: SingleInstanceMutexName, out var isNewInstance);
@@ -42,13 +44,16 @@ internal static class Program
                 var ok = IpcService.TrySendAsync(pendingCommand).GetAwaiter().GetResult();
                 Console.WriteLine(ok ? "已转发命令到现有进程" : "转发命令失败（连接超时）");
             }
-            else
+            else if (!startHidden)
             {
-                // 双击启动 / 无命令——让现有进程把主窗显示出来
+                // 双击启动 / 无命令——让现有进程把主窗显示出来。
+                // 但 --autostart 自启场景下若已有实例（如手动开过）则静默退出，不打扰已运行的窗口。
                 _ = IpcService.TrySendAsync(new IpcCommand { Cmd = "show-main" }).GetAwaiter().GetResult();
             }
             return 0;
         }
+
+        StartHidden = startHidden;
 
         try
         {
@@ -99,6 +104,12 @@ internal static class Program
     /// 启动时携带的命令——由 App.OnFrameworkInitializationCompleted 在主窗显示后消费。
     /// </summary>
     public static IpcCommand? Pending { get; private set; }
+
+    /// <summary>
+    /// 是否以 <c>--autostart</c> 静默模式启动（开机自启）。为 true 时 App 让主窗启动后立即隐藏到托盘，
+    /// 文件夹监控 / 识别队列照常在后台跑；用户从托盘单击可还原主窗。
+    /// </summary>
+    public static bool StartHidden { get; private set; }
 
     /// <summary>
     /// 清理 hangfire.db 里所有非终态 job（Enqueued/Processing/Scheduled/Retrying/Awaiting/Failed）。
@@ -298,6 +309,7 @@ internal static class Program
         services.AddSingleton<WindowStateService>();
         services.AddSingleton<IpcService>();
         services.AddSingleton<ShellIntegrationService>();
+        services.AddSingleton<AutoStartService>();
         // 共享交互式识别流程（选项 / 进度+诊断 / 预览三步链；MediaDetailVM、PendingMediaVM 都会用）
         services.AddSingleton<IdentificationFlowService>();
 

@@ -6,33 +6,56 @@
              x:DataType="vm:SettingsViewModel">
 
     <UserControl.Styles>
-        <!-- 左侧分组导航按钮 -->
+        <!-- 左侧分组导航：轻量目录（TOC）风格——透明无填充面板 / 无图标 / accent 指示条，
+             与最左主导航栏（图标+填充栏）在视觉语言上拉开层级，消除"两条侧栏"的重复感。 -->
         <Style Selector="Button.nav-item">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
-            <Setter Property="Padding" Value="14,10" />
+            <Setter Property="Padding" Value="10,7" />
             <Setter Property="CornerRadius" Value="6" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.18" Easing="CubicEaseOut" />
-                    <BrushTransition Property="BorderBrush" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="CubicEaseOut" />
                 </Transitions>
             </Setter>
         </Style>
+        <!-- 选中项：轻微底色 + accent 指示条 + 加粗 accent 文字（指示条 / 文字由下面的派生 selector 控制） -->
         <Style Selector="Button.nav-item.active">
-            <Setter Property="Background" Value="{DynamicResource BrandCategoryAllFillBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BrandCategoryAllBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
         </Style>
-        <Style Selector="Button.nav-item.active TextBlock">
+        <Style Selector="TextBlock.nav-label">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.nav-item.active TextBlock.nav-label">
             <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+        </Style>
+        <!-- accent 指示条：始终占 3px 宽布局位（Opacity 不改变占位），非选中淡出 → 标签竖直对齐稳定 -->
+        <Style Selector="Border.nav-indicator">
+            <Setter Property="Width" Value="3" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="CornerRadius" Value="1.5" />
+            <Setter Property="Margin" Value="0,0,11,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.15" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.nav-item.active Border.nav-indicator">
+            <Setter Property="Opacity" Value="1" />
         </Style>
 
-        <!-- 主题 RadioButton 风格 -->
+        <!-- 主题 / 关窗 RadioButton：左 padding=10 让圆圈→文字间距 ≈12px，与开关原生 12px 列统一；
+             右 12 + 外层 StackPanel Spacing 提供项间距，竖 4 维持点击区高度。 -->
         <Style Selector="RadioButton.theme-option">
-            <Setter Property="Padding" Value="0,4,12,4" />
+            <Setter Property="Padding" Value="10,4,12,4" />
         </Style>
 
         <!-- 表单字段：标签 + 输入控件分两行 -->
@@ -50,10 +73,10 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid ColumnDefinitions="240,1,*">
+    <Grid ColumnDefinitions="208,1,*">
 
-        <!-- ========== 左侧分组导航 ========== -->
-        <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto" Background="{DynamicResource LayerFillColorAltBrush}">
+        <!-- ========== 左侧分组导航（轻量 TOC，透明背景与内容同面，仅靠 Col1 分隔线划界） ========== -->
+        <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto">
 
             <StackPanel Grid.Row="0" Margin="20,24,20,12" Spacing="2">
                 <TextBlock Text="设置" FontSize="22" FontWeight="SemiBold" />
@@ -62,72 +85,72 @@
                            IsVisible="{Binding SaveStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
             </StackPanel>
 
-            <!-- 主分组 -->
+            <!-- 主分组（纯文字目录 + accent 指示条；无图标——图标是"导航栏"最强信号，去掉即与主栏拉开层级） -->
             <ScrollViewer Grid.Row="1" Padding="12,8,12,8">
-                <StackPanel Spacing="4">
+                <StackPanel Spacing="2">
                     <Button Classes="nav-item"
                             Classes.active="{Binding IsGroupAppearance}"
                             Command="{Binding SelectGroupCommand}" CommandParameter="Appearance">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <PathIcon Data="{StaticResource IconStar}" Width="14" Height="14" />
-                            <TextBlock Text="外观" />
-                        </StackPanel>
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Grid.Column="0" Classes="nav-indicator" />
+                            <TextBlock Grid.Column="1" Classes="nav-label" Text="通用" />
+                        </Grid>
                     </Button>
                     <Button Classes="nav-item"
                             Classes.active="{Binding IsGroupTasks}"
                             Command="{Binding SelectGroupCommand}" CommandParameter="Tasks">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <PathIcon Data="{StaticResource IconTasks}" Width="14" Height="14" />
-                            <TextBlock Text="任务" />
-                        </StackPanel>
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Grid.Column="0" Classes="nav-indicator" />
+                            <TextBlock Grid.Column="1" Classes="nav-label" Text="任务" />
+                        </Grid>
                     </Button>
                     <Button Classes="nav-item"
                             Classes.active="{Binding IsGroupIdentification}"
                             Command="{Binding SelectGroupCommand}" CommandParameter="Identification">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <PathIcon Data="{StaticResource IconRefresh}" Width="14" Height="14" />
-                            <TextBlock Text="识别" />
-                        </StackPanel>
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Grid.Column="0" Classes="nav-indicator" />
+                            <TextBlock Grid.Column="1" Classes="nav-label" Text="识别" />
+                        </Grid>
                     </Button>
                     <Button Classes="nav-item"
                             Classes.active="{Binding IsGroupFiles}"
                             Command="{Binding SelectGroupCommand}" CommandParameter="Files">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <PathIcon Data="{StaticResource IconInbox}" Width="14" Height="14" />
-                            <TextBlock Text="文件过滤" />
-                        </StackPanel>
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Grid.Column="0" Classes="nav-indicator" />
+                            <TextBlock Grid.Column="1" Classes="nav-label" Text="文件过滤" />
+                        </Grid>
                     </Button>
                     <Button Classes="nav-item"
                             Classes.active="{Binding IsGroupAI}"
                             Command="{Binding SelectGroupCommand}" CommandParameter="AI">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <PathIcon Data="{StaticResource IconWeb}" Width="14" Height="14" />
-                            <TextBlock Text="AI" />
-                        </StackPanel>
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Grid.Column="0" Classes="nav-indicator" />
+                            <TextBlock Grid.Column="1" Classes="nav-label" Text="AI" />
+                        </Grid>
                     </Button>
                     <Button Classes="nav-item"
                             Classes.active="{Binding IsGroupTagMatching}"
                             Command="{Binding SelectGroupCommand}" CommandParameter="TagMatching">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <PathIcon Data="{StaticResource IconTags}" Width="14" Height="14" />
-                            <TextBlock Text="标签匹配" />
-                        </StackPanel>
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Grid.Column="0" Classes="nav-indicator" />
+                            <TextBlock Grid.Column="1" Classes="nav-label" Text="标签匹配" />
+                        </Grid>
                     </Button>
                     <Button Classes="nav-item"
                             Classes.active="{Binding IsGroupSearch}"
                             Command="{Binding SelectGroupCommand}" CommandParameter="Search">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <PathIcon Data="{StaticResource IconLibrary}" Width="14" Height="14" />
-                            <TextBlock Text="搜索" />
-                        </StackPanel>
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Grid.Column="0" Classes="nav-indicator" />
+                            <TextBlock Grid.Column="1" Classes="nav-label" Text="搜索" />
+                        </Grid>
                     </Button>
                     <Button Classes="nav-item"
                             Classes.active="{Binding IsGroupLog}"
                             Command="{Binding SelectGroupCommand}" CommandParameter="Log">
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <PathIcon Data="{StaticResource IconTasks}" Width="14" Height="14" />
-                            <TextBlock Text="日志" />
-                        </StackPanel>
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Grid.Column="0" Classes="nav-indicator" />
+                            <TextBlock Grid.Column="1" Classes="nav-label" Text="日志" />
+                        </Grid>
                     </Button>
                 </StackPanel>
             </ScrollViewer>
@@ -165,10 +188,10 @@
         <ScrollViewer Grid.Column="2" Padding="40,24,40,24">
         <Grid>
 
-            <!-- 外观分组 -->
+            <!-- 通用分组（原"外观"，扩展为主题 + 启动 / 关窗等常规偏好） -->
             <StackPanel IsVisible="{Binding IsGroupAppearance}" Spacing="0">
-                <TextBlock Text="外观" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,4" />
-                <TextBlock Text="主题与视觉偏好"
+                <TextBlock Text="通用" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="常规偏好与启动项"
                            FontSize="13" Opacity="0.65" Margin="0,0,0,28" />
 
                 <StackPanel Classes="field">
@@ -210,6 +233,18 @@
                     </StackPanel>
                 </StackPanel>
 
+                <!-- 开机自启（仅 Windows）：写 HKCU Run，无需 UAC。开启后登录时以 autostart 静默隐藏到托盘启动 -->
+                <StackPanel Classes="field" IsVisible="{Binding AutoStartSupported}">
+                    <TextBlock Classes="label" Text="开机启动" />
+                    <TextBlock Classes="help" Text="开启后系统登录时自动拉起 NineKgTools 并静默最小化到托盘（不弹主窗），文件夹监控 / 识别队列在后台运行。HKCU 注册表方式，无需 UAC 提权。" />
+                    <ToggleSwitch IsChecked="{Binding AutoStartEnabled, Mode=OneWay}"
+                                  Command="{Binding ToggleAutoStartCommand}"
+                                  Margin="0,8,0,0"
+                                  OnContent="已启用"
+                                  OffContent="未启用"
+                                  HorizontalAlignment="Left" />
+                </StackPanel>
+
                 <!-- 媒体详情页玻璃背景：开关；写回 DesktopPreferences 立即广播让正在打开的详情页实时切换 -->
                 <StackPanel Classes="field">
                     <TextBlock Classes="label" Text="详情页封面背景" />
@@ -219,10 +254,6 @@
                                   OnContent="启用"
                                   OffContent="关闭" />
                 </StackPanel>
-
-                <ui:FAInfoBar Severity="Informational" IsOpen="True" IsClosable="False"
-                            Title="持久化已启用"
-                            Message="主题与关窗行为通过 desktop-preferences.json 落盘到数据目录，重启后保留。" />
 
                 <!-- Shell 集成（仅 Windows） -->
                 <StackPanel Classes="field" IsVisible="{Binding ShellIntegrationSupported}">
