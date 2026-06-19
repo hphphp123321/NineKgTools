@@ -29,6 +29,53 @@
 
 ---
 
+## [0.2.0] - 2026/6/19
+
+> 本版本的主线是**桌面端从 MAUI Blazor Hybrid 重写为 Avalonia 原生应用**并完成打包分发；Web 端为增量改进与修复。两端共享 ~95% Core 代码。
+
+### Added
+
+#### 桌面端（NineKgTools.Desktop · Avalonia 12 + FluentAvalonia 3）
+
+- 桌面端**重写为 Avalonia 11/12 + FluentAvalonia + CommunityToolkit.Mvvm**，三平台原生（Win/Mac/Linux），目标视觉 Win11 Mica / Fluent
+- 与 Web 功能对齐：媒体库 / 待处理 / 媒体源 / 任务 / 标签 / 创作者 / 社团 / 收藏夹 / 网站 / 设置 + 媒体详情（内嵌页 + 独立窗双模式）
+- **系统集成**：系统托盘（状态色轮询）、文件拖拽识别、单实例 + NamedPipe IPC、资源管理器右键 verb、开机自启（静默到托盘）、窗口位置记忆、主窗 `Ctrl+1..9` 快捷键
+- **交互式识别流程**：选项 → 进度+诊断 → 预览/入库 三步链（与 Web 对齐，AsyncLocal 诊断作用域）
+- **数据目录与 Web/Docker 完全隔离**（各平台标准 LocalAppData / Application Support / XDG）
+- **打包与分发（Velopack 统一方案）**：
+  - Windows `Setup.exe`（安装版）+ 便携 zip；macOS / Linux best-effort 产物
+  - **跨平台自动更新**：启动静默检查 + 主窗 InfoBar 提示 + 设置「应用」分组手动检查；增量更新
+  - **Portable 模式**：exe 同目录放 `.portable` 标记 → 数据落同目录，整目录可拷走
+  - **首次启动引导**：3 步向导（数据目录 / 监视文件夹 / 识别源 Bangumi ApiKey），可跳过 / 重新运行
+  - CI `desktop-release.yml`：`desktop-v*` tag 触发，OS 矩阵 `vpk pack` + 上传同一 Release
+
+### Changed
+
+- **升级 .NET 9 → .NET 10 LTS**；FluentAvaloniaUI 2.2 → 3.0.0-preview2（匹配 Avalonia 12）
+- **全局搜索改造**：实时预览 Flyout + 搜索结果详情页重做（Web + 桌面端）
+- **发版 tag 改为对称双前缀**：Web/Docker 走 `web-v*`（原 `v*`），桌面端走 `desktop-v*`；改 Core 时两端同升、号对齐
+- 桌面端标签选择器改为**两级浏览**（顶层分组 → 组内标签），避免全量铺墙卡顿；关联媒体搜索改为大小写不敏感；文件过滤高级规则改为客户端可编辑
+
+### Fixed
+
+- **任务树构建 O(N²) → O(N)**，修复任务页大批量卡顿
+- 封面图片不显示 / 二次丢失修复（`.cache` 启动清空 + image cache 漂移链 + `InDatabase` 短路与入库路径冲突）
+- `config.yaml` bootstrap 并发安全
+- `ImageService` 直出内嵌 `Image.Content` BLOB
+- 桌面端：选择器对话框宽度裁切、安装后启动弹控制台窗口（`OutputType` Exe → WinExe）
+
+### Removed
+
+- 移除旧的 MAUI Blazor Hybrid 桌面端实现（由 Avalonia 重写取代）
+
+### Notes
+
+- 桌面端 **Windows 优先**完整可用（含自动更新）；macOS / Linux 为 best-effort（产物可下载，mac arm64 自动更新本期未接通）
+- 桌面端**不签名**：Windows 首次启动 SmartScreen、macOS Gatekeeper 需用户手动放行（见 [桌面端安装](docs/user-guide/14-desktop-install.md)）
+- Velopack 安装包 packId 为 `NineKgToolsDesktop`，与数据目录 `NineKgTools.Desktop` 隔离，**卸载不删用户数据**
+
+---
+
 ## [0.1.0] - 2026/4/30
 
 > 按 SemVer 0.x 表示 API 仍在迭代，破坏性变更在 0.2 / 0.3 等小版本里允许。
@@ -102,5 +149,6 @@
 
 ---
 
-[Unreleased]: https://github.com/hphphp123321/NineKgTools/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/hphphp123321/NineKgTools/compare/web-v0.2.0...HEAD
+[0.2.0]: https://github.com/hphphp123321/NineKgTools/compare/v0.1.0...web-v0.2.0
 [0.1.0]: https://github.com/hphphp123321/NineKgTools/releases/tag/v0.1.0
