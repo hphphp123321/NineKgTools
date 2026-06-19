@@ -1,0 +1,145 @@
+name: Desktop Release
+
+# 触发：推 desktop-v*.*.* tag（与 Web 的 v* tag 隔离，互不干扰）。
+# 用 Velopack（vpk）在各目标 OS 上打包并上传到同一个 GitHub Release：
+#   - Windows: Setup.exe + portable + 增量更新（channel=win，客户端默认源命中→自动更新可用）
+#   - Linux  : AppImage（channel=linux）
+#   - macOS  : .app/.pkg（x64=channel osx；arm64=channel osx-arm64，避免覆盖）
+#
+# 说明 / 已知限制：
+#   - vpk pack 必须在目标 OS 跑，故用 OS-specific runner 矩阵。
+#   - max-parallel: 1 串行：第一个 job（win）建 Release，其余 --merge 进同一 Release，避免并发写冲突。
+#   - macOS arm64 用独立 channel osx-arm64；客户端 UpdateService 默认 channel 为 OS 默认（win/osx/linux），
+#     故 Apple Silicon 的自动更新需后续再接 channel（本期 mac 为 best-effort，产物可手动下载）。
+#   - 不签名：Win 首次启动 SmartScreen / mac Gatekeeper 需用户放行（文档说明）。
+
+on:
+  push:
+    tags: ['desktop-v*.*.*']
+
+permissions:
+  contents: write   # 创建 / 合并 Release 需要
+
+jobs:
+  pack:
+    name: Pack ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 1   # 串行，避免多 job 并发写同一 Release
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            channel: win
+            mainexe: NineKgTools.Desktop.exe
+          - os: macos-latest
+            rid: osx-x64
+            channel: osx
+            mainexe: NineKgTools.Desktop
+          - os: macos-latest
+            rid: osx-arm64
+            channel: osx-arm64
+            mainexe: NineKgTools.Desktop
+          - os: ubuntu-latest
+            rid: linux-x64
+            channel: linux
+            mainexe: NineKgTools.Desktop
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          REF="${{ github.ref_name }}"      # desktop-v0.1.0[-beta]
+          VER="${REF#desktop-v}"            # 0.1.0[-beta]
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          if [[ "$REF" =~ -(alpha|beta|rc) ]]; then
+            echo "pre=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pre=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install vpk
+        shell: bash
+        run: |
+          dotnet tool install -g vpk || dotnet tool update -g vpk
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Publish (self-contained, multi-file)
+        shell: bash
+        run: |
+          dotnet publish NineKgTools.Desktop/NineKgTools.Desktop.csproj \
+            -c Release -r ${{ matrix.rid }} --self-contained true \
+            -p:PublishSingleFile=false \
+            -p:Version=${{ steps.ver.outputs.version }} \
+            -o publish/desktop/${{ matrix.rid }}
+
+      - name: Generate macOS .icns
+        if: startsWith(matrix.rid, 'osx')
+        run: |
+          set -e
+          SRC=NineKgTools.Desktop/Assets/app-icon.png
+          mkdir -p icon.iconset
+          sips -z 16 16     "$SRC" --out icon.iconset/icon_16x16.png
+          sips -z 32 32     "$SRC" --out icon.iconset/icon_16x16@2x.png
+          sips -z 32 32     "$SRC" --out icon.iconset/icon_32x32.png
+          sips -z 64 64     "$SRC" --out icon.iconset/icon_32x32@2x.png
+          sips -z 128 128   "$SRC" --out icon.iconset/icon_128x128.png
+          sips -z 256 256   "$SRC" --out icon.iconset/icon_128x128@2x.png
+          sips -z 256 256   "$SRC" --out icon.iconset/icon_256x256.png
+          sips -z 512 512   "$SRC" --out icon.iconset/icon_256x256@2x.png
+          sips -z 512 512   "$SRC" --out icon.iconset/icon_512x512.png
+          iconutil -c icns icon.iconset -o NineKgTools.Desktop/Assets/app.icns
+
+      - name: Download prior releases (delta base, first release may be empty)
+        shell: bash
+        continue-on-error: true
+        run: |
+          vpk download github \
+            --repoUrl "https://github.com/${{ github.repository }}" \
+            --channel ${{ matrix.channel }}
+
+      - name: Pack
+        shell: bash
+        run: |
+          case "${{ matrix.rid }}" in
+            win-*)   ICON="-i NineKgTools.Desktop/Assets/app.ico" ;;
+            osx-*)   ICON="-i NineKgTools.Desktop/Assets/app.icns" ;;
+            linux-*) ICON="-i NineKgTools.Desktop/Assets/app-icon.png" ;;
+          esac
+          vpk pack \
+            -u NineKgToolsDesktop \
+            -v ${{ steps.ver.outputs.version }} \
+            -p publish/desktop/${{ matrix.rid }} \
+            -e ${{ matrix.mainexe }} \
+            --channel ${{ matrix.channel }} \
+            --packTitle "NineKgTools Desktop" \
+            --packAuthors "hphphp123321" \
+            $ICON
+
+      - name: Upload to GitHub Release
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PRE=""
+          if [ "${{ steps.ver.outputs.pre }}" = "true" ]; then PRE="--pre"; fi
+          vpk upload github \
+            --repoUrl "https://github.com/${{ github.repository }}" \
+            --channel ${{ matrix.channel }} \
+            --publish \
+            --merge \
+            --releaseName "Desktop ${{ steps.ver.outputs.version }}" \
+            --tag "${{ github.ref_name }}" \
+            --token "$GITHUB_TOKEN" \
+            $PRE

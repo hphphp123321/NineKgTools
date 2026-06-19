@@ -38,6 +38,11 @@ Database/*
 # dotnet publish 产物（仅根目录的 publish/，不影响 scripts/publish/ 等同名子目录）
 /publish/
 
+# Velopack 打包产物（vpk pack -o Releases）+ CI 临时图标
+/Releases/
+/icon.iconset/
+NineKgTools.Desktop/Assets/app.icns
+
 # Windows 图片缓存
 Thumbs.db
 
@@ -131,6 +136,11 @@ mono_crash.*
 # claude
 CLAUDE.md
 .claude/
+
+# impeccable
+.impeccable.md
+PRODUCT.md
+DESIGN.md
 
 # Node.js
 node_modules/
