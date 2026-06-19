@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:NineKgTools.Desktop.ViewModels.Pages"
              xmlns:ui="using:FluentAvalonia.UI.Controls"
+             xmlns:comp="using:NineKgTools.Desktop.Views.Components"
              x:Class="NineKgTools.Desktop.Views.Pages.SettingsPage"
              x:DataType="vm:SettingsViewModel">
 
@@ -394,9 +395,31 @@
                                   HorizontalAlignment="Left" />
                 </StackPanel>
 
-                <ui:FAInfoBar Severity="Informational" IsOpen="True" IsClosable="False"
-                            Title="高级过滤规则"
-                            Message="忽略文件名 / 模式 / 允许扩展名等高级列表暂未在此页暴露——请直接编辑 config.yaml 的 files.ignored_files / files.ignored_patterns / files.allowed_extensions。改动后无需重启。" />
+                <!-- 高级过滤规则：三组字符串列表（可直接在客户端编辑，不必改 config.yaml） -->
+                <Expander Header="高级过滤规则" Margin="0,4,0,0">
+                    <StackPanel Margin="0,8,0,0">
+                        <TextBlock Text="规则改动即时保存，下次扫描 / 监控触发时生效，无需重启。"
+                                   FontSize="11" Opacity="0.65" Margin="0,0,0,18" />
+
+                        <StackPanel Classes="field">
+                            <TextBlock Classes="label" Text="忽略的文件名" />
+                            <TextBlock Classes="help" Text="精确匹配的文件名（不区分大小写），命中即跳过。" />
+                            <comp:StringListEditor DataContext="{Binding IgnoredFilesEditor}" />
+                        </StackPanel>
+
+                        <StackPanel Classes="field">
+                            <TextBlock Classes="label" Text="忽略的文件模式" />
+                            <TextBlock Classes="help" Text="支持 * 通配符的文件名模式，如 *.tmp、.*（所有点开头的文件）。" />
+                            <comp:StringListEditor DataContext="{Binding IgnoredPatternsEditor}" />
+                        </StackPanel>
+
+                        <StackPanel Classes="field">
+                            <TextBlock Classes="label" Text="允许的扩展名" />
+                            <TextBlock Classes="help" Text="只识别这些扩展名的文件；留空 = 允许所有扩展名。输入 mp4 会自动补成 .mp4。" />
+                            <comp:StringListEditor DataContext="{Binding AllowedExtensionsEditor}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Expander>
             </StackPanel>
 
             <!-- AI 分组 -->

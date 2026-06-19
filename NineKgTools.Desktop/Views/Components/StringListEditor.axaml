@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:NineKgTools.Desktop.ViewModels"
+             x:Class="NineKgTools.Desktop.Views.Components.StringListEditor"
+             x:DataType="vm:StringListEditorViewModel"
+             x:Name="Root">
+
+    <StackPanel Spacing="8">
+
+        <!-- 现有条目：chip + ✕（与 EditableAliasList 同款视觉，保持一致） -->
+        <ItemsControl ItemsSource="{Binding Items}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                    <Border Padding="10,4" Margin="0,0,6,6"
+                            CornerRadius="12"
+                            Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                            BorderThickness="1">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding}"
+                                       FontFamily="Consolas, monospace"
+                                       FontSize="12" VerticalAlignment="Center" />
+                            <Button Command="{Binding #Root.((vm:StringListEditorViewModel)DataContext).RemoveCommand}"
+                                    CommandParameter="{Binding}"
+                                    Width="18" Height="18" Padding="0"
+                                    Background="Transparent" BorderThickness="0"
+                                    ToolTip.Tip="移除">
+                                <TextBlock Text="✕" FontSize="11"
+                                           Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- 空提示（如"留空 = 允许所有扩展名"） -->
+        <TextBlock IsVisible="{Binding ShowEmptyHint}"
+                   Text="{Binding EmptyHint}"
+                   FontSize="11" Opacity="0.55" />
+
+        <!-- 添加行：输入框（回车提交）+ ﹢ + 恢复默认 -->
+        <Grid ColumnDefinitions="*,8,Auto,8,Auto">
+            <TextBox Grid.Column="0"
+                     Text="{Binding NewEntry, Mode=TwoWay}"
+                     Watermark="{Binding Placeholder}">
+                <TextBox.KeyBindings>
+                    <KeyBinding Gesture="Enter" Command="{Binding AddCommand}" />
+                </TextBox.KeyBindings>
+            </TextBox>
+            <Button Grid.Column="2" Command="{Binding AddCommand}"
+                    ToolTip.Tip="添加（回车也可）">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="+" FontSize="14" FontWeight="SemiBold"
+                               Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+                    <TextBlock Text="添加" FontSize="12" />
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="4" Command="{Binding ResetCommand}"
+                    Background="Transparent" BorderThickness="0"
+                    ToolTip.Tip="恢复为默认值">
+                <TextBlock Text="恢复默认" FontSize="12" Opacity="0.7" />
+            </Button>
+        </Grid>
+
+    </StackPanel>
+
+</UserControl>

@@ -103,6 +103,12 @@ public partial class SettingsViewModel : PageViewModelBase
     [ObservableProperty] private bool _filesSkipHidden;
     [ObservableProperty] private bool _filesSkipSystem;
 
+    // 高级过滤规则三组 chip 编辑器（忽略文件名 / 忽略模式 / 允许扩展名）。
+    // 默认值与 FilesConfig 字段初值保持一致——改 FilesConfig 默认时这里同步。
+    public StringListEditorViewModel IgnoredFilesEditor { get; }
+    public StringListEditorViewModel IgnoredPatternsEditor { get; }
+    public StringListEditorViewModel AllowedExtensionsEditor { get; }
+
     // ========== AI ==========
     [ObservableProperty] private bool _aiUseAi;
     [ObservableProperty] private bool _aiUseAiForKeywordSplitting;
@@ -150,7 +156,46 @@ public partial class SettingsViewModel : PageViewModelBase
         _preferences = preferences;
         _shellIntegration = shellIntegration;
         _autoStart = autoStart;
+
+        IgnoredFilesEditor = new StringListEditorViewModel(
+            placeholder: "如 Thumbs.db（精确文件名，回车添加）",
+            emptyHint: "留空 = 不按文件名忽略",
+            defaults: new[] { "Thumbs.db", ".DS_Store", "desktop.ini", ".gitkeep", ".gitignore" });
+        IgnoredPatternsEditor = new StringListEditorViewModel(
+            placeholder: "如 *.tmp（支持 * 通配符，回车添加）",
+            emptyHint: "留空 = 不按模式忽略",
+            defaults: new[] { ".*", "~*", "*.tmp", "*.temp", "*.cache", "*.log", "*.bak", "*.swp" });
+        AllowedExtensionsEditor = new StringListEditorViewModel(
+            placeholder: "如 mp4（回车添加，自动补 .）",
+            emptyHint: "留空 = 允许所有扩展名",
+            defaults: Array.Empty<string>(),
+            normalizer: NormalizeExtension);
+
+        // 三组任一增删 → 写回 config.Files + 防抖落盘（_suppressSave 期由 SetItems 触发的不落盘）
+        IgnoredFilesEditor.Items.CollectionChanged += (_, _) => OnFilesAdvancedListChanged();
+        IgnoredPatternsEditor.Items.CollectionChanged += (_, _) => OnFilesAdvancedListChanged();
+        AllowedExtensionsEditor.Items.CollectionChanged += (_, _) => OnFilesAdvancedListChanged();
+
         LoadFromConfig();
+    }
+
+    /// <summary>扩展名规范化：去空白 + 小写 + 补 "." 前缀（mp4 → .mp4）。</summary>
+    private static string NormalizeExtension(string raw)
+    {
+        var v = raw.Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(v)) return "";
+        if (!v.StartsWith('.')) v = "." + v;
+        return v;
+    }
+
+    /// <summary>高级过滤三组任一变化 → 同步回 config.Files + 防抖保存。扫描时实时读取，无需重启。</summary>
+    private void OnFilesAdvancedListChanged()
+    {
+        if (_suppressSave || _config.Files is null) return;
+        _config.Files.IgnoredFiles = IgnoredFilesEditor.Items.ToList();
+        _config.Files.IgnoredPatterns = IgnoredPatternsEditor.Items.ToList();
+        _config.Files.AllowedExtensions = AllowedExtensionsEditor.Items.ToList();
+        DebouncedSave();
     }
 
     private void LoadFromConfig()
@@ -173,6 +218,10 @@ public partial class SettingsViewModel : PageViewModelBase
             FilesMinimumSize = _config.Files?.MinimumFileSize ?? 1024;
             FilesSkipHidden = _config.Files?.SkipHiddenFiles ?? true;
             FilesSkipSystem = _config.Files?.SkipSystemFiles ?? true;
+            // 高级过滤三组（_suppressSave=true 期填充，CollectionChanged 不会触发落盘）
+            IgnoredFilesEditor.SetItems(_config.Files?.IgnoredFiles);
+            IgnoredPatternsEditor.SetItems(_config.Files?.IgnoredPatterns);
+            AllowedExtensionsEditor.SetItems(_config.Files?.AllowedExtensions);
 
             // AI
             AiUseAi = _config.Ai?.UseAi ?? false;
