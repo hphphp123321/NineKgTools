@@ -385,6 +385,16 @@ internal static class Program
     /// </summary>
     private static string GetPlatformDataDirectory()
     {
+        // Portable 模式：exe 同目录存在 .portable 标记文件 → 数据落 <exeDir>/data，
+        // 不写 LocalAppData。让用户把整个目录拷到 U 盘 / 另一台机器带着数据走。
+        // 标记文件需用户手动创建（不是默认值），避免安装版被误判 portable 把数据写进 Program Files。
+        // 单文件发布下 AppContext.BaseDirectory 指向 exe 所在目录（非临时解压目录），正合适。
+        var exeDir = AppContext.BaseDirectory;
+        if (File.Exists(Path.Combine(exeDir, ".portable")))
+        {
+            return Path.Combine(exeDir, "data");
+        }
+
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             return Path.Combine(

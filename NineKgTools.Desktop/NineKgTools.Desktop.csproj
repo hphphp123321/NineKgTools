@@ -7,6 +7,15 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+
+        <!-- Phase 4 打包：声明可发布的目标 RID（self-contained 发布给 Velopack pack 用）。
+             这里只声明 RuntimeIdentifier(s) 候选，不强制 build/run 走某个 RID；
+             实际 self-contained / 单文件 由 scripts/publish/build-desktop.* 在 publish 时传参。
+             不开 PublishTrimmed——Avalonia 反射重，裁剪易运行时崩（phase-4 已定）。 -->
+        <RuntimeIdentifiers>win-x64;osx-x64;osx-arm64;linux-x64</RuntimeIdentifiers>
+        <!-- 让 Velopack 的更新器能拿到稳定可读的产品/公司名（也用于 .app / AppImage 元数据） -->
+        <Product>NineKgTools Desktop</Product>
+        <Company>NineKgTools</Company>
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <!-- 嵌入 multi-size .ico 到 PE resource：Win11 任务栏 / 资源管理器 / Alt+Tab
              看到的图标都从 exe 资源读，单独的 Window.Icon 只控制运行中实例的标题栏。
