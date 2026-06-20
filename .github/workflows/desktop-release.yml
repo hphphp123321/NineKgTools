@@ -121,7 +121,9 @@ jobs:
               # Windows 额外产出交互式 MSI 向导（vpk 同时保留 Setup.exe）：
               #   --instLocation Either  → 让用户选"仅为我 / 所有用户"
               #   --instWelcome/Conclusion → 欢迎页介绍 + 完成页提示（值是纯文本文件路径，非内联文本！）
-              #   --msiBanner/Logo → 品牌外观（493x58 / 493x312 BMP）
+              #   --msiBanner/Logo → 品牌外观。⚠ 反直觉映射（实测）：
+              #     --msiBanner → WixUI_Bmp_Dialog 欢迎页全屏背景，需 493x312（= msi-banner.bmp）
+              #     --msiLogo   → WixUI_Bmp_Banner 顶部细条，      需 493x58 （= msi-logo.bmp）
               EXTRA+=(--msi
                 --instLocation Either
                 --instWelcome    NineKgTools.Desktop/Assets/msi-welcome.txt
