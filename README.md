@@ -6,12 +6,12 @@
 
 **为个人媒体库打造的智能识别与管理系统**
 
-基于 .NET 9 + Blazor，一站式整理海量音频 / 视频 / 游戏 / 图片 / 文本资源
+基于 .NET 10 + Blazor / Avalonia，一站式整理海量音频 / 视频 / 游戏 / 图片 / 文本资源
 —— 让零散的文件夹变回可以检索、可以欣赏的收藏。
 
 <br />
 
-[![.NET 9](https://img.shields.io/badge/.NET-9.0-512BD4?style=flat-square&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
+[![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
 [![Build](https://img.shields.io/github/actions/workflow/status/hphphp123321/NineKgTools/ci.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white&label=build)](https://github.com/hphphp123321/NineKgTools/actions)
 [![Docker Image](https://img.shields.io/badge/ghcr.io-ninekg--tools-2496ED?style=flat-square&logo=docker&logoColor=white)](https://github.com/hphphp123321/NineKgTools/pkgs/container/ninekg-tools)
@@ -48,16 +48,51 @@
 
 没有云服务、没有订阅、没有数据上传给第三方，同时也不会提供任何资源下载！（请支持正版喵）。
 
+---
+
+## 🧭 两种形态，按需选择
+
+NineKgTools 一套核心、两种使用方式——共享 ~95% 的 Core 代码，但**数据各自独立、可并存**：
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 🐳 Web / Docker 服务端
+
+跑在服务器 / NAS，浏览器访问，**多设备共享、远程访问**。
+
 ```bash
 docker run -d -p 23333:23333 \
   -e OPENAI_API_KEY=sk-... \
   -v $PWD/data:/app/Database \
   -v $PWD/media:/app/media \
   ghcr.io/hphphp123321/ninekg-tools:latest
-# 打开 http://localhost:23333
+# 打开 http://localhost:23333（默认 admin/admin）
 ```
 
-> 🖥 **想要原生桌面端？** 除了上面的 Docker/Web 服务端，还有 Win/Mac/Linux 原生客户端（托盘 / 右键识别 / 拖拽 / 开机自启 / 自动更新），从 [Releases](https://github.com/hphphp123321/NineKgTools/releases) 下 `desktop-v*` 的 Setup.exe 双击即装——安装指引见 [桌面端安装](docs/user-guide/14-desktop-install.md)。桌面端与 Docker 数据独立、可并存。
+→ [Docker 快速开始](#-快速开始) · [Windows 便携版](#方式-bwindows-便携版无需-docker无需-net-sdk) · [部署指南](docs/operations/deployment.md)
+
+</td>
+<td width="50%" valign="top">
+
+### 🖥 桌面端原生客户端
+
+Win / Mac / Linux 原生（Avalonia），**单机自用 + 系统集成**：托盘 / 右键识别 / 拖拽 / 开机自启 / 自动更新。
+
+从 [Releases](https://github.com/hphphp123321/NineKgTools/releases) 下 `desktop-v*` 的 **`Setup.exe`**，双击即装，走 3 步引导即用：
+
+- 安装版自带跨平台**自动更新**
+- 便携版（`.portable` 标记）数据随目录走
+- macOS / Linux 为 best-effort 产物
+
+→ [桌面端安装指引](docs/user-guide/14-desktop-install.md)
+
+</td>
+</tr>
+</table>
+
+> 不确定选哪个？想多设备 / 远程访问 → **Docker**；只在本机用、想要托盘和右键识别 → **桌面端**。两者数据完全隔离，装一个、两个都行，互不干扰。
 
 ---
 
@@ -271,11 +306,11 @@ dotnet run --project NineKgTools.Web
 
 <table>
 <tr><th>领域</th><th>选型</th><th>为什么</th></tr>
-<tr><td>运行时</td><td>.NET 9</td><td>性能、单文件部署、跨平台容器友好</td></tr>
+<tr><td>运行时</td><td>.NET 10 LTS</td><td>性能、单文件部署、跨平台容器友好</td></tr>
 <tr><td>Web UI</td><td>Blazor Server + MudBlazor 8</td><td>C# 单语言全栈、Material Design、SignalR 实时推送</td></tr>
-<tr><td>桌面端</td><td>MAUI Blazor Hybrid</td><td>复用 Web 组件，v1.1 发布</td></tr>
+<tr><td>桌面端</td><td>Avalonia 12 + FluentAvalonia 3</td><td>三平台原生（Win/Mac/Linux），Win11 Mica / Fluent 视觉，Velopack 打包 + 自动更新</td></tr>
 <tr><td>后台任务</td><td>Hangfire 1.8 + SQLite 存储</td><td>Dashboard 开箱即用、持久化重启不丢任务</td></tr>
-<tr><td>存储</td><td>SQLite + EF Core 9</td><td>零运维、单文件便于备份、性能足够</td></tr>
+<tr><td>存储</td><td>SQLite + EF Core 10</td><td>零运维、单文件便于备份、性能足够</td></tr>
 <tr><td>向量库</td><td>SqliteVec (Microsoft.SemanticKernel)</td><td>不引入 Qdrant/Milvus 的运维负担</td></tr>
 <tr><td>AI</td><td>OpenAI (via Semantic Kernel)</td><td>协议标准，任何兼容代理均可替换</td></tr>
 <tr><td>抓取</td><td>HtmlAgilityPack + Selenium (可选)</td><td>先 HTML 解析，动态页面才启 Selenium</td></tr>
@@ -291,11 +326,11 @@ dotnet run --project NineKgTools.Web
 NineKgTools/
 ├── NineKgTools.Core/         # 共享业务逻辑（210+ .cs，~60% 代码量在此）
 │   └── Core/Services/        #   AI / Auth / Cache / Files / Media / Tasks / Websites ...
-├── NineKgTools.Web/          # Blazor Server Web 端（启动项目）
+├── NineKgTools.Web/          # Blazor Server Web 端（Docker / 便携版启动项目）
 │   ├── Pages/                #   20+ 路由页面
 │   ├── Components/           #   可复用组件（Medias / Tasks / Common / ...）
 │   └── wwwroot/css/          #   模块化 CSS（variables / utilities / components / pages）
-├── NineKgTools.Desktop/      # MAUI Blazor Hybrid 桌面端（v1.1 发布）
+├── NineKgTools.Desktop/      # Avalonia 12 桌面端（Win/Mac/Linux 原生，Velopack 分发）
 ├── NineKgTools.Tests/        # xUnit 测试
 ├── Config/                   # YAML 配置（config.example.yaml 作为模板）
 ├── docs/                     # 项目文档（架构、配置、前端设计指南…）
@@ -318,9 +353,16 @@ NineKgTools/
 - [x] Docker 容器化部署
 - [x] 自动化截图 CI 
 
+### ✅ v0.2.0（桌面端原生化）
+- [x] **桌面端重写为 Avalonia 12 + FluentAvalonia 3**（三平台原生，功能与 Web 对齐）
+- [x] **桌面端发布**：Velopack 打包 + 跨平台自动更新 + 首次启动引导
+- [x] 系统集成：托盘 / 右键识别 / 拖拽 / 单实例 IPC / 开机自启
+- [x] 升级 .NET 9 → .NET 10 LTS
+- [x] 对称发版 tag（`web-v*` / `desktop-v*`）
+
 ### 🚧 后续小版本规划
-- [ ] **桌面端发布**（MAUI Windows MSIX + portable zip）
 - [ ] **Chromium 变种镜像**（`ghcr.io/hphphp123321/ninekg-tools:full`），Selenium 抓取全可用
+- [ ] 桌面端 macOS / Linux 自动更新打通 + 代码签名 / 公证
 - [ ] 新识别源
 - [ ] 远程NAS访问支持
 
