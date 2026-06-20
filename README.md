@@ -337,7 +337,7 @@ NineKgTools/
 └── scripts/screenshots/      # README 截图自动化（Playwright）
 ```
 
-深度文档见 [`docs/README.md`](docs/README.md) 和 [CLAUDE.md](CLAUDE.md)（后者是 AI 助手使用的工程约定摘要）。
+深度文档见 [`docs/README.md`](docs/README.md)。
 
 ---
 
