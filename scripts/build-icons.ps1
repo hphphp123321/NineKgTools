@@ -19,55 +19,67 @@ $pngDst = Join-Path $repoRoot "NineKgTools.Desktop\Assets\app-icon.png"
 $bannerDst = Join-Path $repoRoot "NineKgTools.Desktop\Assets\msi-banner.bmp"
 $logoDst = Join-Path $repoRoot "NineKgTools.Desktop\Assets\msi-logo.bmp"
 
-# MSI 向导品牌色（深色主题 Hero 渐变 #1E2940 → #262040 → #3D2540）
-$brandBg = [System.Drawing.Color]::FromArgb(30, 41, 64)
-$gradTop = [System.Drawing.Color]::FromArgb(30, 41, 64)
-$gradMid = [System.Drawing.Color]::FromArgb(38, 32, 64)
-$gradBot = [System.Drawing.Color]::FromArgb(61, 37, 64)
+# ⚠ Velopack 的 --msiBanner / --msiLogo 参数与直觉/官方文档标注的尺寸**相反**
+# （实测：导出 MSI 的 Binary 表，按 WixUI 标准模板的 Control 表布局核对）：
+#   --msiBanner <file>  →  WixUI_Bmp_Dialog  →  欢迎/完成页**全屏背景**，需 **493x312**
+#   --msiLogo   <file>  →  WixUI_Bmp_Banner  →  其余页**顶部细条**，需 **493x58**
+# 而工作流里 --msiBanner 指向 msi-banner.bmp、--msiLogo 指向 msi-logo.bmp，所以：
+#   msi-banner.bmp 必须是 493x312（欢迎页背景）  ←  本脚本 New-MsiDialogBmp
+#   msi-logo.bmp   必须是 493x58 （顶部细条）      ←  本脚本 New-MsiStripBmp
+# 模板文字固定黑色（TextStyle Color 为空），故两张图都用**浅色底**保证黑字可读。
+$paper = [System.Drawing.Color]::FromArgb(246, 245, 242)   # #F6F5F2 暖白（非纯白）
+$ink   = [System.Drawing.Color]::FromArgb(34, 27, 51)      # #221B33 深墨靛（低彩度，非纯黑）
+$hair  = [System.Drawing.Color]::FromArgb(225, 222, 230)   # 纸面与面板间的细分隔线
 
 if (-not (Test-Path $src)) {
     Write-Error "源 logo 不存在：$src"
     exit 1
 }
 
-# 欢迎/完成页背景（493x312）：纯品牌竖向渐变，**不放 logo**。
-# 原因：Velopack 的 WiX 模板会按不同宽高比拉伸这张图，居中 logo 会被挤成竖条失真；
-# 均匀渐变被拉伸看不出失真，深底配模板的浅色文字清晰。logo 仅放在顶部横幅。
-function New-MsiLogoBmp {
+# 欢迎/完成页全屏背景（493x312 → 喂给 --msiBanner）：
+# WixUI 正文黑字排在右侧（X≈135 DLU≈180px 起），左侧 ~34% 是不被文字覆盖的 art 区。
+# 493x312 等比铺满 370x234 DLU 控件，1:1 无失真。
+# 故：右侧暖纸白供黑字阅读；左侧深墨靛面板放居中 logo（面板宽止于正文左边界之前）。
+function New-MsiDialogBmp {
     param([string]$Dst, [int]$Width, [int]$Height)
-    $bmp = New-Object System.Drawing.Bitmap $Width, $Height, ([System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
-    $g = [System.Drawing.Graphics]::FromImage($bmp)
-    # 三段竖向渐变：上半 top→mid，下半 mid→bot
-    $r1 = New-Object System.Drawing.Rectangle 0, 0, $Width, ([int]($Height / 2) + 1)
-    $b1 = New-Object System.Drawing.Drawing2D.LinearGradientBrush $r1, $gradTop, $gradMid, ([System.Drawing.Drawing2D.LinearGradientMode]::Vertical)
-    $g.FillRectangle($b1, $r1)
-    $r2 = New-Object System.Drawing.Rectangle 0, ([int]($Height / 2)), $Width, ([int]($Height / 2) + 1)
-    $b2 = New-Object System.Drawing.Drawing2D.LinearGradientBrush $r2, $gradMid, $gradBot, ([System.Drawing.Drawing2D.LinearGradientMode]::Vertical)
-    $g.FillRectangle($b2, $r2)
-    $b1.Dispose(); $b2.Dispose(); $g.Dispose()
-    $bmp.Save($Dst, [System.Drawing.Imaging.ImageFormat]::Bmp)
-    $bmp.Dispose()
-    Write-Host "已生成: $Dst ($Width x $Height)"
-}
-
-# 顶部横幅（493x58）：纯品牌底 + 居中 logo（横幅宽高比接近模板区域，失真小）。
-function New-MsiBannerBmp {
-    param([string]$Dst, [int]$Width, [int]$Height, [int]$LogoBox)
+    $panelW = [int]($Width * 0.34)   # ≈168，止于正文左边界(≈180)之前
     $logo = [System.Drawing.Image]::FromFile($src)
     $bmp = New-Object System.Drawing.Bitmap $Width, $Height, ([System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
     $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
     $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-    $g.Clear($brandBg)
-    $scale = [Math]::Min($LogoBox / $logo.Width, $LogoBox / $logo.Height)
-    $lw = [int]($logo.Width * $scale)
-    $lh = [int]($logo.Height * $scale)
-    $x = [int](($Width - $lw) / 2)
-    $y = [int](($Height - $lh) / 2)
-    $g.DrawImage($logo, $x, $y, $lw, $lh)
+    $g.Clear($paper)
+    $g.FillRectangle((New-Object System.Drawing.SolidBrush $ink), 0, 0, $panelW, $Height)
+    $g.FillRectangle((New-Object System.Drawing.SolidBrush $hair), $panelW, 0, 1, $Height)
+    $box = 92
+    $scale = [Math]::Min($box / $logo.Width, $box / $logo.Height)
+    $lw = [int]($logo.Width * $scale); $lh = [int]($logo.Height * $scale)
+    $lx = [int](($panelW - $lw) / 2); $ly = [int](($Height - $lh) / 2)
+    $g.DrawImage($logo, $lx, $ly, $lw, $lh)
     $g.Dispose()
     $bmp.Save($Dst, [System.Drawing.Imaging.ImageFormat]::Bmp)
-    $bmp.Dispose()
-    $logo.Dispose()
+    $bmp.Dispose(); $logo.Dispose()
+    Write-Host "已生成: $Dst ($Width x $Height)"
+}
+
+# 其余页顶部细条（493x58 → 喂给 --msiLogo）：标准 WixUI 横幅标题黑字排左侧，
+# 故暖纸白底 + 右侧放小 logo（不与标题文字重叠），黑字可读。
+function New-MsiStripBmp {
+    param([string]$Dst, [int]$Width, [int]$Height)
+    $logo = [System.Drawing.Image]::FromFile($src)
+    $bmp = New-Object System.Drawing.Bitmap $Width, $Height, ([System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $g.Clear($paper)
+    $box = 38
+    $scale = [Math]::Min($box / $logo.Width, $box / $logo.Height)
+    $lw = [int]($logo.Width * $scale); $lh = [int]($logo.Height * $scale)
+    $lx = $Width - $lw - 18; $ly = [int](($Height - $lh) / 2)
+    $g.DrawImage($logo, $lx, $ly, $lw, $lh)
+    $g.Dispose()
+    $bmp.Save($Dst, [System.Drawing.Imaging.ImageFormat]::Bmp)
+    $bmp.Dispose(); $logo.Dispose()
     Write-Host "已生成: $Dst ($Width x $Height)"
 }
 
@@ -84,9 +96,10 @@ $bmp.Dispose()
 $img.Dispose()
 Write-Host "已生成: $pngDst (256x256)"
 
-# MSI 向导横幅（顶部细条，logo 居中）+ 欢迎/完成页背景（纯渐变无 logo，避免被模板拉伸失真）
-New-MsiBannerBmp -Dst $bannerDst -Width 493 -Height 58 -LogoBox 40
-New-MsiLogoBmp   -Dst $logoDst   -Width 493 -Height 312
+# 注意尺寸：msi-banner.bmp(→--msiBanner) 是 493x312 欢迎页背景；
+#           msi-logo.bmp(→--msiLogo) 是 493x58 顶部细条（Velopack 参数与尺寸反直觉，见上方说明）
+New-MsiDialogBmp -Dst $bannerDst -Width 493 -Height 312
+New-MsiStripBmp  -Dst $logoDst   -Width 493 -Height 58
 
 # 顺带刷新 Windows .ico（多尺寸）
 $icoScript = Join-Path $PSScriptRoot "build-app-ico.ps1"
