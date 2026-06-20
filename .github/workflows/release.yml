@@ -83,6 +83,7 @@ jobs:
           set -euo pipefail
           REF="${{ github.ref_name }}"
           VER="${REF#web-v}"   # 去掉 web-v 前缀: web-v1.2.3 -> 1.2.3
+          echo "version=$VER" >> "$GITHUB_OUTPUT"   # 供 Release name 用，统一成 "Web X.Y.Z"
           OWNER="${{ github.repository_owner }}"
           REPO="${{ github.repository }}"
 
@@ -139,7 +140,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ github.ref_name }}
+          name: Web ${{ steps.body.outputs.version }}   # 与桌面端 "Desktop X.Y.Z" 命名对称
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true   # 在 body_path 内容**之后**追加 commit list
           body_path: release-body.md
