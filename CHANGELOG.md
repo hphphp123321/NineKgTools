@@ -25,9 +25,17 @@
 
 ### Changed
 
-- **桌面端 Windows 改用 MSI 向导安装**（`vpk pack --msi`）：双击 `.msi` 走标准向导——欢迎页（应用介绍）+ **安装位置选择**（仅为我 / 为所有用户）+ 完成页，带品牌横幅/徽标。`Setup.exe` 一键极速版同时保留；自动更新不受影响（走 Update.exe，与安装器无关）。
-
 ### Fixed
+
+---
+
+## [0.2.1] - 2026/6/20
+
+> 桌面端专项发布（`desktop-v0.2.1`）；Web/Docker 维持 0.2.0。
+
+### Changed
+
+- **桌面端 Windows 改用 MSI 向导安装**（`vpk pack --msi`）：双击 `.msi` 走标准向导——欢迎页（应用介绍）+ **安装位置选择**（仅为我 / 为所有用户）+ 完成页，带品牌横幅/徽标。`Setup.exe` 一键极速版同时保留；自动更新不受影响（走 Update.exe，与安装器无关）。
 
 ---
 
@@ -151,6 +159,7 @@
 
 ---
 
-[Unreleased]: https://github.com/hphphp123321/NineKgTools/compare/web-v0.2.0...HEAD
+[Unreleased]: https://github.com/hphphp123321/NineKgTools/compare/desktop-v0.2.1...HEAD
+[0.2.1]: https://github.com/hphphp123321/NineKgTools/compare/web-v0.2.0...desktop-v0.2.1
 [0.2.0]: https://github.com/hphphp123321/NineKgTools/compare/v0.1.0...web-v0.2.0
 [0.1.0]: https://github.com/hphphp123321/NineKgTools/releases/tag/v0.1.0
